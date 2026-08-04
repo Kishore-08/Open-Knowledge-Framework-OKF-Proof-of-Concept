@@ -4,15 +4,15 @@ from typing import Optional
 
 # Import the orchestrator we built in Phase 2
 from app.ingestion import run_ingestion_pipeline
+from app.core.config import settings
 
 # Tags help group endpoints neatly in the Swagger UI
 router = APIRouter(prefix="/ingest", tags=["Ingestion"])
 
 class IngestRequest(BaseModel):
     """Payload definition for triggering ingestion."""
-    raw_dir: str = "data/raw"
-    okf_dir: str = "knowledge/source_1"
-
+    raw_dir: str = settings.RAW_DATA_DIR
+    okf_dir: str = settings.OKF_DATA_DIR
 class IngestResponse(BaseModel):
     """Structured response confirming ingestion status."""
     status: str

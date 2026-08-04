@@ -3,6 +3,7 @@ from llama_index.core import VectorStoreIndex, Settings, PromptTemplate
 from llama_index.llms.gemini import Gemini
 from llama_index.embeddings.gemini import GeminiEmbedding
 from .hybrid_search import get_qdrant_vector_store
+from app.core.config import settings
 
 # 1. Define the Strict OKF Prompt Template
 # This satisfies the requirement to distinguish retrieved knowledge and cite sources.
@@ -28,19 +29,29 @@ def configure_llm_settings():
     """
     Configures the global LLM and Embedding models for LlamaIndex.
     We use fast, cost-effective models ideal for a PoC.
-    Note: Ensure GEMINI_API_KEY is set in your .env file.
+    Note: Ensure GEMINI_API_KEY or GOOGLE_API_KEY is set in your .env file.
     """
+    api_key = settings.get_gemini_api_key()
+ 
     # gemini-2.5-flash is excellent for fast reasoning and following strict prompt instructions
-    Settings.llm = Gemini(model="gemini-2.5-flash", temperature=0.1)
-    
-    # text-embedding-004 creates the dense vectors for our semantic search
-    Settings.embed_model = GeminiEmbedding( model_name="models/text-embedding-004" )
+    Settings.llm = Gemini(model=settings.LLM_MODEL, temperature=settings.TEMPERATURE, api_key=api_key)
 
-def get_query_engine(similarity_top_k: int = 5, sparse_top_k: int = 5):
+    # text-embedding-004 creates the dense vectors for our semantic search
+    embed_model = settings.EMBEDDING_MODEL
+    if not embed_model.startswith("models/"):
+        embed_model = f"models/{embed_model}"
+    Settings.embed_model = GeminiEmbedding(model_name=embed_model, api_key=api_key)
+
+def get_query_engine(similarity_top_k: int = None, sparse_top_k: int = None):
     """
     Constructs the RAG query engine using LlamaIndex and Qdrant.
     It enables Hybrid Search (Dense vectors + BM25 sparse keywords).
     """
+    if similarity_top_k is None:
+        similarity_top_k = settings.TOP_K
+    if sparse_top_k is None:
+        sparse_top_k = settings.SPARSE_TOP_K
+ 
     # 1. Setup Models
     configure_llm_settings()
     
@@ -56,9 +67,9 @@ def get_query_engine(similarity_top_k: int = 5, sparse_top_k: int = 5):
         similarity_top_k=similarity_top_k,
         sparse_top_k=sparse_top_k,
         vector_store_query_mode="hybrid", # Fulfills the 'Hybrid Search' bonus feature
-        alpha=0.5 # 0.5 balances semantic meaning (vectors) with exact keyword matching (sparse)
+        alpha=settings.ALPHA # 0.5 balances semantic meaning (vectors) with exact keyword matching (sparse)
     )
-    
+
     # 5. Apply our strict OKF anti-hallucination prompt
     query_engine.update_prompts(
         {"response_synthesizer:text_qa_template": OKF_QA_PROMPT}
@@ -66,15 +77,18 @@ def get_query_engine(similarity_top_k: int = 5, sparse_top_k: int = 5):
     
     return query_engine
 
-def get_retriever(similarity_top_k: int = 5):
+def get_retriever(similarity_top_k: int = None):
     """
-    Utility function: Sometimes we just want to fetch the raw documents 
+    Utility function: Sometimes we just want to fetch the raw documents
     WITHOUT generating an LLM answer (e.g., for the UI to display citations).
     """
+    if similarity_top_k is None:
+        similarity_top_k = settings.TOP_K
     configure_llm_settings()
     vector_store = get_qdrant_vector_store()
     index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
     return index.as_retriever(
-        similarity_top_k=similarity_top_k, 
+        similarity_top_k=similarity_top_k,
         vector_store_query_mode="hybrid"
+        
     )

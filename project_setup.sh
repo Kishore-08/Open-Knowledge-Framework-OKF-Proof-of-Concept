@@ -166,15 +166,13 @@ llama-index-vector-stores-qdrant
 llama-index-llms-gemini
 llama-index-embeddings-gemini
 google-generativeai
-qdrant-client>=1.7.0
+qdrant-client>=1.16.0,<1.19.0
 
 PyMuPDF>=1.23.0
 pymupdf
 
 python-docx
 openpyxl
-
-ragas
 
 fastembed
 EOF
@@ -185,6 +183,17 @@ cat <<EOF > requirements/ui.txt
 
 streamlit>=1.25.0
 requests
+EOF
+
+#requirements/eval.txt
+cat <<EOF > requirements/eval.txt
+-r api.txt
+ 
+ragas==0.1.9
+langchain==0.2.17
+langchain-core==0.3.29
+langchain-community==0.2.19
+langchain-openai==0.2.14
 EOF
 
 # requirements/dev.txt

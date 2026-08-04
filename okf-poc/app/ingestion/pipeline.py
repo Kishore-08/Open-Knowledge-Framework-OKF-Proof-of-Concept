@@ -7,7 +7,7 @@ from .loaders import load_raw_documents
 from .metadata_extractor import generate_okf_metadata
 from app.retrieval.hybrid_search import get_qdrant_vector_store
 from app.retrieval.query_engine import configure_llm_settings
-
+from app.core.config import settings
 # We will build this in the next step (app/okf/ folder)
 from app.okf.formatter import format_and_save_okf
 
@@ -19,10 +19,10 @@ def configure_chunking():
     # SentenceSplitter respects sentence boundaries, preventing cut-off words.
     # 512 tokens is a great sweet spot for semantic search context windows.
     Settings.transformations = [
-        SentenceSplitter(chunk_size=512, chunk_overlap=50)
+        SentenceSplitter(chunk_size=settings.CHUNK_SIZE, chunk_overlap=settings.CHUNK_OVERLAP)
     ]
 
-def run_ingestion_pipeline(raw_dir: str = "data/raw", okf_dir: str = "knowledge/source_1"):
+def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
     """
     The master orchestration function.
     1. Loads raw documents.
@@ -30,6 +30,11 @@ def run_ingestion_pipeline(raw_dir: str = "data/raw", okf_dir: str = "knowledge/
     3. Saves physical OKF Markdown files.
     4. Chunks and Indexes into Qdrant.
     """
+    if raw_dir is None:
+        raw_dir = settings.RAW_DATA_DIR
+    if okf_dir is None:
+        okf_dir = settings.OKF_DATA_DIR
+ 
     print("🚀 Starting OKF Ingestion Pipeline...")
     
     # Ensure LLM and Embeddings are configured

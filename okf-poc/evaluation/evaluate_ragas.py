@@ -10,6 +10,7 @@ from ragas.metrics import (
     faithfulness,
     answer_correctness,
     context_relevance,
+    context_relevancy,
     context_precision,
 )
 
@@ -28,6 +29,8 @@ def run_evaluation():
     for the Ragas framework, and calculates performance metrics.
     """
     print("🚀 Starting OKF Pipeline Evaluation using Ragas...")
+    print("NOTE: ragas uses an LLM judge. With ragas 0.1.x this is OpenAI by default, "
+          "so set OPENAI_API_KEY (or configure a Gemini langchain model) before running.")
     
     # 1. Load the dataset
     dataset_path = "evaluation/dataset.json"
@@ -83,12 +86,12 @@ def run_evaluation():
 
     # 4. Evaluate
     print("\n📊 Running Ragas metrics (Faithfulness, Correctness, Precision, Relevance)...")
-    # Note: Ragas uses your GEMINI_API_KEY environment variable to act as the "LLM Judge"
+    
     metrics = [
-        faithfulness,       # Measures hallucination rate
-        answer_correctness, # Measures accuracy against ground truth
-        context_relevance,  # Measures if the retrieved OKF chunks actually pertain to the question
-        context_precision   # Measures if the relevant OKF chunks were ranked at the top
+        faithfulness,        # Measures hallucination rate
+        answer_correctness,  # Measures accuracy against ground truth
+        context_relevancy,   # Measures if the retrieved OKF chunks actually pertain to the question
+        context_precision    # Measures if the relevant OKF chunks were ranked at the top
     ]
     
     result = evaluate(

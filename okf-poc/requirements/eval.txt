@@ -1,0 +1,7 @@
+-r api.txt
+ 
+ragas==0.1.9
+langchain==0.2.17
+langchain-core==0.3.29
+langchain-community==0.2.19
+langchain-openai==0.2.14

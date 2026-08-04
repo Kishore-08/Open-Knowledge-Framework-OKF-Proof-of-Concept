@@ -1,6 +1,7 @@
 import json
 from pydantic import BaseModel, Field
 from llama_index.llms.gemini import Gemini
+from app.core.config import settings
 
 class OKFMetadata(BaseModel):
     """
@@ -18,20 +19,23 @@ def generate_okf_metadata(text: str) -> dict:
     Passes a preview of the document to an LLM to generate structured metadata.
     This satisfies Requirement #2: Metadata Extraction.
     """
-    # Initialize the LLM (using a fast, cheap model for metadata generation)
-    llm = Gemini(model="gemini-2.5-flash", temperature=0.1)
     
-    # We only send the first 3000 characters to save tokens and time. 
-    # Usually, the beginning of a document has enough context to determine title/topics.
-    text_preview = text[:3000]
-    
-    prompt = (
-        "You are an expert technical librarian. Analyze the following document text "
-        "and extract the requested metadata. Output valid JSON matching the schema.\n\n"
-        f"Text Preview:\n{text_preview}\n"
-    )
-
     try:
+        # Initialize the LLM (using a fast, cheap model for metadata generation)
+        # Pass the API key explicitly: the llama-index Gemini integration only reads
+        # GOOGLE_API_KEY from the environment, so GEMINI_API_KEY alone is not enough.
+        llm = Gemini(model=settings.LLM_MODEL, temperature=settings.TEMPERATURE, api_key=settings.get_gemini_api_key())
+ 
+        # We only send the first 3000 characters to save tokens and time.
+        # Usually, the beginning of a document has enough context to determine title/topics.
+        text_preview = text[:3000]
+ 
+        prompt = (
+            "You are an expert technical librarian. Analyze the following document text "
+            "and extract the requested metadata. Output valid JSON matching the schema.\n\n"
+            f"Text Preview:\n{text_preview}\n"
+        )
+ 
         print("🧠 Calling LLM to extract metadata...")
         # LlamaIndex supports structured output via Pydantic integration
         response = llm.structured_predict(OKFMetadata, prompt)
@@ -39,7 +43,7 @@ def generate_okf_metadata(text: str) -> dict:
         # Convert the Pydantic model to a standard dictionary
         metadata_dict = response.model_dump()
         return metadata_dict
-        
+    
     except Exception as e:
         print(f"❌ Failed to extract metadata: {e}")
         # Fallback metadata to ensure the pipeline doesn't crash on a bad LLM call
@@ -49,4 +53,5 @@ def generate_okf_metadata(text: str) -> dict:
             "document_type": "Unknown",
             "topics": ["unclassified"],
             "trust_level": "Low"
+
         }
