@@ -9,7 +9,6 @@ from ragas import evaluate
 from ragas.metrics import (
     faithfulness,
     answer_correctness,
-    context_relevance,
     context_relevancy,
     context_precision,
 )
@@ -115,7 +114,7 @@ def run_evaluation():
         "overall_scores": {
             "faithfulness_score": df["faithfulness"].mean(),
             "answer_correctness_score": df["answer_correctness"].mean(),
-            "context_relevance_score": df["context_relevance"].mean(),
+            "context_relevancy_score": df["context_relevancy"].mean(),
             "context_precision_score": df["context_precision"].mean()
         },
         "success_rate_estimate": df["answer_correctness"].mean() * 100 

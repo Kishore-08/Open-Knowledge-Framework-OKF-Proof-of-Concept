@@ -18,7 +18,10 @@ Enterprise knowledge retrieval system utilizing:
    cp .env.example .env
    ```
 
-2. Add your OpenAI API key to `.env`.
+2. Add your Gemini API key to `.env` (get one at https://aistudio.google.com/apikey):
+   ```bash
+   GEMINI_API_KEY=AIza...
+   ```
 
 3. Build and start the services:
 

@@ -112,12 +112,14 @@ touch knowledge/.gitkeep
 # .env.example
 cat <<EOF > .env.example
 # Gemini
-GEMINI_API_KEY=AQ.Ab8RN6JMR0rcLNYo5dC0Nv44J7pOCu8lG2vHDwg1DZBMCWPhWQ
+# Get a free API key at https://aistudio.google.com/apikey
+# The llama-index Gemini integration also reads GOOGLE_API_KEY, so either one works,
+# but GEMINI_API_KEY is preferred for this project.
 GEMINI_API_KEY=your_gemini_api_key_here
 
 # Qdrant
 QDRANT_URL=http://qdrant:6333
-QDRANT_COLLECTION=okf_documents
+QDRANT_COLLECTION=okf_knowledge
 
 # FastAPI
 API_HOST=http://api:8000
@@ -125,19 +127,21 @@ API_PORT=8000
 
 # Models
 LLM_MODEL=gemini-2.5-flash
-EMBEDDING_MODEL=text-embedding-004
+EMBEDDING_MODEL=models/text-embedding-004
 
 # RAG Configuration
 TOP_K=5
-CHUNK_SIZE=1024
+SPARSE_TOP_K=5
+ALPHA=0.5
+CHUNK_SIZE=512
 CHUNK_OVERLAP=100
 
 # Generation
 TEMPERATURE=0.1
 
 # Storage
-UPLOAD_DIR=data/uploads
-DATA_DIR=data
+RAW_DATA_DIR=data/raw
+OKF_DATA_DIR=knowledge/source_1
 
 # Environment
 ENV=development
@@ -313,7 +317,10 @@ Enterprise knowledge retrieval system utilizing:
    cp .env.example .env
    \`\`\`
 
-2. Add your OpenAI API key to \`.env\`.
+2. Add your Gemini API key to \`.env\` (get one at https://aistudio.google.com/apikey):
+   \`\`\`bash
+   GEMINI_API_KEY=AIza...
+   \`\`\`
 
 3. Build and start the services:
 
