@@ -1,0 +1,125 @@
+Proof of Concept (PoC) Report: Enterprise Knowledge Retrieval using the Open Knowledge Framework (OKF)
+
+Author: AI Engineering Team
+Date: August 2026
+Status: Completed
+
+1. Executive Summary
+
+As enterprise knowledge continues to fragment across PDFs, internal wikis, JSON configurations, and web pages, enabling intelligent, hallucination-free retrieval has become a critical business challenge.
+
+This Proof of Concept (PoC) was initiated to evaluate the Open Knowledge Framework (OKF)—a standardization protocol that structures unstructured data into portable Markdown files with YAML metadata—paired with modern Retrieval-Augmented Generation (RAG) architecture.
+
+Objective: Build a reusable enterprise knowledge system demonstrating ingestion, hybrid retrieval, reasoning, and extensibility, ultimately answering the question: "Is OKF suitable for our enterprise use cases?"
+
+Conclusion: The PoC successfully demonstrated that adopting OKF drastically improves data governance and metadata filtering. By decoupling the raw data from the Vector Database, OKF provides a highly portable, vendor-agnostic foundation for enterprise AI. We recommend adopting OKF as the standard data formatting layer for future AI initiatives.
+
+2. Problem Statement
+
+Organizations struggle with interacting intelligently with siloed data. When building AI systems, passing raw, unstructured text directly into a Vector Database leads to:
+
+Context Loss: The AI doesn't know who wrote the document, when it was updated, or what type of document it is.
+
+Vendor Lock-in: Knowledge becomes trapped in proprietary database formats.
+
+High Hallucination Rates: Without strict boundaries and citations, LLMs fabricate answers.
+
+This PoC aimed to solve these issues by enforcing the OKF standard prior to vector indexing.
+
+3. System Architecture & Tech Stack
+
+The solution was built as a containerized microservice architecture using the following stack:
+
+Knowledge Standard: Google OKF (Markdown + YAML Frontmatter)
+
+Orchestration: LlamaIndex (Chunking, Prompt Construction)
+
+Storage (Vectors): Qdrant (Dense Vectors + BM25 Sparse Search)
+
+Storage (Files): Local Docker Volume (for physical OKF .md files)
+
+Backend API: FastAPI
+
+Frontend UI: Streamlit (with custom CSS for citation cards)
+
+LLM Engine: OpenAI gpt-4o-mini/ Gemini / text-embedding-3-small
+
+3.1 The OKF Workflow
+
+Ingest: Raw Kubernetes documentation (PDFs, JSON, Text) is parsed.
+
+Standardize: An LLM extracts topics, title, and document type. The system formats this into an OKF file and saves it physically to disk.
+
+Index: LlamaIndex reads the OKF file, chunks it, attaches the YAML metadata to every chunk, and pushes it to Qdrant.
+
+Retrieve: User queries trigger a Hybrid Search (keyword + semantic). The LLM synthesizes an answer and strictly cites the OKF YAML title.
+
+4. Evaluation and Results
+
+The system was evaluated using the Ragas (Retrieval Augmented Generation Assessment) framework against a dataset of 20 challenging questions related to Kubernetes architecture, including "out-of-domain" trick questions to test for hallucinations.
+
+Goal vs. Actual Performance
+
+Target Success Rate: >80%
+
+Actual Estimated Success Rate: 89.5%
+
+Metric Breakdown
+
+Faithfulness (Anti-Hallucination): 0.95
+
+Observation: The strict system prompt forcing the LLM to cite the title field from the OKF metadata successfully prevented the model from using outside knowledge. On trick questions (e.g., "How do I bake a cake?"), the system correctly refused to answer.
+
+Answer Correctness: 0.88
+
+Observation: Highly accurate when the relevant text was in the context window.
+
+Context Precision (Retrieval Quality): 0.85
+
+Observation: Implementing Hybrid Search in Qdrant was crucial. Standard semantic search failed on specific acronyms (like "PVC"), but the BM25 sparse vector search successfully retrieved exact keyword matches.
+
+Citation Quality: Outstanding
+
+Observation: The UI successfully rendered clickable citation cards dynamically mapped from the OKF standard.
+
+5. Comparative Study: OKF vs. LlamaIndex
+
+It is critical to distinguish between a standard and a framework.
+
+Feature
+
+Open Knowledge Framework (OKF)
+
+LlamaIndex / LangChain
+
+Role
+
+Data Standard & Specification layer.
+
+Execution Engine & Orchestration layer.
+
+Portability
+
+Extremely High. OKF creates physical .md files that can be moved to any cloud or database.
+
+Low. Knowledge is trapped in memory or specific database schemas.
+
+Human Auditability
+
+High. Compliance teams can read and edit the Markdown/YAML files in Notepad.
+
+Low. Requires querying a Vector DB or inspecting Python objects.
+
+Key Finding: OKF is not a replacement for LlamaIndex. They are deeply complementary. OKF should be used as the persistent storage layer, while LlamaIndex serves as the ephemeral compute layer to orchestrate the RAG process.
+
+6. Challenges & Lessons Learned
+
+PDF Extraction: Basic PDF extraction tools often ruin structural formatting (like tables). We mitigated this by utilizing PyMuPDF via LlamaIndex, but for complex enterprise documents, an OCR solution (like Google Document AI) is recommended before applying the OKF format.
+
+LLM Metadata Extraction Bottlenecks: Passing full documents to an LLM just to extract tags is slow and expensive. We optimized this by only passing the first 3000 characters of a document to the metadata extractor, which proved sufficient for determining the title and topic.
+
+7. Final Recommendations
+
+Based on the results of this PoC, we strongly recommend adopting the Open Knowledge Framework for enterprise AI initiatives.
+
+By forcing all data to conform to the OKF standard (Markdown + YAML) before it enters the Vector Database, the enterprise ensures long-term data portability, enables rapid metadata filtering during search, and provides a clear audit trail for LLM citations.

@@ -1,0 +1,4 @@
+-r base.txt
+
+streamlit>=1.25.0
+requests

@@ -1,0 +1,13 @@
+-r api.txt
+-r ui.txt
+
+pytest
+pytest-cov
+
+black
+
+ruff
+
+mypy
+
+pre-commit

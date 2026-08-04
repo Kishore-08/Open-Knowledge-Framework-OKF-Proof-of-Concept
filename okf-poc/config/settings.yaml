@@ -1,0 +1,42 @@
+OKF Enterprise PoC - Global Application Settings
+
+This file externalizes the parameters for chunking, models, and retrieval.
+
+project:
+name: "OKF Knowledge Assistant PoC"
+version: "1.0.0"
+environment: "development"
+log_level: "INFO"
+
+paths:
+raw_data_dir: "data/raw"
+okf_data_dir: "knowledge/source_1"
+evaluation_dataset: "evaluation/dataset.json"
+evaluation_results_dir: "evaluation/results"
+
+rag_pipeline:
+chunking:
+# SentenceSplitter parameters
+chunk_size: 512
+chunk_overlap: 50
+retrieval:
+# Hybrid Search weighting
+similarity_top_k: 5
+sparse_top_k: 5
+# Alpha dictates the balance in Qdrant (1.0 = Dense Vector only, 0.0 = Keyword/BM25 only, 0.5 = Balanced)
+alpha: 0.5
+
+models:
+generation:
+# We use a fast, cost-effective model for the PoC
+name: "gpt-4o-mini"
+temperature: 0.1
+embedding:
+name: "text-embedding-3-small"
+dimensions: 1536
+
+vector_database:
+provider: "qdrant"
+collection_name: "okf_knowledge"
+enable_hybrid: true
+upload_batch_size: 20
