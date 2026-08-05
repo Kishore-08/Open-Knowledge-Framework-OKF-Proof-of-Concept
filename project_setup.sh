@@ -83,8 +83,47 @@ touch \
 # ----------------------------------------------------
 echo "⚙️ Creating root configuration files..."
 
-# .gitignore
-cat <<EOF > .gitignore
+FORCE=false
+
+[[ "$1" == "--force" ]] && FORCE=true
+
+create_file() {
+    local file="$1"
+
+    if [[ -f "$file" && "$FORCE" == false ]]; then
+        echo "✓ $file already exists"
+        cat >/dev/null
+        return
+    fi
+
+    mkdir -p "$(dirname "$file")"
+    cat >"$file"
+    echo "✓ Created $file"
+}
+
+create_dir() {
+    mkdir -p "$1"
+}
+
+create_empty_file() {
+    [[ -f "$1" ]] || touch "$1"
+}
+
+append_if_missing() {
+    local file="$1"
+    local line="$2"
+
+    grep -Fxq "$line" "$file" 2>/dev/null || echo "$line" >> "$file"
+}
+
+create_dir data/raw
+create_dir knowledge
+create_dir requirements
+
+create_empty_file data/raw/.gitkeep
+create_empty_file knowledge/.gitkeep
+
+create_file .gitignore <<'EOF'
 # Python
 __pycache__/
 *.py[cod]
@@ -97,6 +136,7 @@ ENV/
 # Data & Knowledge
 data/raw/*
 !data/raw/.gitkeep
+
 knowledge/*
 !knowledge/.gitkeep
 
@@ -105,16 +145,14 @@ knowledge/*
 .idea/
 EOF
 
-# Preserve empty folders
-touch data/raw/.gitkeep
-touch knowledge/.gitkeep
+append_if_missing .gitignore ".pytest_cache/"
+append_if_missing .gitignore ".ruff_cache/"
+append_if_missing .gitignore ".mypy_cache/"
 
-# .env.example
-cat <<EOF > .env.example
+create_file .env.example <<'EOF'
 # Gemini
 # Get a free API key at https://aistudio.google.com/apikey
-# The llama-index Gemini integration also reads GOOGLE_API_KEY, so either one works,
-# but GEMINI_API_KEY is preferred for this project.
+
 GEMINI_API_KEY=your_gemini_api_key_here
 
 # Qdrant
@@ -148,8 +186,7 @@ ENV=development
 LOG_LEVEL=INFO
 EOF
 
-# requirements/base.txt
-cat <<EOF > requirements/base.txt
+create_file requirements/base.txt <<'EOF'
 python-dotenv
 
 pydantic>=2.0.0
@@ -158,18 +195,20 @@ pydantic-settings
 pyyaml
 EOF
 
-#requirements/api.txt
-cat <<EOF > requirements/api.txt
+create_file requirements/api.txt <<'EOF'
 -r base.txt
 
 fastapi>=0.100.0
 uvicorn>=0.23.0
 
 llama-index>=0.10.0
+llama-index-readers-file
 llama-index-vector-stores-qdrant
 llama-index-llms-gemini
 llama-index-embeddings-gemini
+
 google-generativeai
+
 qdrant-client>=1.16.0,<1.19.0
 
 PyMuPDF>=1.23.0
@@ -181,18 +220,16 @@ openpyxl
 fastembed
 EOF
 
-#requirements/ui.txt
-cat <<EOF > requirements/ui.txt
+create_file requirements/ui.txt <<'EOF'
 -r base.txt
 
 streamlit>=1.25.0
 requests
 EOF
 
-#requirements/eval.txt
-cat <<EOF > requirements/eval.txt
+create_file requirements/eval.txt <<'EOF'
 -r api.txt
- 
+
 ragas==0.1.9
 langchain==0.2.17
 langchain-core==0.3.29
@@ -200,8 +237,7 @@ langchain-community==0.2.19
 langchain-openai==0.2.14
 EOF
 
-# requirements/dev.txt
-cat <<EOF > requirements/dev.txt
+create_file requirements/dev.txt <<'EOF'
 -r api.txt
 -r ui.txt
 
@@ -209,16 +245,13 @@ pytest
 pytest-cov
 
 black
-
 ruff
-
 mypy
 
 pre-commit
 EOF
 
-# Dockerfile.api
-cat <<EOF > Dockerfile.api
+create_file Dockerfile.api <<'EOF'
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -233,8 +266,7 @@ COPY . .
 CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
 EOF
 
-# Dockerfile.ui
-cat <<EOF > Dockerfile.ui
+create_file Dockerfile.ui <<'EOF'
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -249,24 +281,27 @@ COPY . .
 CMD ["streamlit", "run", "app/ui/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
 EOF
 
-# docker-compose.yml
-cat <<EOF > docker-compose.yml
-version: '3.8'
+create_file docker-compose.yml <<'EOF'
+version: "3.8"
 
 services:
   api:
     build:
       context: .
       dockerfile: Dockerfile.api
+
     ports:
       - "8000:8000"
+
     volumes:
       - ./app:/app/app
       - ./knowledge:/app/knowledge
       - ./data:/app/data
       - ./config:/app/config
+
     env_file:
       - .env
+
     depends_on:
       - qdrant
 
@@ -274,20 +309,26 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.ui
+
     ports:
       - "8501:8501"
+
     volumes:
       - ./app:/app/app
+
     env_file:
       - .env
+
     depends_on:
       - api
 
   qdrant:
     image: qdrant/qdrant:latest
+
     ports:
       - "6333:6333"
       - "6334:6334"
+
     volumes:
       - qdrant_data:/qdrant/storage
 
@@ -295,49 +336,12 @@ volumes:
   qdrant_data:
 EOF
 
+echo
+echo "Project scaffold completed successfully."
+
 # README.md
-cat <<EOF > README.md
-# Open Knowledge Framework (OKF) PoC
-
-## Overview
-
-Enterprise knowledge retrieval system utilizing:
-
-- OKF specifications
-- LlamaIndex
-- Qdrant (Hybrid Search)
-- FastAPI
-- Streamlit
-
-## Setup
-
-1. Copy the environment file:
-
-   \`\`\`bash
-   cp .env.example .env
-   \`\`\`
-
-2. Add your Gemini API key to \`.env\` (get one at https://aistudio.google.com/apikey):
-   \`\`\`bash
-   GEMINI_API_KEY=AIza...
-   \`\`\`
-
-3. Build and start the services:
-
-   \`\`\`bash
-   docker compose up --build
-   \`\`\`
-
-## Access
-
-- Streamlit UI: http://localhost:8501
-- FastAPI Docs: http://localhost:8000/docs
-EOF
+touch README.md
 
 echo ""
 echo "✅ Setup complete! Project structure generated in ./$ROOT_DIR"
 echo ""
-echo "👉 Next steps:"
-echo "   cd $ROOT_DIR"
-echo "   cp .env.example .env"
-echo "   docker compose up --build"
