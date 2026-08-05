@@ -33,10 +33,10 @@ def configure_llm_settings():
     """
     api_key = settings.get_gemini_api_key()
  
-    # gemini-2.5-flash is excellent for fast reasoning and following strict prompt instructions
+    # gemini-2.0-flash: stable, widely available, cost-effective
     Settings.llm = Gemini(model=settings.LLM_MODEL, temperature=settings.TEMPERATURE, api_key=api_key)
 
-    # text-embedding-004 creates the dense vectors for our semantic search
+    # gemini-embedding-001 creates the dense vectors for our semantic search
     embed_model = settings.EMBEDDING_MODEL
     if not embed_model.startswith("models/"):
         embed_model = f"models/{embed_model}"

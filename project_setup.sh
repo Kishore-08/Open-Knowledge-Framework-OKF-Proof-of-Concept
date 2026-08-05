@@ -233,7 +233,7 @@ EOF
 create_or_update_file "requirements/ui.txt" <<'EOF'
 -r base.txt
 
-streamlit>=1.25.0
+streamlit>=1.49.1
 requests
 EOF
 

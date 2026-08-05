@@ -8,11 +8,31 @@ OKF Formatting, and Retrieval).
 
 __version__ = "1.0.0"
 
-# Expose core components at the root package level for easy access
-from app.core.config import settings
-from app.api.main import app as api_app
-from app.ingestion.pipeline import run_ingestion_pipeline
-from app.retrieval.query_engine import get_query_engine
+# ---------------------------------------------------------------------------
+# Guard heavy imports so that the UI-only container (which only installs
+# streamlit + requests) can import this package without crashing.
+# The API container has the full dependency set and will succeed normally.
+# ---------------------------------------------------------------------------
+
+try:
+    from app.core.config import settings
+except ImportError:
+    settings = None  # type: ignore[assignment]
+
+try:
+    from app.api.main import app as api_app
+except ImportError:
+    api_app = None  # type: ignore[assignment]
+
+try:
+    from app.ingestion.pipeline import run_ingestion_pipeline
+except ImportError:
+    run_ingestion_pipeline = None  # type: ignore[assignment]
+
+try:
+    from app.retrieval.query_engine import get_query_engine
+except ImportError:
+    get_query_engine = None  # type: ignore[assignment]
 
 # Define the public API of the `app` package
 __all__ = [

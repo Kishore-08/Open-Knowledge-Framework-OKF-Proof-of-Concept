@@ -39,8 +39,8 @@ class Settings(BaseSettings):
     CONCEPT_MAX_CHARS: int = 4000
 
      # Models
-    LLM_MODEL: str = "gemini-2.5-flash"
-    EMBEDDING_MODEL: str = "models/text-embedding-004"
+    LLM_MODEL: str = "gemini-2.0-flash"
+    EMBEDDING_MODEL: str = "models/gemini-embedding-001"
     TEMPERATURE: float = 0.1
  
     model_config = SettingsConfigDict(

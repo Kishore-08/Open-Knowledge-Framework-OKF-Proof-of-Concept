@@ -135,7 +135,7 @@ def trigger_ingestion():
     try:
         with st.spinner("Processing documents, extracting OKF metadata, and generating embeddings..."):
             payload = {"raw_dir": "data/raw", "okf_dir": "knowledge/source_1"}
-            res = requests.post(f"{API_HOST}/api/v1/ingest/", json=payload)
+            res = requests.post(f"{API_HOST}/api/v1/ingest/", json=payload, timeout=300)
             
             if res.status_code == 200:
                 data = res.json()
@@ -328,7 +328,7 @@ if prompt := st.chat_input("Ask a question about your documents...", disabled=no
                 response = requests.post(
                     f"{API_HOST}/api/v1/query/", 
                     json={"query": prompt},
-                    timeout=30
+                    timeout=120
                 )
             
             if response.status_code == 200:
