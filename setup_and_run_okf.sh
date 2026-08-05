@@ -53,41 +53,79 @@ cd "$PROJECT_DIR"
 echo "✅ Project directory found"
 
 # -------------------------------------------------------
-# Create .env
+# Create / Validate .env
 # -------------------------------------------------------
+
+echo ""
+echo "🔍 Checking .env..."
 
 if [ ! -f ".env" ]; then
 
-    echo ""
-    echo "📝 Creating .env file..."
-
     if [ ! -f ".env.example" ]; then
-    echo "❌ .env.example not found."
-    exit 1
+        echo "❌ .env.example not found."
+        exit 1
     fi
 
     cp .env.example .env
-
-    while [ -z "$GEMINI_API_KEY" ]; do
-        read -s -p "Enter your Gemini API Key: " GEMINI_API_KEY
-        echo ""
-
-        if [ -z "$GEMINI_API_KEY" ]; then
-            echo "❌ Gemini API Key cannot be empty."
-        fi
-    done
-
-    sed -i "s|your_gemini_api_key_here|$GEMINI_API_KEY|g" .env
-
-    echo ""
-    echo "✅ .env created successfully."
-
-else
-
-    echo ""
-    echo "ℹ️ .env already exists. Skipping."
+    echo "✅ .env created from .env.example"
 
 fi
+
+# -------------------------------------------------------
+# Helper function
+# -------------------------------------------------------
+
+check_and_update() {
+
+    VAR_NAME="$1"
+    PLACEHOLDER="$2"
+    SECRET="$3"
+
+    CURRENT_VALUE=$(grep "^${VAR_NAME}=" .env | cut -d '=' -f2-)
+
+    if [ -z "$CURRENT_VALUE" ] || [ "$CURRENT_VALUE" = "$PLACEHOLDER" ]; then
+
+        echo ""
+
+        if [ "$SECRET" = "true" ]; then
+            read -s -p "Enter ${VAR_NAME}: " NEW_VALUE
+            echo ""
+        else
+            read -p "Enter ${VAR_NAME}: " NEW_VALUE
+        fi
+
+        while [ -z "$NEW_VALUE" ]; do
+            echo "❌ ${VAR_NAME} cannot be empty."
+
+            if [ "$SECRET" = "true" ]; then
+                read -s -p "Enter ${VAR_NAME}: " NEW_VALUE
+                echo ""
+            else
+                read -p "Enter ${VAR_NAME}: " NEW_VALUE
+            fi
+        done
+
+        if grep -q "^${VAR_NAME}=" .env; then
+            sed -i "s|^${VAR_NAME}=.*|${VAR_NAME}=${NEW_VALUE}|" .env
+        else
+            echo "${VAR_NAME}=${NEW_VALUE}" >> .env
+        fi
+
+        echo "✅ ${VAR_NAME} updated."
+
+    else
+        echo "✔ ${VAR_NAME} already configured."
+    fi
+}
+
+# -------------------------------------------------------
+# Required Variables
+# -------------------------------------------------------
+
+check_and_update "GEMINI_API_KEY" "your_gemini_api_key_here" true
+
+echo ""
+echo "🎉 .env validation completed."
 
 # -------------------------------------------------------
 # Build & Start Containers

@@ -2,24 +2,21 @@
 
 fastapi>=0.100.0
 uvicorn>=0.23.0
-
 llama-index>=0.10.0
 llama-index-vector-stores-qdrant
 llama-index-llms-gemini
 llama-index-embeddings-gemini
 google-generativeai
 qdrant-client>=1.16.0,<1.19.0
-
 PyMuPDF>=1.23.0
 pymupdf
-
 python-docx
 openpyxl
-
 # HTML parsing / cleaning / conversion / crawling
 beautifulsoup4
 lxml
 markdownify
 httpx
-
 fastembed
+llama-index-readers-file
+
