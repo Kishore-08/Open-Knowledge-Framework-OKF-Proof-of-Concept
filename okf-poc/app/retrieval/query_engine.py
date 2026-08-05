@@ -30,27 +30,40 @@ def configure_llm_settings():
     Configures the global LLM and Embedding models for LlamaIndex.
     We use fast, cost-effective models ideal for a PoC.
     Note: Ensure GEMINI_API_KEY or GOOGLE_API_KEY is set in your .env file.
+    Uses transport='rest' for both Gemini (LLM) and GeminiEmbedding to bypass
+    gRPC credentials plugin validation which fails for some API key formats.
     """
     api_key = settings.get_gemini_api_key()
  
-    # gemini-2.0-flash: stable, widely available, cost-effective
-    Settings.llm = Gemini(model=settings.LLM_MODEL, temperature=settings.TEMPERATURE, api_key=api_key)
+    # Force the GOOGLE_API_KEY env var so google.generativeai picks it up
+    os.environ["GOOGLE_API_KEY"] = api_key
 
-    # gemini-embedding-001 creates the dense vectors for our semantic search
+    # gemini-2.0-flash: stable, widely available, cost-effective
+    # Using transport="rest" to prevent gRPC plugin_credentials header rejection errors
+    Settings.llm = Gemini(
+        model=settings.LLM_MODEL, 
+        temperature=settings.TEMPERATURE, 
+        api_key=api_key,
+        transport="rest"
+    )
+
+    # Gemini embeddings: use transport="rest" to prevent gRPC metadata header rejection issues
     embed_model = settings.EMBEDDING_MODEL
     if not embed_model.startswith("models/"):
         embed_model = f"models/{embed_model}"
-    Settings.embed_model = GeminiEmbedding(model_name=embed_model, api_key=api_key)
+    Settings.embed_model = GeminiEmbedding(
+        model_name=embed_model, 
+        api_key=api_key, 
+        transport="rest"
+    )
 
-def get_query_engine(similarity_top_k: int = None, sparse_top_k: int = None):
+def get_query_engine(similarity_top_k: int = None):
     """
     Constructs the RAG query engine using LlamaIndex and Qdrant.
-    It enables Hybrid Search (Dense vectors + BM25 sparse keywords).
+    It enables Dense semantic search.
     """
     if similarity_top_k is None:
         similarity_top_k = settings.TOP_K
-    if sparse_top_k is None:
-        sparse_top_k = settings.SPARSE_TOP_K
  
     # 1. Setup Models
     configure_llm_settings()
@@ -62,12 +75,10 @@ def get_query_engine(similarity_top_k: int = None, sparse_top_k: int = None):
     # This prevents us from needing to re-index documents every time the server starts
     index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
     
-    # 4. Build the engine with Hybrid Search enabled
+    # 4. Build the engine with dense semantic search (default query mode)
     query_engine = index.as_query_engine(
         similarity_top_k=similarity_top_k,
-        sparse_top_k=sparse_top_k,
-        vector_store_query_mode="hybrid", # Fulfills the 'Hybrid Search' bonus feature
-        alpha=settings.ALPHA # 0.5 balances semantic meaning (vectors) with exact keyword matching (sparse)
+        vector_store_query_mode="default"
     )
 
     # 5. Apply our strict OKF anti-hallucination prompt
@@ -89,6 +100,5 @@ def get_retriever(similarity_top_k: int = None):
     index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
     return index.as_retriever(
         similarity_top_k=similarity_top_k,
-        vector_store_query_mode="hybrid"
-        
+        vector_store_query_mode="default"
     )
