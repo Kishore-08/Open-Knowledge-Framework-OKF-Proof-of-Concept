@@ -1,151 +1,403 @@
-Open Knowledge Framework (OKF) - System Architecture
+# Open Knowledge Framework (OKF) - System Architecture
 
-This document details the architecture, components, and data flows of the OKF Enterprise Proof of Concept.
+This document describes the overall architecture, core components, and end-to-end data flows of the **Open Knowledge Framework (OKF) Enterprise Proof of Concept (PoC)**.
 
-1. High-Level System Architecture
+---
 
-The system is designed as a containerized, microservice-based architecture to ensure scalability and separation of concerns.
+# 🏗️ 1. High-Level System Architecture
 
+The application follows a **containerized microservices architecture** using **Docker Compose**, ensuring scalability, modularity, and clear separation of concerns.
+
+```mermaid
 graph TB
+
     subgraph "Docker Compose Environment"
-        
+
         subgraph "Frontend Layer"
-            UI["Streamlit UI (Port: 8501)"]
+            UI["Streamlit UI<br/>(Port: 8501)"]
         end
 
         subgraph "Backend API Layer"
-            API["FastAPI Backend (Port: 8000)"]
-            Router["API Routers (/ingest, /query)"]
+            API["FastAPI Backend<br/>(Port: 8000)"]
+            Router["API Routers<br/>(/ingest, /query)"]
         end
-        
+
         subgraph "Knowledge Processing Engine"
             Orchestrator["LlamaIndex Orchestrator"]
             OKF_Core["OKF Converter Engine"]
         end
 
         subgraph "Storage Layer"
-            Qdrant[("Qdrant Vector DB<br/>(Port: 6333)")]
-            LocalVol[("Local File System<br/>(Physical OKF .md files)")]
+            Qdrant[("Qdrant Vector Database<br/>(Port: 6333)")]
+            LocalVol[("Local File System<br/>OKF Markdown Files")]
         end
 
     end
 
-    ExternalLLM(("External LLM API<br/>(OpenAI / Gemini)"))
-    RawData[/"Raw Data Sources<br/>(PDF, JSON, MD)"/]
+    ExternalLLM(("External LLM API<br/>(Gemini / OpenAI)"))
+
+    RawData[/"Raw Documents<br/>(PDF, Markdown, JSON, TXT)"/]
+
     User(("End User"))
 
     %% Connections
-    User <-->|HTTP Chat| UI
+
+    User <-->|Chat| UI
+
     UI <-->|REST API| API
+
     API --> Router
+
     Router --> Orchestrator
     Router --> OKF_Core
+
     RawData -->|Upload| API
-    
-    Orchestrator <-->|Embeddings/Completion| ExternalLLM
+
+    Orchestrator <-->|Embeddings & Completion| ExternalLLM
     OKF_Core <-->|Metadata Extraction| ExternalLLM
-    
+
     Orchestrator <-->|Hybrid Search| Qdrant
-    OKF_Core -->|Save standardized files| LocalVol
-    Orchestrator -->|Read chunk context| LocalVol
 
+    OKF_Core -->|Generate OKF Files| LocalVol
 
-2. Component Breakdown
+    Orchestrator -->|Read OKF Documents| LocalVol
+```
 
-Component
+---
 
-Technology
+# 🧩 2. Component Breakdown
 
-Purpose
+| Component | Technology | Purpose |
+|------------|------------|---------|
+| **Frontend UI** | Streamlit | Provides an interactive conversational interface and renders AI responses along with citation cards. |
+| **Backend API** | FastAPI | Exposes REST APIs, validates requests using Pydantic, and orchestrates ingestion and querying workflows. |
+| **Data Orchestration** | LlamaIndex | Handles document chunking, prompt generation, embedding creation, retrieval, and communication with the LLM. |
+| **OKF Engine** | Custom Python | Converts raw documents into standardized OKF Markdown files with YAML Frontmatter. |
+| **Vector Database** | Qdrant | Stores dense embeddings, sparse BM25 vectors, and YAML metadata as searchable payloads. |
+| **LLM Provider** | Gemini / OpenAI | Generates metadata during ingestion and produces grounded answers during querying. |
+| **Local Storage** | File System | Stores human-readable OKF Markdown files for long-term portability and framework independence. |
 
-Frontend UI
+---
 
-Streamlit
+# 🔄 3. Data Workflows
 
-Provides an interactive chat interface. Parses backend responses to render AI answers and interactive "Citation Cards" showing OKF sources.
+## 3.1 Knowledge Ingestion Workflow
 
-Backend API
+This workflow transforms raw, unstructured enterprise documents into searchable OKF knowledge.
 
-FastAPI
-
-High-performance async REST API. Exposes endpoints for UI consumption and handles data validation via Pydantic.
-
-Data Orchestration
-
-LlamaIndex
-
-Handles document chunking (SentenceSplitter), prompt construction, and LLM communication.
-
-OKF Engine
-
-Custom Python
-
-Extracts metadata via LLM, formats text into OKF standard (Markdown + YAML), and writes physical files to disk to prevent vendor lock-in.
-
-Vector Database
-
-Qdrant
-
-Stores dense vector embeddings and sparse BM25 vectors. Crucially, it stores the OKF YAML data as JSON payloads to enable rapid metadata filtering.
-
-3. Data Workflows
-
-3.1 Knowledge Ingestion Workflow
-
-This process describes how raw, unstructured data becomes searchable OKF knowledge.
-
+```mermaid
 sequenceDiagram
+
     autonumber
+
     participant Raw as Raw Document
-    participant Load as Loaders (PyMuPDF)
+    participant Loader as Document Loader
     participant OKF as OKF Engine
     participant LLM as External LLM
     participant Disk as Local Storage
     participant Llama as LlamaIndex
-    participant Qdrant as Vector DB
+    participant Qdrant as Qdrant
 
-    Raw->>Load: Read raw text
-    Load->>OKF: Pass unformatted text
-    OKF->>LLM: Prompt: Extract Title, Topics, Type
-    LLM-->>OKF: Return JSON Metadata
-    OKF->>OKF: Assemble Markdown + YAML Frontmatter
-    OKF->>Disk: Save physical 'document.md'
-    Llama->>Disk: Read 'document.md'
-    Llama->>Llama: Chunk text (512 tokens)
-    Llama->>Llama: Attach YAML metadata to every chunk
-    Llama->>Qdrant: Upsert Vectors + OKF Metadata Payload
+    Raw->>Loader: Read raw document
 
+    Loader->>OKF: Extract plain text
 
-3.2 Retrieval & Reasoning Workflow (RAG)
+    OKF->>LLM: Extract metadata (Title, Tags, Category, Source)
 
-This process describes how a user query is resolved using Hybrid Search and strict anti-hallucination prompting.
+    LLM-->>OKF: Structured JSON Metadata
 
+    OKF->>OKF: Generate Markdown + YAML Frontmatter
+
+    OKF->>Disk: Save OKF Markdown file
+
+    Llama->>Disk: Read Markdown document
+
+    Llama->>Llama: Split into chunks
+
+    Llama->>Llama: Attach YAML metadata
+
+    Llama->>Qdrant: Store vectors + metadata payload
+```
+
+---
+
+## 3.2 Retrieval & Reasoning Workflow (RAG)
+
+This workflow describes how a user query is answered using **Hybrid Search** and **Retrieval-Augmented Generation (RAG)**.
+
+```mermaid
 flowchart TD
-    A([User Query]) --> B(FastAPI /query)
-    B --> C[LlamaIndex Query Engine]
-    
-    C --> D[(Qdrant DB)]
-    
+
+    A([User Query])
+
+    B(FastAPI /query)
+
+    C[LlamaIndex Query Engine]
+
+    D[(Qdrant Vector Database)]
+
     subgraph "Hybrid Search"
-        D -->|Dense Match| E[Semantic Results]
-        D -->|Sparse Match| F[Keyword Results]
-        E & F --> G{Reciprocal Rank Fusion}
+
+        E[Semantic Search]
+
+        F[Keyword Search (BM25)]
+
+        G[Reciprocal Rank Fusion]
+
+        D --> E
+
+        D --> F
+
+        E --> G
+
+        F --> G
+
     end
-    
-    G -->|Top-K OKF Chunks| H[Prompt Builder]
-    H -->|Inject Context & Enforce Citations| I((LLM))
-    
-    I --> J[Generated Answer]
-    I --> K[Extracted Citations]
-    
-    J & K --> L(FastAPI Response)
-    L --> M([Streamlit UI])
 
+    H[Retrieve Top-K OKF Chunks]
 
-4. Key Design Decisions
+    I[Prompt Builder]
 
-Physical File Storage: By saving OKF documents as .md files to the disk before indexing, we ensure the enterprise retains human-readable, framework-agnostic copies of all knowledge.
+    J((LLM))
 
-Hybrid Search Integration: Relying solely on vector similarity fails for enterprise acronyms and specific IDs. Qdrant's BM25 sparse vectors solve this.
+    K[Generated Answer]
 
-Strict Prompts: The LLM is explicitly instructed to cite the YAML title field and state "I cannot answer this" if the OKF context lacks the answer. This is verified by the Ragas Evaluation suite.
+    L[Extract Citations]
+
+    M(FastAPI Response)
+
+    N([Streamlit UI])
+
+    A --> B
+
+    B --> C
+
+    C --> D
+
+    G --> H
+
+    H --> I
+
+    I -->|Context + Citation Instructions| J
+
+    J --> K
+
+    J --> L
+
+    K --> M
+
+    L --> M
+
+    M --> N
+```
+
+---
+
+# ⚙️ 4. Knowledge Ingestion Pipeline
+
+The ingestion process converts raw enterprise documents into indexed knowledge.
+
+```text
+Raw Documents
+      │
+      ▼
+Document Loader
+      │
+      ▼
+Text Extraction
+      │
+      ▼
+Metadata Extraction (LLM)
+      │
+      ▼
+OKF Formatter
+      │
+      ▼
+Markdown + YAML Frontmatter
+      │
+      ▼
+Save to Knowledge Directory
+      │
+      ▼
+Chunking
+      │
+      ▼
+Embedding Generation
+      │
+      ▼
+Hybrid Indexing
+      │
+      ▼
+Qdrant
+```
+
+---
+
+# 🔍 5. Query Processing Pipeline
+
+```text
+User Question
+      │
+      ▼
+FastAPI API
+      │
+      ▼
+Embedding Generation
+      │
+      ▼
+Hybrid Search
+(Dense + BM25)
+      │
+      ▼
+Reciprocal Rank Fusion
+      │
+      ▼
+Top-K OKF Chunks
+      │
+      ▼
+Prompt Construction
+      │
+      ▼
+Large Language Model
+      │
+      ▼
+Grounded Answer
+      │
+      ▼
+Citation Mapping
+      │
+      ▼
+Streamlit UI
+```
+
+---
+
+# 🏛️ 6. Key Design Decisions
+
+## 1. Physical Knowledge Storage
+
+Instead of storing documents only inside a vector database, every document is converted into a standardized **OKF Markdown file** before indexing.
+
+**Benefits**
+
+- Human-readable knowledge
+- Version control with Git
+- Vendor independence
+- Long-term portability
+- Easy auditing
+
+---
+
+## 2. Hybrid Search
+
+Enterprise documentation frequently contains:
+
+- Error codes
+- Kubernetes resource names
+- Version numbers
+- Acronyms
+- API identifiers
+
+Dense embeddings alone often struggle with these exact-match terms.
+
+The system combines:
+
+- Semantic Vector Search
+- Sparse BM25 Search
+
+using **Reciprocal Rank Fusion (RRF)** to improve retrieval quality.
+
+---
+
+## 3. Strict Citation Enforcement
+
+Every generated answer must reference the originating OKF document using its YAML metadata.
+
+The prompt instructs the LLM to:
+
+- Answer only from retrieved context.
+- Include document citations.
+- Never fabricate missing information.
+- Respond with **"I cannot answer this based on the available knowledge."** when the context is insufficient.
+
+---
+
+## 4. Metadata-Driven Retrieval
+
+Each document chunk inherits YAML metadata including:
+
+- Title
+- Category
+- Tags
+- Source
+- Author
+- Last Updated
+
+This enables:
+
+- Metadata filtering
+- Better search precision
+- Rich citation cards
+- Improved traceability
+
+---
+
+## 5. Evaluation-Driven Development
+
+The solution integrates **Ragas** to continuously evaluate:
+
+- Faithfulness
+- Answer Correctness
+- Context Recall
+- Context Precision
+- Hallucination Rate
+
+This ensures the system consistently meets enterprise accuracy requirements before deployment.
+
+---
+
+# 🚀 Overall Architecture Summary
+
+```text
+                 +------------------------+
+                 |      Streamlit UI      |
+                 +-----------+------------+
+                             |
+                             |
+                             ▼
+                 +------------------------+
+                 |      FastAPI API       |
+                 +-----------+------------+
+                             |
+          +------------------+------------------+
+          |                                     |
+          ▼                                     ▼
++----------------------+          +-------------------------+
+|   OKF Engine         |          |   LlamaIndex Engine     |
++----------+-----------+          +-----------+-------------+
+           |                                   |
+           ▼                                   ▼
++----------------------+          +-------------------------+
+| OKF Markdown Files   |          |     Qdrant Database     |
++----------------------+          +-------------------------+
+                                             |
+                                             ▼
+                                   +----------------------+
+                                   | Gemini / OpenAI LLM  |
+                                   +----------------------+
+```
+
+---
+
+# 📌 Architecture Highlights
+
+- **Containerized Microservices** using Docker Compose
+- **FastAPI** for high-performance REST APIs
+- **Streamlit** for conversational UI
+- **LlamaIndex** for orchestration and retrieval
+- **Qdrant** for Hybrid Search (Dense + BM25)
+- **OKF** for standardized Markdown knowledge storage
+- **Gemini/OpenAI** for metadata generation and reasoning
+- **Strict Citation Enforcement**
+- **Evaluation with Ragas**
+- **Framework-agnostic Knowledge Base**
