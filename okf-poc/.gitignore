@@ -7,11 +7,22 @@ __pycache__/
 venv/
 ENV/
 
-# Data & Knowledge
+# Raw downloaded data (not the source of truth)
 data/raw/*
 !data/raw/.gitkeep
+
+# Crawler cache (avoid committing downloaded pages)
+cache/*
+!cache/.gitkeep
+
+# Knowledge repository: the concept .md files ARE the source of truth and must be committed.
 knowledge/*
 !knowledge/.gitkeep
+!knowledge/kubernetes/
+!knowledge/apache/
+!knowledge/linux/
+!knowledge/langchain/
+!knowledge/**/*.md
 
 # IDEs
 .vscode/

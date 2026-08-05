@@ -1,0 +1,39 @@
+# OKF data source definitions (Phase 2 - data collection).
+# Each source points at official documentation. The crawler discovers pages via
+# sitemap.xml / robots.txt and stores raw HTML under cache/<source>/.
+# url_filter keeps only the pages that belong to the documentation section.
+
+sources:
+  - name: kubernetes
+    base_url: "https://kubernetes.io"
+    sitemap_url: "https://kubernetes.io/sitemap.xml"
+    url_filter: "/docs/concepts/"
+    category: kubernetes
+    enabled: true
+
+  - name: apache-httpd
+    base_url: "https://httpd.apache.org"
+    sitemap_url: "https://httpd.apache.org/sitemap.xml"
+    url_filter: "/docs/"
+    category: apache
+    enabled: false
+
+  - name: linux-man-pages
+    base_url: "https://www.kernel.org/doc/man-pages/"
+    sitemap_url: "https://www.kernel.org/doc/man-pages/sitemap.xml"
+    url_filter: ""
+    category: linux
+    enabled: false
+
+  - name: langchain
+    base_url: "https://python.langchain.com"
+    sitemap_url: "https://python.langchain.com/sitemap.xml"
+    url_filter: "/docs/"
+    category: langchain
+    enabled: false
+
+crawler:
+  delay: 0.5          # seconds between requests (politeness)
+  timeout: 30
+  max_urls_per_source: 500
+  user_agent: "OKF-Crawler/1.0"

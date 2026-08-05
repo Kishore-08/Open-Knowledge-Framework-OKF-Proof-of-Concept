@@ -16,4 +16,10 @@ pymupdf
 python-docx
 openpyxl
 
+# HTML parsing / cleaning / conversion / crawling
+beautifulsoup4
+lxml
+markdownify
+httpx
+
 fastembed

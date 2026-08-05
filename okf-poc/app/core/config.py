@@ -17,11 +17,15 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: Optional[str] = None
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_COLLECTION: str = "okf_knowledge"
+    QDRANT_CONCEPTS_COLLECTION: str = "okf_concepts"
     API_HOST: str = "http://localhost:8000"
 
     # Data Directories
     RAW_DATA_DIR: str = "data/raw"
     OKF_DATA_DIR: str = "knowledge/source_1"
+    KNOWLEDGE_DIR: str = "knowledge"
+    CACHE_DIR: str = "cache"
+    SOURCES_CONFIG: str = "config/sources.yaml"
 
     # RAG Configuration Settings
     TOP_K: int = 5
@@ -29,6 +33,10 @@ class Settings(BaseSettings):
     CHUNK_SIZE: int = 512
     CHUNK_OVERLAP: int = 50
     ALPHA: float = 0.5
+
+    # Concept extraction settings
+    CONCEPT_MIN_CHARS: int = 200
+    CONCEPT_MAX_CHARS: int = 4000
 
      # Models
     LLM_MODEL: str = "gemini-2.5-flash"

@@ -11,6 +11,9 @@ project:
 paths:
   raw_data_dir: "data/raw"
   okf_data_dir: "knowledge/source_1"
+  knowledge_dir: "knowledge"
+  cache_dir: "cache"
+  sources_config: "config/sources.yaml"
   evaluation_dataset: "evaluation/dataset.json"
   evaluation_results_dir: "evaluation/results"
 
@@ -33,5 +36,10 @@ models:
 vector_database:
   provider: "qdrant"
   collection_name: "okf_knowledge"
+  concepts_collection_name: "okf_concepts"
   enable_hybrid: true
   upload_batch_size: 20
+
+concept_splitter:
+  min_chars: 200
+  max_chars: 4000

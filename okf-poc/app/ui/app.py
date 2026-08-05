@@ -151,6 +151,104 @@ def simulated_typing_effect(text):
         yield word + " "
         time.sleep(0.02)
 
+
+def render_knowledge_base(is_healthy: bool):
+    """Knowledge Base browser: categories, concept list, metadata, and full content."""
+    st.title("📚 OKF Knowledge Base")
+    st.markdown("Browse the curated OKF knowledge repository. Each concept is a Markdown file with YAML metadata and links back to its official source.")
+
+    if not is_healthy:
+        st.warning("Backend offline: showing any locally cached repository data is unavailable. Start the API to browse the knowledge base.")
+        return
+
+    # Stats
+    try:
+        stats_res = requests.get(f"{API_HOST}/api/v1/knowledge/stats", timeout=5)
+        if stats_res.status_code == 200:
+            stats = stats_res.json()
+            cats = stats.get("categories", {})
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Total Concepts", stats.get("total_concepts", 0))
+            col2.metric("Categories", len(cats))
+            col3.metric("Total Tags", stats.get("total_tags", 0))
+            col4.metric("Sources", len(stats.get("sources", [])))
+            if cats:
+                st.markdown("**Per-category distribution:**")
+                st.json(cats)
+    except requests.exceptions.RequestException:
+        st.error("Could not reach the knowledge base API.")
+
+    st.divider()
+
+    # Search
+    search_query = st.text_input("🔎 Search concepts", placeholder="e.g. deployment rollout, chmod permissions...")
+    search_results = []
+    if search_query.strip():
+        try:
+            res = requests.get(f"{API_HOST}/api/v1/knowledge/search", params={"q": search_query}, timeout=5)
+            if res.status_code == 200:
+                search_results = res.json().get("results", [])
+        except requests.exceptions.RequestException:
+            pass
+        st.markdown(f"**Search results ({len(search_results)}):**")
+        if search_results:
+            for hit in search_results:
+                with st.expander(f"{hit.get('title', hit.get('id'))} — {hit.get('category')}"):
+                    st.markdown(hit.get("description") or "*no description*")
+                    st.markdown(f"Tags: {', '.join(hit.get('tags', []))}")
+                    if hit.get("snippet"):
+                        st.caption(hit.get("snippet"))
+                    if hit.get("source_url"):
+                        st.markdown(f"[Official source]({hit.get('source_url')})")
+        else:
+            st.info("No matches. Try different keywords.")
+
+    # Browse by category
+    try:
+        cat_res = requests.get(f"{API_HOST}/api/v1/knowledge/categories", timeout=5)
+        categories = cat_res.json() if cat_res.status_code == 200 else []
+    except requests.exceptions.RequestException:
+        categories = []
+
+    st.divider()
+    st.markdown("### Browse by category")
+    selected_category = st.selectbox("Category", ["All"] + categories) if categories else "All"
+
+    try:
+        params = {"category": selected_category} if selected_category != "All" else {}
+        concepts_res = requests.get(f"{API_HOST}/api/v1/knowledge/concepts", params=params, timeout=5)
+        concepts = concepts_res.json() if concepts_res.status_code == 200 else []
+    except requests.exceptions.RequestException:
+        concepts = []
+
+    if concepts:
+        for concept in concepts:
+            with st.expander(f"{concept.get('title')} — {concept.get('category')}"):
+                st.markdown(concept.get("description") or "*no description*")
+                st.markdown(f"**Tags:** {', '.join(concept.get('tags', []))}  ")
+                st.markdown(f"**Type:** {concept.get('type')}")
+                if concept.get("source_url"):
+                    st.markdown(f"**Source:** [Official documentation]({concept.get('source_url')})")
+                if st.button("📖 View full concept", key=f"view_{concept.get('id')}"):
+                    try:
+                        detail = requests.get(
+                            f"{API_HOST}/api/v1/knowledge/concepts/{concept.get('id')}", timeout=5
+                        ).json()
+                        st.markdown("---")
+                        st.markdown(detail.get("content", ""))
+                    except requests.exceptions.RequestException:
+                        st.error("Could not load concept detail.")
+    else:
+        st.info("No concepts in this category yet. Run the crawl + convert + build_index pipeline to populate the knowledge base.")
+
+    # Index stats
+    st.divider()
+    st.markdown("### Vector index status")
+    st.caption(
+        "Concepts are indexed into Qdrant (`okf_concepts`) with hybrid search. "
+        "Run `python -m scripts.build_index` to rebuild the index after adding concepts."
+    )
+
 with st.sidebar:
     st.title("⚙️ OKF Control Panel")
     st.markdown("Manage your Open Knowledge Framework pipeline.")
@@ -169,6 +267,12 @@ with st.sidebar:
         
     st.divider()
     
+    # Navigation
+    st.subheader("Navigation")
+    page = st.radio("View", ["💬 Chat Assistant", "📚 Knowledge Base"], index=0)
+    
+    st.divider()
+    
     # Ingestion Controls
     st.subheader("Knowledge Ingestion")
     st.markdown("Click below to ingest raw documents from `data/raw`, convert them to OKF Standard, and push to Qdrant.")
@@ -177,6 +281,10 @@ with st.sidebar:
 
     st.divider()
     st.caption("Powered by Google OKF, LlamaIndex, and Qdrant.")
+
+if page == "📚 Knowledge Base":
+    render_knowledge_base(is_healthy)
+    st.stop()
 
 st.title("🧠 OKF Knowledge Retrieval")
 st.markdown("Ask questions against your enterprise knowledge base. Answers are generated using Hybrid Search and strict OKF citations.")
