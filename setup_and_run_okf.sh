@@ -66,16 +66,19 @@ if [ ! -f ".env" ]; then
     cp .env.example .env
     echo -e "${GREEN}✅ .env created from .env.example${NC}"
 else
-    # Check for missing keys in .env that exist in .env.example
-    grep -v '^#' .env.example | grep -v '^[[:space:]]*$' | while IFS='=' read -r key value; do
+    grep -Ev '^[[:space:]]*(#|$)' .env.example | while IFS='=' read -r key value; do
+
+        key=$(echo "$key" | xargs)
+
         if [ -n "$key" ]; then
-            # If key does not exist in .env, append it
-            if ! grep -q "^${key}=" .env; then
+            if ! grep -Eq "^${key}=" .env; then
                 echo "${key}=${value}" >> .env
-                echo -e "${YELLOW}➕ Added missing config to .env: ${key}${NC}"
+                echo -e "${YELLOW}➕ Added missing config: ${key}${NC}"
             fi
         fi
+
     done
+
     echo -e "${GREEN}✅ .env structure is up to date.${NC}"
 fi
 
@@ -125,30 +128,60 @@ check_and_update() {
     local PLACEHOLDER="$2"
     local SECRET="$3"
 
-    # Grab current value (|| true prevents set -e from killing the script if grep fails)
-    local CURRENT_VALUE
-    CURRENT_VALUE=$(grep "^${VAR_NAME}=" .env | cut -d '=' -f2- || true)
+    local CURRENT_VALUE=""
 
-    if [ -z "$CURRENT_VALUE" ] || [ "$CURRENT_VALUE" = "$PLACEHOLDER" ]; then
-        echo -e "\n${YELLOW}⚠️  ${VAR_NAME} is missing or using the default placeholder.${NC}"
-        prompt_for_value "$VAR_NAME" "$SECRET"
-    else
-        # Mask the existing value for display
-        local MASKED_VAL
-        if [ "${#CURRENT_VALUE}" -gt 8 ]; then
-            MASKED_VAL="${CURRENT_VALUE:0:4}****${CURRENT_VALUE: -4}"
-        else
-            MASKED_VAL="********"
-        fi
-
-        echo -e "\n${BLUE}✔ ${VAR_NAME} is currently set (${MASKED_VAL}).${NC}"
-        read -p "Do you want to update it? (y/N): " UPDATE_CHOICE
-        if [[ "$UPDATE_CHOICE" =~ ^[Yy]$ ]]; then
-            prompt_for_value "$VAR_NAME" "$SECRET"
-        else
-            echo -e "${GREEN}✅ Kept existing ${VAR_NAME}.${NC}"
-        fi
+    # Read current value only if .env exists
+    if [ -f ".env" ]; then
+        CURRENT_VALUE=$(grep -E "^${VAR_NAME}=" .env | head -n1 | cut -d'=' -f2-)
     fi
+
+    # Remove leading/trailing spaces
+    CURRENT_VALUE=$(echo "$CURRENT_VALUE" | xargs)
+
+    # -------------------------------------------------------
+    # Case 1: Missing or Placeholder -> Force user input
+    # -------------------------------------------------------
+    if [ -z "$CURRENT_VALUE" ] || [ "$CURRENT_VALUE" = "$PLACEHOLDER" ]; then
+        echo
+        echo -e "${YELLOW}⚠️  ${VAR_NAME} is not configured.${NC}"
+        echo -e "${YELLOW}Please enter a valid ${VAR_NAME} to continue.${NC}"
+
+        prompt_for_value "$VAR_NAME" "$SECRET"
+        return
+    fi
+
+    # -------------------------------------------------------
+    # Case 2: Existing key found
+    # -------------------------------------------------------
+    local MASKED_VAL
+
+    if [ ${#CURRENT_VALUE} -gt 8 ]; then
+        MASKED_VAL="${CURRENT_VALUE:0:4}****${CURRENT_VALUE: -4}"
+    else
+        MASKED_VAL="********"
+    fi
+
+    echo
+    echo -e "${GREEN}✅ ${VAR_NAME} is already configured.${NC}"
+    echo -e "${BLUE}Current Value : ${MASKED_VAL}${NC}"
+
+    while true; do
+        read -rp "Do you want to update it? (y/N): " UPDATE_CHOICE
+
+        case "$UPDATE_CHOICE" in
+            y|Y)
+                prompt_for_value "$VAR_NAME" "$SECRET"
+                break
+                ;;
+            n|N|"")
+                echo -e "${GREEN}✅ Keeping existing ${VAR_NAME}.${NC}"
+                break
+                ;;
+            *)
+                echo "Please enter y or n."
+                ;;
+        esac
+    done
 }
 
 # -------------------------------------------------------

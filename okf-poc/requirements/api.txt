@@ -19,4 +19,3 @@ markdownify
 httpx
 fastembed
 llama-index-readers-file
-
