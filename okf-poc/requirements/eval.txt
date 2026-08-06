@@ -1,7 +1,15 @@
 -r api.txt
- 
-ragas==0.1.9
-langchain==0.2.17
-langchain-core==0.3.29
-langchain-community==0.2.19
-langchain-openai==0.2.14
+
+# Evaluation
+ragas==0.4.3
+datasets>=3.0.0
+pandas>=2.2.2
+
+# LangChain versions compatible with RAGAS 0.1.9
+langchain>=1.0.0
+langchain-core>=1.0.0
+langchain-community>=0.4.0
+langchain-google-genai>=2.1.0
+
+# Required by RAGAS
+tiktoken>=0.7.0

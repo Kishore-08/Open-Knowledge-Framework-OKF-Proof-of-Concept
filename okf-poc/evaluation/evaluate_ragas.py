@@ -4,13 +4,16 @@ from datetime import datetime
 import pandas as pd
 from datasets import Dataset
 
+# LangChain versions compatible with RAGAS 0.1.9
+from langchain_google_genai import ChatGoogleGenerativeAI
+
 # Ragas metrics
 from ragas import evaluate
-from ragas.metrics import (
+from ragas.metrics.collections import (
     faithfulness,
     answer_correctness,
-    context_relevancy,
     context_precision,
+    response_relevancy,
 )
 
 # Import our consolidated OKF answer engine from the core app
@@ -28,8 +31,6 @@ def run_evaluation():
     for the Ragas framework, and calculates performance metrics.
     """
     print("🚀 Starting OKF Pipeline Evaluation using Ragas...")
-    print("NOTE: ragas uses an LLM judge. With ragas 0.1.x this is OpenAI by default, "
-          "so set OPENAI_API_KEY (or configure a Gemini langchain model) before running.")
     
     # 1. Load the dataset
     dataset_path = "evaluation/dataset.json"
@@ -82,13 +83,20 @@ def run_evaluation():
     metrics = [
         faithfulness,        # Measures hallucination rate
         answer_correctness,  # Measures accuracy against ground truth
-        context_relevancy,   # Measures if the retrieved OKF chunks actually pertain to the question
+        response_relevancy,   # Measures if the retrieved OKF chunks actually pertain to the question
         context_precision    # Measures if the relevant OKF chunks were ranked at the top
     ]
+
+    llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash",
+    google_api_key=os.getenv("GEMINI_API_KEY"),
+    temperature=0,
+    )
     
     result = evaluate(
-        hf_dataset,
-        metrics=metrics,
+    dataset=hf_dataset,
+    metrics=metrics,
+    llm=llm,
     )
 
     # 5. Save Results
@@ -107,7 +115,7 @@ def run_evaluation():
         "overall_scores": {
             "faithfulness_score": df["faithfulness"].mean(),
             "answer_correctness_score": df["answer_correctness"].mean(),
-            "context_relevancy_score": df["context_relevancy"].mean(),
+            "response_relevancy_score": df["response_relevancy"].mean(),
             "context_precision_score": df["context_precision"].mean()
         },
         "success_rate_estimate": df["answer_correctness"].mean() * 100 
