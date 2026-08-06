@@ -53,15 +53,9 @@ def _semantic_search(query: str, *, category: Optional[str] = None, top_k: Optio
     """Semantic search over the Qdrant concept index. Best effort; empty on failure."""
     top_k = top_k or settings.TOP_K
     try:
-        from app.retrieval.query_engine import configure_llm_settings
-        from llama_index.core import VectorStoreIndex
         from llama_index.core.vector_stores import MetadataFilters, MetadataFilter, FilterOperator
-        from app.retrieval.hybrid_search import get_qdrant_vector_store
 
-        configure_llm_settings()
-        vector_store = get_qdrant_vector_store(settings.QDRANT_CONCEPTS_COLLECTION)
-        index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
-
+        index = _get_cached_semantic_index()
         filters = None
         if category:
             filters = MetadataFilters(
@@ -78,6 +72,7 @@ def _semantic_search(query: str, *, category: Optional[str] = None, top_k: Optio
                 "tags": n.metadata.get("tags", []),
                 "description": n.metadata.get("description", ""),
                 "source_url": n.metadata.get("source_url", ""),
+                "source_file": n.metadata.get("source_file", ""),
                 "score": round(n.score, 4) if n.score else 0.0,
                 "matched_fields": ["semantic"],
                 "snippet": n.text[:200],
@@ -87,6 +82,31 @@ def _semantic_search(query: str, *, category: Optional[str] = None, top_k: Optio
     except Exception as exc:  # noqa: BLE001 - semantic search is best effort
         print(f"ℹ️ Semantic search unavailable, falling back to keyword: {exc}")
         return []
+
+
+_semantic_cache: dict = {}
+
+
+def _get_cached_semantic_index():
+    """
+    Lazily build and cache the VectorStoreIndex over the Qdrant concepts collection.
+
+    The retriever queries Qdrant directly on every call, so a cached index always
+    reflects newly ingested documents while avoiding the expensive re-configuration
+    (model construction + collection metadata round-trips) on every single query.
+    """
+    from llama_index.core import VectorStoreIndex
+    from app.retrieval.query_engine import configure_llm_settings
+    from app.retrieval.hybrid_search import get_qdrant_vector_store
+
+    key = f"{settings.QDRANT_CONCEPTS_COLLECTION}:{settings.EMBEDDING_MODEL}"
+    if _semantic_cache.get("key") != key or _semantic_cache.get("index") is None:
+        configure_llm_settings()
+        vector_store = get_qdrant_vector_store(settings.QDRANT_CONCEPTS_COLLECTION)
+        index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
+        _semantic_cache["key"] = key
+        _semantic_cache["index"] = index
+    return _semantic_cache["index"]
 
 
 def search_categories() -> List[str]:

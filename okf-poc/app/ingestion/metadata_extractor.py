@@ -4,14 +4,19 @@ OKF Metadata Extractor — Phase 2.
 Uses Gemini to extract structured metadata from document text.
 Includes exponential backoff for 429 rate-limit errors so the pipeline
 remains stable even on free-tier API keys.
+
+Uses a plain text-completion call plus JSON parsing instead of LlamaIndex's
+`structured_predict` (function calling), which is an order of magnitude slower
+and hangs when the free-tier Gemini quota is exhausted.
 """
 
 import time
 import json
+import re
 from typing import Optional
 from pydantic import BaseModel, Field
-from llama_index.llms.gemini import Gemini
 from app.core.config import settings
+from app.core.gemini_llm import complete as gemini_complete
 
 
 class OKFMetadata(BaseModel):
@@ -30,7 +35,7 @@ class OKFMetadata(BaseModel):
     )
 
 
-def _heuristic_fallback(text: str) -> Optional[dict]:
+def _heuristic_fallback(text: str, source_name: str = None) -> Optional[dict]:
     """
     Fast, dependency-free metadata extraction when the LLM is unavailable.
     Uses the first heading (or first non-empty line) of the document to build
@@ -45,12 +50,32 @@ def _heuristic_fallback(text: str) -> Optional[dict]:
     if not lines:
         return None
 
+    def _clean_title(raw: str) -> str:
+        # Strip leading punctuation-only tokens (e.g. a JSON '[' on its own line).
+        raw = re.sub(r"^[\W_]+", "", raw or "").strip()
+        return re.sub(r"\s+", " ", raw)[:80]
+
     # Prefer the first markdown heading; fall back to the first non-empty line.
     heading = next((l for l in lines if l.startswith("#")), None)
-    if heading:
-        title = re.sub(r"^#+\s*", "", heading).strip()[:80]
-    else:
-        title = lines[0][:80]
+    title = _clean_title(re.sub(r"^#+\s*", "", heading) if heading else lines[0])
+
+    # For JSON documents, try to derive a title from the first object's "title".
+    if not title and (text.lstrip().startswith("[") or text.lstrip().startswith("{")):
+        try:
+            import json as _json
+
+            data = _json.loads(text[:10000])
+            if isinstance(data, list) and data and isinstance(data[0], dict):
+                title = _clean_title(str(data[0].get("title") or ""))
+            elif isinstance(data, dict):
+                title = _clean_title(str(data.get("title") or ""))
+        except Exception:  # noqa: BLE001
+            pass
+
+    # Fall back to the source filename when the body gives no usable title.
+    if not title and source_name:
+        stem = re.sub(r"\.(json|txt|md|pdf)$", "", source_name, flags=re.IGNORECASE)
+        title = _clean_title(stem.replace("_", " ").replace("-", " "))
 
     if not title or title.lower() in ("unknown document", "unknown", "unclassified"):
         return None
@@ -87,7 +112,37 @@ def _heuristic_fallback(text: str) -> Optional[dict]:
     }
 
 
-def generate_okf_metadata(text: str, max_retries: int = 3) -> Optional[dict]:
+def _parse_json_response(text: str) -> Optional[dict]:
+    """Best-effort parse of an LLM response into a dict, tolerating markdown fences."""
+    if not text:
+        return None
+    cleaned = text.strip()
+    # Strip markdown code fences if the model wrapped the JSON in them.
+    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*```\s*$", "", cleaned)
+    # Fall back to the outermost {...} block if there is any prose around it.
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        candidate = cleaned[start : end + 1]
+        try:
+            data = json.loads(candidate)
+            if isinstance(data, dict):
+                return data
+        except json.JSONDecodeError:
+            pass
+    try:
+        data = json.loads(cleaned)
+        return data if isinstance(data, dict) else None
+    except json.JSONDecodeError:
+        return None
+
+
+def generate_okf_metadata(
+    text: str,
+    max_retries: int = 3,
+    source_name: str = None,
+) -> Optional[dict]:
     """
     Passes a preview of the document to an LLM to generate structured metadata.
     Retries with exponential backoff on 429 rate-limit errors.
@@ -99,38 +154,48 @@ def generate_okf_metadata(text: str, max_retries: int = 3) -> Optional[dict]:
         return None
 
     try:
-        api_key = settings.get_gemini_api_key()
+        settings.get_gemini_api_key()
     except ValueError:
         print("⚠️ No API key — using heuristic metadata extraction.")
-        return _heuristic_fallback(text)
-
-    llm = Gemini(model=settings.LLM_MODEL, temperature=settings.TEMPERATURE, api_key=api_key)
+        return _heuristic_fallback(text, source_name)
 
     # Only send the first 3000 characters to save tokens and time
     text_preview = text[:3000]
 
     prompt = (
         "You are an expert technical librarian. Analyze the following document text "
-        "and extract the requested metadata. Output valid JSON matching the schema.\n\n"
+        "and output a SINGLE valid JSON object with exactly these keys:\n"
+        '- "title": a clear, concise title for the document\n'
+        '- "summary": a 2-3 sentence summary of the document content\n'
+        '- "document_type": the category of the document (e.g. "Kubernetes", "Linux", '
+        '"Apache", "LangChain", "Architecture", "API Spec", "FAQ", "Tutorial")\n'
+        '- "topics": a JSON array of 3-5 key technical tags or topics covered\n'
+        '- "trust_level": "High" if it looks like official docs, "Medium" for general '
+        'text, "Low" if ambiguous\n\n'
+        "Output ONLY the JSON object. No markdown, no explanations, no prose.\n\n"
+        f"Source file name: {source_name or 'unknown'}\n"
         f"Text Preview:\n{text_preview}\n"
     )
-
-    from llama_index.core import PromptTemplate
-    prompt_tmpl = PromptTemplate(prompt)
 
     for attempt in range(1, max_retries + 1):
         try:
             print(f"🧠 Calling LLM to extract metadata (attempt {attempt}/{max_retries})...")
-            response = llm.structured_predict(OKFMetadata, prompt_tmpl)
-            metadata_dict = response.model_dump()
-            return metadata_dict
+            response_text = gemini_complete(prompt, temperature=settings.TEMPERATURE)
+            parsed = _parse_json_response(response_text)
+            if parsed is None:
+                print("⚠️ LLM response was not valid JSON — falling back to heuristic.")
+                return _heuristic_fallback(text, source_name)
+
+            # Validate against the schema; tolerate missing/unexpected keys.
+            metadata = OKFMetadata.model_validate(parsed)
+            return metadata.model_dump()
 
         except Exception as e:
             err_str = str(e)
             if "429" in err_str or "quota" in err_str.lower() or "rate" in err_str.lower():
-                # Short backoff (2s, 4s, 6s) so ingestion stays fast; a prolonged
+                # Short backoff (2s, 4s) so ingestion stays fast; a prolonged
                 # wait here is what caused the 300s read timeouts in the UI.
-                wait = min(2 * attempt, 6)
+                wait = min(2 * attempt, 4)
                 print(f"⚠️ Rate limit hit (429). Waiting {wait}s before retry {attempt}/{max_retries}...")
                 time.sleep(wait)
             else:
@@ -139,4 +204,4 @@ def generate_okf_metadata(text: str, max_retries: int = 3) -> Optional[dict]:
                 break
 
     print("⚠️ All LLM retries exhausted — using heuristic fallback.")
-    return _heuristic_fallback(text)
+    return _heuristic_fallback(text, source_name)

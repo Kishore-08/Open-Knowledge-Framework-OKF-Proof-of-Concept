@@ -28,7 +28,7 @@ rag_pipeline:
 
 models:
   generation:
-    name: "gemini-3.5-flash"
+    name: "gemini-flash-lite-latest"
     temperature: 0.1
   embedding:
     name: "models/gemini-embedding-001"
@@ -37,7 +37,11 @@ vector_database:
   provider: "qdrant"
   collection_name: "okf_knowledge"
   concepts_collection_name: "okf_concepts"
-  enable_hybrid: true
+  # NOTE: hybrid (sparse) vectors are disabled because fastembed 0.8.x +
+  # qdrant-client 1.18.x + llama-index-vector-stores-qdrant 0.10.x have a
+  # payload mismatch that produces Qdrant '503 Illegal metadata'. Dense semantic
+  # search + filesystem keyword search is used instead.
+  enable_hybrid: false
   upload_batch_size: 20
 
 concept_splitter:

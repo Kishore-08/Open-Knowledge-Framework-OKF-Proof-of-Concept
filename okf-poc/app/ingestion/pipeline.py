@@ -8,7 +8,11 @@ from llama_index.core.node_parser import SentenceSplitter
 # Internal imports
 from .loaders import load_raw_documents
 from .metadata_extractor import generate_okf_metadata
-from app.retrieval.hybrid_search import get_qdrant_vector_store
+from app.retrieval.hybrid_search import (
+    get_qdrant_vector_store,
+    reset_hybrid_collection,
+    delete_points_by_field,
+)
 from app.retrieval.query_engine import configure_llm_settings
 from app.core.config import settings
 from app.okf.formatter import format_and_save_okf
@@ -65,6 +69,12 @@ def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
 
     today = date.today().isoformat()
 
+    # Preserve provenance: the raw source filename (e.g. "docker-basics.txt")
+    # becomes the `source_file` metadata used for citation + idempotent re-ingest.
+    source_file = (raw_meta.get("source_file") or raw_meta.get("file_name") or "").strip()
+    source_name = (raw_meta.get("source_name") or "Ingested document").strip()
+    source_url = (raw_meta.get("source_url") or "").strip()
+
     return {
         # OKFConcept required fields
         "id": id,
@@ -73,7 +83,7 @@ def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
         "description": (raw_meta.get("summary") or title)[:300],
         "category": category,
         "tags": tags,
-        "source": None,
+        "source": {"name": source_name, "url": source_url} if source_name or source_url else None,
         "created_at": today,
         "updated_at": today,
         "aliases": [],
@@ -81,6 +91,7 @@ def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
         # Extra fields kept for Qdrant metadata (useful for /query citations)
         "document_type": raw_category,
         "trust_level": raw_meta.get("trust_level") or "Medium",
+        "source_file": source_file or None,
     }
 
 
@@ -111,6 +122,7 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
         return {"status": "skipped", "message": "No raw documents found."}
 
     processed_docs = []
+    source_files = []
 
     # 2, 3 & 4. Extract Metadata (in parallel), Bridge to OKF Schema, Save Files.
     # Metadata extraction is the slowest step (LLM calls); running it across a
@@ -119,7 +131,13 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
 
     def _extract(item):
         i, doc = item
-        return i, doc, generate_okf_metadata(doc.text)
+        source_name = (doc.metadata or {}).get("file_name") or (
+            os.path.basename((doc.metadata or {}).get("file_path", ""))
+        )
+        raw_meta = generate_okf_metadata(doc.text, source_name=source_name) or {}
+        # Carry provenance from the raw document loader into the frontmatter builder.
+        raw_meta["source_file"] = source_name
+        return i, doc, raw_meta
 
     with ThreadPoolExecutor(max_workers=min(3, len(raw_docs))) as pool:
         futures = [pool.submit(_extract, item) for item in enumerate(raw_docs)]
@@ -151,6 +169,9 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
             # Physically save the OKF-formatted Markdown file to disk
             format_and_save_okf(text=doc.text, metadata=okf_meta, output_dir=okf_dir, filename=filename)
 
+            if okf_meta.get("source_file"):
+                source_files.append(okf_meta["source_file"])
+
             processed_docs.append(doc)
 
     print(f"💾 Saved {len(processed_docs)} OKF documents to {okf_dir}")
@@ -160,6 +181,11 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
     # Index into the SAME concepts collection that build_index and the semantic
     # search layer read from, so ingested documents are actually retrievable.
     vector_store = get_qdrant_vector_store(settings.QDRANT_CONCEPTS_COLLECTION)
+
+    # Make ingestion idempotent: drop any previously stored chunks for the same
+    # source files (node ids are random UUIDs, so a naive re-ingest duplicates).
+    reset_hybrid_collection(settings.QDRANT_CONCEPTS_COLLECTION)
+    delete_points_by_field(settings.QDRANT_CONCEPTS_COLLECTION, "source_file", source_files)
 
     # Storage context tells LlamaIndex to use Qdrant instead of in-memory storage
     storage_context = StorageContext.from_defaults(vector_store=vector_store)

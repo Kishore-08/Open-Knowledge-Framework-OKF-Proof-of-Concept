@@ -39,16 +39,19 @@ class Settings(BaseSettings):
     CONCEPT_MAX_CHARS: int = 4000
 
     # Models
-    # gemini-2.5-flash / gemini-2.0-flash report 404/429 ("no longer available
-    # to new users" / free-tier limit 0) for fresh keys, so default to the
-    # current 3.x generation which is available on the free tier.
-    LLM_MODEL: str = "gemini-3.5-flash"
+    # gemini-3.5-flash also works, but the free-tier quota for it is very
+    # tight (20 requests/day for fresh keys). gemini-flash-lite-latest has a
+    # larger free allowance and produces good grounded answers for this PoC.
+    LLM_MODEL: str = "gemini-flash-lite-latest"
     EMBEDDING_MODEL: str = "models/gemini-embedding-001"
     TEMPERATURE: float = 0.1
 
     # LLM resilience: retry Gemini calls on 429 quota/rate-limit errors.
     LLM_MAX_RETRIES: int = 3
-    LLM_RETRY_BASE_DELAY: float = 20.0
+    LLM_RETRY_BASE_DELAY: float = 3.0
+    # Per-call timeout for Gemini REST calls. Kept short so a stalled request
+    # cannot hold the query thread for a minute or more.
+    LLM_TIMEOUT_SECONDS: float = 30.0
  
     model_config = SettingsConfigDict(
         # Tells Pydantic to look for a .env file in the root directory

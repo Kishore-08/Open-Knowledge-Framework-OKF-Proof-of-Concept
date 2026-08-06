@@ -35,7 +35,7 @@ def test_categories_and_listing(repo):
 
     k8s = list_concepts(category="kubernetes")
     assert all(c["category"] == "kubernetes" for c in k8s)
-    assert len(k8s) == 3
+    assert len(k8s) >= 3  # seed base has 3; ingested docs may add more
 
 
 def test_get_concept_by_id_and_alias(repo):

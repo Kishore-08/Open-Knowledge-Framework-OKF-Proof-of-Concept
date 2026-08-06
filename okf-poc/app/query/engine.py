@@ -90,18 +90,14 @@ def generate_answer(
 
 
 def _call_llm(query: str, context_block: str) -> str:
-    """Call the Gemini LLM through LlamaIndex with a strict grounding prompt."""
-    from llama_index.core import Settings, PromptTemplate
-    from llama_index.llms.gemini import Gemini
+    """Call the Gemini LLM with a strict grounding prompt."""
+    from app.core.gemini_llm import complete as gemini_complete
 
-    api_key = settings.get_gemini_api_key()
-    llm = Gemini(model=settings.LLM_MODEL, temperature=settings.TEMPERATURE, api_key=api_key)
-
-    prompt_tmpl = PromptTemplate(
+    prompt_text = (
         "You are an enterprise AI assistant powered by the Open Knowledge Framework (OKF).\n"
         "Context information from our OKF knowledge base is provided below.\n"
         "---------------------\n"
-        "{context_str}\n"
+        f"{context_block}\n"
         "---------------------\n"
         "Given the context information and strictly NO prior knowledge, answer the user's query.\n"
         "RULES:\n"
@@ -109,18 +105,16 @@ def _call_llm(query: str, context_block: str) -> str:
         "2. Every time you use information, you MUST cite the source document inline using its title.\n"
         "3. If the context does not contain the answer, you must say: "
         "'I cannot answer this based on the OKF knowledge base.' Do not guess or hallucinate.\n\n"
-        "Query: {query_str}\n"
+        f"Query: {query}\n"
         "Answer: "
     )
-    prompt_text = prompt_tmpl.format(query_str=query, context_str=context_block)
 
     # Retry with exponential backoff on Gemini 429 quota/rate-limit errors.
     # The free tier reports `limit: 0` for generate_content_free_tier_requests,
     # so transient quota exhaustion is retried before degrading gracefully.
     for attempt in range(1, settings.LLM_MAX_RETRIES + 1):
         try:
-            response = llm.complete(prompt_text)
-            return response.text
+            return gemini_complete(prompt_text, temperature=settings.TEMPERATURE)
         except Exception as exc:
             if attempt == settings.LLM_MAX_RETRIES or not _is_retryable_429(exc):
                 raise

@@ -51,6 +51,19 @@ _cache_knowledge_dir: Optional[str] = None
 _cache_key_value: Optional[str] = None
 
 
+def _is_usable_concept(meta) -> bool:
+    """Reject concepts whose frontmatter cannot produce a meaningful citation."""
+    title = (meta.title or "").strip()
+    placeholder = {"none", "unknown", "unknown document", "unclassified", "document", "document-0"}
+    if not title or title.lower() in placeholder:
+        return False
+    if re.match(r"^document[\s-]+\d+$", title, re.IGNORECASE):
+        return False
+    if not (meta.category or "").strip():
+        return False
+    return True
+
+
 def load_all_concepts(knowledge_dir: Optional[str] = None, use_cache: bool = True) -> List[OKFConceptFile]:
     """
     Load and validate every concept in the knowledge repository.
@@ -67,6 +80,9 @@ def load_all_concepts(knowledge_dir: Optional[str] = None, use_cache: bool = Tru
         try:
             raw_meta, body = parse_okf_file(path)
             meta = OKFConcept.model_validate(raw_meta)
+            if not _is_usable_concept(meta):
+                print(f"⚠️ Skipping unusable OKF concept (bad title/category): {path}")
+                continue
             concepts.append(OKFConceptFile(metadata=meta, content=body.strip(), filepath=path))
         except Exception as exc:  # noqa: BLE001 - a single bad file must not break the repo
             print(f"⚠️ Skipping invalid OKF concept: {path} ({exc})")

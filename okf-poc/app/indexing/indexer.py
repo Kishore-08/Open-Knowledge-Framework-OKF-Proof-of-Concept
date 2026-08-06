@@ -9,6 +9,7 @@ The knowledge repository remains the source of truth; this index is an
 acceleration layer only.
 """
 
+import os
 from typing import List, Optional
 
 from llama_index.core import Document, StorageContext, VectorStoreIndex
@@ -16,7 +17,11 @@ from llama_index.core.node_parser import SentenceSplitter
 
 from app.core.config import settings
 from app.okf.repository import load_all_concepts
-from app.retrieval.hybrid_search import get_qdrant_vector_store
+from app.retrieval.hybrid_search import (
+    get_qdrant_vector_store,
+    reset_hybrid_collection,
+    delete_points_by_field,
+)
 
 
 def _embedding_model_configured() -> bool:
@@ -42,10 +47,14 @@ def _to_documents() -> List[Document]:
     docs = []
     for concept in load_all_concepts():
         meta = concept.metadata
+        payload = meta.metadata_payload()
+        # Stable provenance per source file so re-building the index replaces
+        # (rather than duplicates) the stored chunks for each concept file.
+        payload["source_file"] = os.path.relpath(concept.filepath, settings.KNOWLEDGE_DIR)
         docs.append(
             Document(
                 text=concept.full_text,
-                metadata=meta.metadata_payload(),
+                metadata=payload,
                 excluded_llm_metadata_keys=["content", "filepath"],
                 excluded_embed_metadata_keys=["filepath"],
             )
@@ -82,6 +91,12 @@ def build_concepts_index(*, collection_name: Optional[str] = None, with_embeddin
         return {"indexed": 0, "error": "Gemini API key required for embeddings. Set GEMINI_API_KEY."}
 
     vector_store = get_qdrant_vector_store(collection_name)
+    # Drop any sparse-vector leftovers and previously stored chunks for these
+    # source files so repeated runs are idempotent.
+    reset_hybrid_collection(collection_name)
+    source_files = [d.metadata["source_file"] for d in docs if d.metadata.get("source_file")]
+    delete_points_by_field(collection_name, "source_file", source_files)
+
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
     splitter = SentenceSplitter(chunk_size=settings.CHUNK_SIZE, chunk_overlap=settings.CHUNK_OVERLAP)
     index = VectorStoreIndex.from_documents(
