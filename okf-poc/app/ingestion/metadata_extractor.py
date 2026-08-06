@@ -128,7 +128,9 @@ def generate_okf_metadata(text: str, max_retries: int = 3) -> Optional[dict]:
         except Exception as e:
             err_str = str(e)
             if "429" in err_str or "quota" in err_str.lower() or "rate" in err_str.lower():
-                wait = 30 * attempt  # 30s, 60s, 90s
+                # Short backoff (2s, 4s, 6s) so ingestion stays fast; a prolonged
+                # wait here is what caused the 300s read timeouts in the UI.
+                wait = min(2 * attempt, 6)
                 print(f"⚠️ Rate limit hit (429). Waiting {wait}s before retry {attempt}/{max_retries}...")
                 time.sleep(wait)
             else:

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+import asyncio
 from typing import Optional
 
 # Import the orchestrator we built in Phase 2
@@ -27,9 +28,13 @@ async def ingest_documents(request: IngestRequest):
     saves them to `okf_dir`, and indexes them into Qdrant.
     """
     try:
-        # Run the synchronous pipeline
-        # Note: For massive datasets in production, this should be dispatched as a background Celery/RabbitMQ task.
-        result = run_ingestion_pipeline(raw_dir=request.raw_dir, okf_dir=request.okf_dir)
+        # Run the synchronous pipeline in a thread pool so FastAPI's event loop
+        # is not blocked for the whole duration of the (possibly slow) ingest.
+        result = await asyncio.to_thread(
+            run_ingestion_pipeline,
+            raw_dir=request.raw_dir,
+            okf_dir=request.okf_dir,
+        )
         
         status = result.get("status", "unknown")
         

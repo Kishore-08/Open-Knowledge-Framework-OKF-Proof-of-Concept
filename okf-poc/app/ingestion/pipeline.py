@@ -112,39 +112,54 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
 
     processed_docs = []
 
-    # 2, 3 & 4. Extract Metadata, Bridge to OKF Schema, Save Physical OKF Files
-    for i, doc in enumerate(raw_docs):
-        print(f"⚙️ Processing Document {i+1}/{len(raw_docs)}...")
+    # 2, 3 & 4. Extract Metadata (in parallel), Bridge to OKF Schema, Save Files.
+    # Metadata extraction is the slowest step (LLM calls); running it across a
+    # small thread pool keeps ingestion fast instead of timing out in the UI.
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
-        # Call LLM to get raw metadata fields (title, summary, document_type, topics, trust_level)
-        raw_meta = generate_okf_metadata(doc.text)
+    def _extract(item):
+        i, doc = item
+        return i, doc, generate_okf_metadata(doc.text)
 
-        # Convert to OKF-schema-compliant frontmatter (adds id, category, tags, description…)
-        okf_meta = _build_okf_frontmatter(raw_meta, i)
+    with ThreadPoolExecutor(max_workers=min(3, len(raw_docs))) as pool:
+        futures = [pool.submit(_extract, item) for item in enumerate(raw_docs)]
+        for future in as_completed(futures):
+            try:
+                i, doc, raw_meta = future.result()
+            except Exception as exc:  # noqa: BLE001 - a single failure must not abort the run
+                print(f"⚠️ Metadata extraction failed for a document: {exc}")
+                continue
 
-        # Skip documents with no usable content/metadata instead of writing junk concepts.
-        if okf_meta is None:
-            print(f"⚠️ Skipping Document {i+1}: no usable content or metadata was extracted.")
-            continue
+            print(f"⚙️ Processing Document {i+1}/{len(raw_docs)}...")
 
-        # Attach the OKF-compliant metadata to the LlamaIndex Document.
-        # This guarantees that when the document is chunked, EVERY chunk carries this
-        # metadata in Qdrant — including 'title' which is used for query citations.
-        doc.metadata.update(okf_meta)
+            # Convert to OKF-schema-compliant frontmatter (adds id, category, tags, description…)
+            okf_meta = _build_okf_frontmatter(raw_meta, i)
 
-        # Use the slug id as the filename for consistency
-        filename = f"{okf_meta['id']}_{i}.md"
+            # Skip documents with no usable content/metadata instead of writing junk concepts.
+            if okf_meta is None:
+                print(f"⚠️ Skipping Document {i+1}: no usable content or metadata was extracted.")
+                continue
 
-        # Physically save the OKF-formatted Markdown file to disk
-        format_and_save_okf(text=doc.text, metadata=okf_meta, output_dir=okf_dir, filename=filename)
+            # Attach the OKF-compliant metadata to the LlamaIndex Document.
+            # This guarantees that when the document is chunked, EVERY chunk carries this
+            # metadata in Qdrant — including 'title' which is used for query citations.
+            doc.metadata.update(okf_meta)
 
-        processed_docs.append(doc)
+            # Use the slug id as the filename for consistency
+            filename = f"{okf_meta['id']}_{i}.md"
+
+            # Physically save the OKF-formatted Markdown file to disk
+            format_and_save_okf(text=doc.text, metadata=okf_meta, output_dir=okf_dir, filename=filename)
+
+            processed_docs.append(doc)
 
     print(f"💾 Saved {len(processed_docs)} OKF documents to {okf_dir}")
 
     # 5. Chunk and Index into Qdrant Vector DB
     print("📦 Connecting to Qdrant for vector indexing...")
-    vector_store = get_qdrant_vector_store()
+    # Index into the SAME concepts collection that build_index and the semantic
+    # search layer read from, so ingested documents are actually retrievable.
+    vector_store = get_qdrant_vector_store(settings.QDRANT_CONCEPTS_COLLECTION)
 
     # Storage context tells LlamaIndex to use Qdrant instead of in-memory storage
     storage_context = StorageContext.from_defaults(vector_store=vector_store)

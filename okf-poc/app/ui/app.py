@@ -137,7 +137,7 @@ def trigger_ingestion():
     try:
         with st.spinner("Processing documents, extracting OKF metadata, and generating embeddings..."):
             payload = {"raw_dir": "data/raw", "okf_dir": "knowledge/source_1"}
-            res = requests.post(f"{API_HOST}/api/v1/ingest/", json=payload, timeout=300)
+            res = requests.post(f"{API_HOST}/api/v1/ingest/", json=payload, timeout=600)
             
             if res.status_code == 200:
                 data = res.json()
@@ -285,7 +285,9 @@ with st.sidebar:
     
     # Ingestion Controls
     st.subheader("Knowledge Ingestion")
-    st.markdown("Click below to ingest raw documents from `data/raw`, convert them to OKF Standard, and push to Qdrant.")
+    st.markdown("Drop files into `data/raw`, then click below to convert them to OKF Standard and push to Qdrant.")
+    st.caption("Supported formats: PDF (.pdf), Markdown (.md), plain text (.txt), JSON (.json). "
+               "Keep files small and well-structured so ingestion stays fast.")
     if st.button("🚀 Trigger Ingestion Pipeline", disabled=not is_healthy, use_container_width=True):
         trigger_ingestion()
 
