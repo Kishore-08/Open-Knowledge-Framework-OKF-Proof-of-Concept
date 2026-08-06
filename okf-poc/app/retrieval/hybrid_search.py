@@ -3,6 +3,8 @@ from typing import List, Optional
 
 import qdrant_client
 from qdrant_client.http import models as qdrant_models
+from llama_index.core import StorageContext, VectorStoreIndex
+from llama_index.core.node_parser import SentenceSplitter
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 
 from app.core.config import settings
@@ -117,3 +119,41 @@ def delete_points_by_field(
         ),
     )
     print(f"🗑️ Removed previous points for {len(values)} source file(s) from '{collection_name}'.")
+
+
+def index_documents(
+    documents,
+    *,
+    collection_name: Optional[str] = None,
+    source_files: Optional[List[str]] = None,
+    show_progress: bool = False,
+):
+    """
+    Chunk, embed, and upsert documents into the Qdrant concept collection.
+
+    Shared by the ingestion pipeline and the concept indexer so that both paths
+    write to the vector store identically:
+      1. reset any hybrid (sparse) leftovers,
+      2. delete previously stored chunks for the given source files (idempotent),
+      3. chunk + embed + upsert the documents.
+
+    Returns the built VectorStoreIndex (unused by callers; the upsert is the point).
+    """
+    collection_name = collection_name or settings.QDRANT_CONCEPTS_COLLECTION
+    source_files = source_files or []
+
+    vector_store = get_qdrant_vector_store(collection_name)
+    reset_hybrid_collection(collection_name)
+    delete_points_by_field(collection_name, "source_file", source_files)
+
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
+    splitter = SentenceSplitter(
+        chunk_size=settings.CHUNK_SIZE,
+        chunk_overlap=settings.CHUNK_OVERLAP,
+    )
+    return VectorStoreIndex.from_documents(
+        documents,
+        storage_context=storage_context,
+        transformations=[splitter],
+        show_progress=show_progress,
+    )

@@ -7,7 +7,6 @@ optionally filtered by URL patterns (e.g. only /docs/ pages).
 
 import gzip
 import io
-import re
 from typing import List, Optional, Tuple
 from urllib.parse import urlparse
 from xml.etree import ElementTree
@@ -53,15 +52,6 @@ def _load_sitemap_document(content: bytes) -> Tuple[List[str], List[str]]:
     return pages, nested
 
 
-def parse_sitemap_urls(content: bytes, max_urls: int = 5000) -> List[str]:
-    """
-    Parse a single sitemap document body (or index) and return all page URLs.
-    Nested sitemap URLs are NOT fetched here - see discover_urls_from_sitemap.
-    """
-    pages, _ = _load_sitemap_document(content)
-    return pages[:max_urls]
-
-
 async def discover_urls_from_sitemap(
     sitemap_urls: List[str],
     fetch,
@@ -100,11 +90,3 @@ async def discover_urls_from_sitemap(
         queue.extend(nested)
 
     return discovered[:max_urls]
-
-
-def filter_urls(urls: List[str], patterns: List[str]) -> List[str]:
-    """Keep only URLs that match at least one regex pattern."""
-    if not patterns:
-        return urls
-    compiled = [re.compile(p) for p in patterns]
-    return [u for u in urls if any(c.search(u) for c in compiled)]
