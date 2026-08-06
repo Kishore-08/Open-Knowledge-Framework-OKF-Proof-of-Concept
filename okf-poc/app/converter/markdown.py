@@ -20,10 +20,9 @@ from datetime import date
 from typing import List, Optional, Tuple
 
 import markdownify
-import yaml
-from bs4 import BeautifulSoup
 
 from app.core.config import settings
+from app.okf.formatter import format_okf_string
 
 HEADING_RE = re.compile(r"^(#{2,3})\s+(.*)$", re.MULTILINE)
 
@@ -108,6 +107,9 @@ def generate_concept_file(
     """
     Serialize a single concept into an OKF Markdown file (YAML frontmatter + body).
     `concept_id` defaults to a slugified version of the title.
+
+    Serialization is delegated to `app.okf.formatter.format_okf_string` so the
+    whole project writes OKF documents through one canonical code path.
     """
     today = date.today().isoformat()
     cid = concept_id or f"{_slugify(category)}-{_slugify(title)}"
@@ -126,8 +128,7 @@ def generate_concept_file(
         "created_at": today,
     }
 
-    header = "---\n" + yaml.safe_dump(frontmatter, sort_keys=False, allow_unicode=True).strip() + "\n---\n"
-    return f"{header}\n{body.strip()}\n"
+    return format_okf_string(body.strip(), frontmatter)
 
 
 def split_into_concepts(

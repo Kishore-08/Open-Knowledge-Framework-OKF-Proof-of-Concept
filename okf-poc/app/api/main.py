@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import settings
 from .routers import ingest_router, query_router, concepts_router, ask_router
 
 # Initialize the FastAPI application
@@ -29,5 +31,25 @@ app.include_router(ask_router, prefix="/api/v1")
 # Health Check Endpoint
 @app.get("/health", tags=["System"])
 async def health_check():
-    """Simple endpoint to verify the API container is running."""
-    return {"status": "healthy", "service": "OKF API"}
+    """
+    Reports API liveness plus the status of its dependencies (Qdrant, LLM key).
+
+    Returns HTTP 200 even when a dependency is degraded so the frontend can
+    distinguish "API offline" from "LLM key missing" / "Qdrant unreachable".
+    """
+    from app.retrieval.hybrid_search import get_qdrant_client
+
+    checks = {"qdrant": {"ok": False}, "llm": {"ok": settings.has_gemini_api_key()}}
+
+    try:
+        client = get_qdrant_client()
+        collections = [c.name for c in client.get_collections().collections]
+        checks["qdrant"] = {"ok": True, "collections": collections}
+    except Exception as exc:
+        checks["qdrant"] = {"ok": False, "error": str(exc)}
+
+    return {
+        "status": "healthy" if checks["qdrant"]["ok"] else "degraded",
+        "service": "OKF API",
+        "checks": checks,
+    }

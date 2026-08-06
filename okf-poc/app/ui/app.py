@@ -123,12 +123,14 @@ if "messages" not in st.session_state:
     ]
 
 def check_api_health():
-    """Pings the FastAPI health endpoint."""
+    """Pings the FastAPI health endpoint and returns its parsed checks (or None)."""
     try:
         res = requests.get(f"{API_HOST}/health", timeout=2)
-        return res.status_code == 200
-    except:
-        return False
+        if res.status_code != 200:
+            return None
+        return res.json()
+    except requests.exceptions.RequestException:
+        return None
 
 def trigger_ingestion():
     """Calls the FastAPI ingestion endpoint."""
@@ -257,12 +259,20 @@ with st.sidebar:
     
     # System Status
     st.subheader("System Status")
-    is_healthy = check_api_health()
-    if is_healthy:
-        st.markdown("🟢 **FastAPI Backend:** Online")
-        st.markdown("🟢 **Qdrant Vector DB:** Connected")
+    health = check_api_health()
+    is_healthy = health is not None
+    if health:
+        checks = health.get("checks", {})
+        qdrant_ok = checks.get("qdrant", {}).get("ok", False)
+        llm_ok = checks.get("llm", {}).get("ok", False)
+        st.markdown(f"**FastAPI Backend:** {'Online' if health.get('status') == 'healthy' else 'Degraded'}")
+        st.markdown(f"**Qdrant Vector DB:** {'Connected' if qdrant_ok else 'Disconnected'}")
+        if not qdrant_ok:
+            st.error("Qdrant is not reachable. Start the qdrant container (`docker compose up -d qdrant`).")
+        if not llm_ok:
+            st.warning("GEMINI_API_KEY is not set. Answers will list sources but skip AI generation.")
     else:
-        st.markdown("🔴 **FastAPI Backend:** Offline")
+        st.markdown("**FastAPI Backend:** Offline")
         st.error("Cannot connect to API. Please ensure Docker containers are running.")
         
     st.divider()

@@ -10,6 +10,7 @@ step that requires `GEMINI_API_KEY`.
 """
 
 from dataclasses import dataclass, field
+import time
 from typing import List, Optional
 
 from app.core.config import settings
@@ -80,7 +81,8 @@ def generate_answer(
     except Exception as exc:  # noqa: BLE001
         answer = (
             "The knowledge base returned the following relevant concepts, but answer "
-            f"generation requires a Gemini API key (set GEMINI_API_KEY): {exc}\n\n"
+            f"generation is currently unavailable: {exc}. Check your GEMINI_API_KEY "
+            "and Gemini quota, then try again.\n\n"
             + "\n".join(f"- {r.get('title')} ({r.get('source_url')})" for r in results)
         )
 
@@ -110,7 +112,32 @@ def _call_llm(query: str, context_block: str) -> str:
         "Query: {query_str}\n"
         "Answer: "
     )
-    response = llm.complete(
-        prompt_tmpl.format(query_str=query, context_str=context_block)
-    )
-    return response.text
+    prompt_text = prompt_tmpl.format(query_str=query, context_str=context_block)
+
+    # Retry with exponential backoff on Gemini 429 quota/rate-limit errors.
+    # The free tier reports `limit: 0` for generate_content_free_tier_requests,
+    # so transient quota exhaustion is retried before degrading gracefully.
+    for attempt in range(1, settings.LLM_MAX_RETRIES + 1):
+        try:
+            response = llm.complete(prompt_text)
+            return response.text
+        except Exception as exc:
+            if attempt == settings.LLM_MAX_RETRIES or not _is_retryable_429(exc):
+                raise
+            delay = settings.LLM_RETRY_BASE_DELAY * (2 ** (attempt - 1))
+            print(
+                f"⚠️ Gemini rate limit (429) hit, retrying in {delay:.0f}s "
+                f"(attempt {attempt}/{settings.LLM_MAX_RETRIES})"
+            )
+            time.sleep(delay)
+
+    raise RuntimeError("unreachable")
+
+
+def _is_retryable_429(exc: Exception) -> bool:
+    """Return True when an exception indicates a Gemini quota/rate-limit error."""
+    text = str(exc)
+    if "429" in text:
+        return True
+    lowered = text.lower()
+    return "quota" in lowered or "rate limit" in lowered or "resource_exhausted" in lowered

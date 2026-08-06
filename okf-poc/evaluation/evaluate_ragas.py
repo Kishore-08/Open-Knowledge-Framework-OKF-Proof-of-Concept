@@ -13,8 +13,8 @@ from ragas.metrics import (
     context_precision,
 )
 
-# Import our OKF Query Engine from the core app
-from app.retrieval.query_engine import get_query_engine
+# Import our consolidated OKF answer engine from the core app
+from app.query.engine import generate_answer
 
 def load_dataset(filepath: str) -> list:
     """Loads the 20-question evaluation dataset."""
@@ -38,16 +38,6 @@ def run_evaluation():
         return
         
     questions_data = load_dataset(dataset_path)
-    
-    # Initialize our RAG Engine
-    # Ensure Qdrant container is running and docs are ingested before running this!
-    print("🔌 Connecting to Query Engine...")
-    try:
-        query_engine = get_query_engine()
-    except Exception as e:
-        print(f"❌ Failed to connect to Vector DB/Query Engine: {e}")
-        print("Please ensure Qdrant is running and you have ingested documents.")
-        return
 
     # Data structures required by Ragas
     data = {
@@ -58,22 +48,25 @@ def run_evaluation():
     }
 
     print(f"🧠 Querying {len(questions_data)} questions. This may take a few minutes...")
-    
+
     # 2. Run inferences
     for i, item in enumerate(questions_data):
         q = item["question"]
         gt = item["ground_truth"]
-        
-        print(f"   [{i+1}/20] Querying: {q}")
-        
-        response = query_engine.query(q)
-        
+
+        print(f"   [{i+1}/{len(questions_data)}] Querying: {q}")
+
+        result = generate_answer(q)
+
         # Extract the actual answer text
-        answer = str(response)
-        
+        answer = result.answer
+
         # Extract the source chunks (contexts) used by the LLM
-        contexts = [node.node.text for node in response.source_nodes] if response.source_nodes else []
-        
+        contexts = [
+            s.get("snippet") or s.get("description") or ""
+            for s in result.sources
+        ]
+
         # Append to our dataset
         data["question"].append(q)
         data["answer"].append(answer)

@@ -103,8 +103,8 @@ GEMINI_API_KEY=your_api_key
 OPENAI_API_KEY=
 
 # Models
-LLM_MODEL=gemini-2.5-flash
-EMBEDDING_MODEL=text-embedding-004
+LLM_MODEL=gemini-3.5-flash
+EMBEDDING_MODEL=models/gemini-embedding-001
 
 # Qdrant
 QDRANT_HOST=qdrant

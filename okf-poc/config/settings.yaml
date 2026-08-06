@@ -28,10 +28,10 @@ rag_pipeline:
 
 models:
   generation:
-    name: "gemini-2.5-flash"
+    name: "gemini-3.5-flash"
     temperature: 0.1
   embedding:
-    name: "models/text-embedding-004"
+    name: "models/gemini-embedding-001"
 
 vector_database:
   provider: "qdrant"

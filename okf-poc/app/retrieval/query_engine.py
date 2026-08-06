@@ -38,7 +38,7 @@ def configure_llm_settings():
     # Force the GOOGLE_API_KEY env var so google.generativeai picks it up
     os.environ["GOOGLE_API_KEY"] = api_key
 
-    # gemini-2.0-flash: stable, widely available, cost-effective
+    # gemini-3.5-flash: current-gen, available on the free tier for new keys
     # Using transport="rest" to prevent gRPC plugin_credentials header rejection errors
     Settings.llm = Gemini(
         model=settings.LLM_MODEL, 
