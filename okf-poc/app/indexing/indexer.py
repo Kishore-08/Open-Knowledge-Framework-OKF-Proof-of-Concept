@@ -11,7 +11,7 @@ acceleration layer only.
 
 from typing import List, Optional
 
-from llama_index.core import Document, Settings, VectorStoreIndex
+from llama_index.core import Document, StorageContext, VectorStoreIndex
 from llama_index.core.node_parser import SentenceSplitter
 
 from app.core.config import settings
@@ -20,9 +20,14 @@ from app.retrieval.hybrid_search import get_qdrant_vector_store
 
 
 def _embedding_model_configured() -> bool:
-    """True when an embed model is already set, else try to configure it."""
-    if Settings.embed_model is not None:
-        return True
+    """
+    Configure Gemini embeddings explicitly.
+
+    This is Gemini-first on purpose: when an OPENAI_API_KEY happens to be
+    present in the environment, llama-index silently defaults
+    `Settings.embed_model` to an OpenAI model. We always (re)configure the
+    Gemini embed model so no foreign key/model is ever used.
+    """
     try:
         from app.retrieval.query_engine import configure_llm_settings
 
@@ -77,9 +82,13 @@ def build_concepts_index(*, collection_name: Optional[str] = None, with_embeddin
         return {"indexed": 0, "error": "Gemini API key required for embeddings. Set GEMINI_API_KEY."}
 
     vector_store = get_qdrant_vector_store(collection_name)
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
     splitter = SentenceSplitter(chunk_size=settings.CHUNK_SIZE, chunk_overlap=settings.CHUNK_OVERLAP)
     index = VectorStoreIndex.from_documents(
-        docs, vector_store=vector_store, transformations=[splitter], show_progress=True
+        docs,
+        storage_context=storage_context,
+        transformations=[splitter],
+        show_progress=True,
     )
     return {"indexed": len(docs), "collection": collection_name}
 

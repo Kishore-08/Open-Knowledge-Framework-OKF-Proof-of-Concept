@@ -1,6 +1,7 @@
 import os
 import re
 from datetime import date
+from typing import Optional
 from llama_index.core import VectorStoreIndex, StorageContext, Settings
 from llama_index.core.node_parser import SentenceSplitter
 
@@ -24,7 +25,7 @@ def configure_chunking():
     ]
 
 
-def _build_okf_frontmatter(raw_meta: dict, index: int) -> dict:
+def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
     """
     Bridges the gap between LLM-extracted metadata (title, summary, document_type,
     topics, trust_level) and the OKFConcept schema (id, category, tags, description).
@@ -32,32 +33,44 @@ def _build_okf_frontmatter(raw_meta: dict, index: int) -> dict:
     The OKFConcept schema requires `id` and `category` as non-optional fields, but
     generate_okf_metadata() returns different keys. This function maps them correctly
     so that saved .md files pass schema validation by the repository and search layers.
-    """
-    title = raw_meta.get("title") or f"Document {index}"
 
-    # Generate a slug ID from the title (lowercase, hyphens, alphanumeric only)
-    slug = re.sub(r"[^a-zA-Z0-9]+", "-", title).strip("-").lower()
-    if not slug or not slug[0].isalnum():
-        slug = f"doc-{index}"
+    Returns None when the metadata is unusable (empty title, placeholder title, or
+    placeholder category) so the pipeline can skip the document instead of writing a
+    junk "Unknown Document" concept to the knowledge base.
+    """
+    title = (raw_meta or {}).get("title") or ""
+    title = title.strip()
+    placeholder_titles = {"unknown document", "unknown", "unclassified", "metadata extraction failed"}
+    if not title or title.lower() in placeholder_titles:
+        return None
+
+    # Generate a slug ID from category + title (matches the converter's format).
+    title_slug = re.sub(r"[^a-zA-Z0-9]+", "-", title).strip("-").lower()
+    if not title_slug or not title_slug[0].isalnum():
+        return None
 
     # Map document_type → category (normalize to lowercase slug)
-    raw_category = raw_meta.get("document_type") or "general"
-    category = re.sub(r"[^a-zA-Z0-9]+", "-", raw_category).strip("-").lower() or "general"
+    raw_category = (raw_meta or {}).get("document_type") or ""
+    category = re.sub(r"[^a-zA-Z0-9]+", "-", raw_category).strip("-").lower()
+    if category in ("", "unknown", "unclassified", "general", "misc"):
+        category = "reference"
+    id = f"{category}-{title_slug}" if not title_slug.startswith(f"{category}-") else title_slug
 
     # Map topics → tags (ensure it's a list of strings)
     raw_topics = raw_meta.get("topics") or []
     if isinstance(raw_topics, str):
         raw_topics = [t.strip() for t in raw_topics.split(",") if t.strip()]
     tags = [str(t) for t in raw_topics if t]
+    tags = [t for t in tags if t.lower() not in ("unknown", "unclassified")]
 
     today = date.today().isoformat()
 
     return {
         # OKFConcept required fields
-        "id": slug,
+        "id": id,
         "type": "concept",
         "title": title,
-        "description": raw_meta.get("summary") or "",
+        "description": (raw_meta.get("summary") or title)[:300],
         "category": category,
         "tags": tags,
         "source": None,
@@ -108,6 +121,11 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
 
         # Convert to OKF-schema-compliant frontmatter (adds id, category, tags, description…)
         okf_meta = _build_okf_frontmatter(raw_meta, i)
+
+        # Skip documents with no usable content/metadata instead of writing junk concepts.
+        if okf_meta is None:
+            print(f"⚠️ Skipping Document {i+1}: no usable content or metadata was extracted.")
+            continue
 
         # Attach the OKF-compliant metadata to the LlamaIndex Document.
         # This guarantees that when the document is chunked, EVERY chunk carries this

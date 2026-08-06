@@ -224,14 +224,14 @@ def render_knowledge_base(is_healthy: bool):
         concepts = []
 
     if concepts:
-        for concept in concepts:
+        for idx, concept in enumerate(concepts):
             with st.expander(f"{concept.get('title')} — {concept.get('category')}"):
                 st.markdown(concept.get("description") or "*no description*")
                 st.markdown(f"**Tags:** {', '.join(concept.get('tags', []))}  ")
                 st.markdown(f"**Type:** {concept.get('type')}")
                 if concept.get("source_url"):
                     st.markdown(f"**Source:** [Official documentation]({concept.get('source_url')})")
-                if st.button("📖 View full concept", key=f"view_{concept.get('id')}"):
+                if st.button("📖 View full concept", key=f"view_{idx}_{concept.get('id')}"):
                     try:
                         detail = requests.get(
                             f"{API_HOST}/api/v1/knowledge/concepts/{concept.get('id')}", timeout=5

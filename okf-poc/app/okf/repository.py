@@ -27,6 +27,10 @@ def _concept_files(knowledge_dir: Optional[str] = None) -> List[str]:
         return []
     files = []
     for dirpath, _dirnames, filenames in os.walk(root):
+        # Skip the quarantine folder so junk concepts are backed up but never
+        # loaded into the knowledge base.
+        if "_quarantine" in dirpath:
+            continue
         for name in filenames:
             if name.endswith(".md"):
                 files.append(os.path.join(dirpath, name))

@@ -8,6 +8,7 @@ remains stable even on free-tier API keys.
 
 import time
 import json
+from typing import Optional
 from pydantic import BaseModel, Field
 from llama_index.llms.gemini import Gemini
 from app.core.config import settings
@@ -29,17 +30,30 @@ class OKFMetadata(BaseModel):
     )
 
 
-def _heuristic_fallback(text: str) -> dict:
+def _heuristic_fallback(text: str) -> Optional[dict]:
     """
     Fast, dependency-free metadata extraction when the LLM is unavailable.
-    Uses the first non-empty lines of the document to build a title and
-    guesses the category from common technical keywords.
-    """
-    lines = [l.strip() for l in text.splitlines() if l.strip()]
-    title = lines[0][:80] if lines else "Unknown Document"
+    Uses the first heading (or first non-empty line) of the document to build
+    a real title and guesses the category from common technical keywords.
 
-    # Remove markdown heading markers
-    title = title.lstrip("#").strip() or "Unknown Document"
+    Returns None when the document has no usable content, so the ingestion
+    pipeline can skip it instead of writing a placeholder "Unknown Document".
+    """
+    import re
+
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    if not lines:
+        return None
+
+    # Prefer the first markdown heading; fall back to the first non-empty line.
+    heading = next((l for l in lines if l.startswith("#")), None)
+    if heading:
+        title = re.sub(r"^#+\s*", "", heading).strip()[:80]
+    else:
+        title = lines[0][:80]
+
+    if not title or title.lower() in ("unknown document", "unknown", "unclassified"):
+        return None
 
     # Guess a category from the first 500 chars
     preview = text[:500].lower()
@@ -59,7 +73,6 @@ def _heuristic_fallback(text: str) -> dict:
         doc_type = "Reference"
 
     # Extract simple topics from first 300 chars
-    import re
     words = re.findall(r"\b[A-Za-z][a-z]{2,}\b", text[:300])
     topics = list(dict.fromkeys(w.lower() for w in words if len(w) > 3))[:5]
 
@@ -74,12 +87,17 @@ def _heuristic_fallback(text: str) -> dict:
     }
 
 
-def generate_okf_metadata(text: str, max_retries: int = 3) -> dict:
+def generate_okf_metadata(text: str, max_retries: int = 3) -> Optional[dict]:
     """
     Passes a preview of the document to an LLM to generate structured metadata.
     Retries with exponential backoff on 429 rate-limit errors.
-    Falls back to heuristic extraction if LLM is unavailable after all retries.
+    Falls back to heuristic extraction if the LLM is unavailable after all
+    retries. Returns None when the document has no usable content.
     """
+    if not text or not text.strip():
+        print("⚠️ Empty document text — skipping metadata extraction.")
+        return None
+
     try:
         api_key = settings.get_gemini_api_key()
     except ValueError:
