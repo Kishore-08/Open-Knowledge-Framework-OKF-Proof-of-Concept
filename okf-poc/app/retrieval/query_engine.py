@@ -1,3 +1,4 @@
+import logging
 import os
 from llama_index.core import VectorStoreIndex, Settings, PromptTemplate
 from llama_index.llms.gemini import Gemini
@@ -7,6 +8,8 @@ from google.generativeai import types as genai_types
 
 from .hybrid_search import get_qdrant_vector_store
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Disable the SDK's internal retry so quota (429) errors surface immediately
 # instead of blocking the request thread for a minute or more.
@@ -52,16 +55,29 @@ def configure_llm_settings():
     # Force the GOOGLE_API_KEY env var so google.generativeai picks it up
     os.environ["GOOGLE_API_KEY"] = api_key
 
-    # gemini-3.5-flash: current-gen, available on the free tier for new keys
+    # gemini-flash-lite-latest: verified working on the free tier for fresh keys.
     # Using transport="rest" to prevent gRPC plugin_credentials header rejection errors,
     # plus request_options that disable google-api-core's blocking 429 retry.
-    Settings.llm = Gemini(
-        model=settings.LLM_MODEL,
-        temperature=settings.TEMPERATURE,
-        api_key=api_key,
-        transport="rest",
-        request_options=_request_options(),
-    )
+    # Note: this llama-index Gemini is only used by the legacy get_query_engine()
+    # path; live answer generation goes through app/core/gemini_llm.complete().
+    # Some SDK versions eagerly call genai.get_model() in the constructor and
+    # raise a 400 for model names that do not resolve, so guard construction.
+    try:
+        Settings.llm = Gemini(
+            model=settings.LLM_MODEL,
+            temperature=settings.TEMPERATURE,
+            api_key=api_key,
+            transport="rest",
+            request_options=_request_options(),
+        )
+    except Exception as exc:  # noqa: BLE001 - non-fatal; answer gen uses gemini_llm
+        logger.warning(
+            "llama-index Gemini LLM unavailable for model '%s' (%s); "
+            "answer generation will use app.core.gemini_llm instead",
+            settings.LLM_MODEL,
+            exc,
+        )
+        Settings.llm = None
 
     # Gemini embeddings: use transport="rest" to prevent gRPC metadata header rejection issues
     embed_model = settings.EMBEDDING_MODEL
