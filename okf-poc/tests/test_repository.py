@@ -1,5 +1,6 @@
 import pytest
 
+from app.okf.formatter import format_and_save_okf
 from app.okf.schema import OKFConcept
 from app.okf.repository import (
     load_all_concepts,
@@ -76,3 +77,40 @@ def test_knowledge_stats(repo):
     assert stats["total_concepts"] == len(repo)
     assert "kubernetes" in stats["categories"]
     assert stats["total_tags"] > 0
+
+
+def test_pipeline_written_okf_roundtrips_through_repository(tmp_path):
+    # Regression test for the ingestion drift fix: the pipeline now indexes by
+    # re-reading the OKF files it wrote (load_all_concepts), instead of indexing
+    # in-memory Documents. This proves files saved via format_and_save_okf with
+    # the pipeline's extra frontmatter keys survive re-validation and load.
+    okf_dir = tmp_path / "source_1"
+    metadata = {
+        "id": "reference-ingested-drift",
+        "type": "concept",
+        "title": "Ingested Drift Concept",
+        "description": "Round-trip test for pipeline-written files.",
+        "category": "reference",
+        "tags": ["test"],
+        "source": {"name": "pipeline", "url": "https://example.com/drift"},
+        "created_at": "2026-08-06",
+        "updated_at": "2026-08-06",
+        "aliases": [],
+        "related": [],
+        "document_type": "Concept",
+        "trust_level": "High",
+        "source_file": "drift.txt",
+    }
+    format_and_save_okf(
+        text="# Ingested Drift\nBody text for the drift concept.",
+        metadata=metadata,
+        output_dir=str(okf_dir),
+        filename="reference-ingested-drift_0.md",
+    )
+
+    # use_cache=False mirrors the pipeline (which must re-read freshly written files)
+    concepts = load_all_concepts(str(okf_dir), use_cache=False)
+    assert len(concepts) == 1
+    assert concepts[0].metadata.id == "reference-ingested-drift"
+    assert concepts[0].metadata.category == "reference"
+    assert "Body text for the drift concept" in concepts[0].content

@@ -2,31 +2,16 @@ import os
 import re
 from datetime import date
 from typing import Optional
-from llama_index.core import VectorStoreIndex, StorageContext, Settings
-from llama_index.core.node_parser import SentenceSplitter
 
 # Internal imports
 from .loaders import load_raw_documents
 from .metadata_extractor import generate_okf_metadata
-from app.retrieval.hybrid_search import (
-    get_qdrant_vector_store,
-    reset_hybrid_collection,
-    delete_points_by_field,
-)
+from app.indexing.indexer import concepts_to_documents
+from app.okf.repository import load_all_concepts
+from app.retrieval.hybrid_search import index_documents
 from app.retrieval.query_engine import configure_llm_settings
 from app.core.config import settings
 from app.okf.formatter import format_and_save_okf
-
-
-def configure_chunking():
-    """
-    Configures the global chunking strategy for LlamaIndex.
-    Satisfies Requirement #2: Chunking Strategy.
-    """
-    # SentenceSplitter respects sentence boundaries, preventing cut-off words.
-    Settings.transformations = [
-        SentenceSplitter(chunk_size=settings.CHUNK_SIZE, chunk_overlap=settings.CHUNK_OVERLAP)
-    ]
 
 
 def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
@@ -113,7 +98,6 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
 
     # Ensure LLM and Embeddings are configured
     configure_llm_settings()
-    configure_chunking()
 
     # 1. Load Raw Documents
     raw_docs = load_raw_documents(raw_dir)
@@ -121,8 +105,7 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
         print("⚠️ No documents to ingest. Pipeline aborted.")
         return {"status": "skipped", "message": "No raw documents found."}
 
-    processed_docs = []
-    source_files = []
+    saved_count = 0
 
     # 2, 3 & 4. Extract Metadata (in parallel), Bridge to OKF Schema, Save Files.
     # Metadata extraction is the slowest step (LLM calls); running it across a
@@ -158,45 +141,33 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
                 print(f"⚠️ Skipping Document {i+1}: no usable content or metadata was extracted.")
                 continue
 
-            # Attach the OKF-compliant metadata to the LlamaIndex Document.
-            # This guarantees that when the document is chunked, EVERY chunk carries this
-            # metadata in Qdrant — including 'title' which is used for query citations.
-            doc.metadata.update(okf_meta)
-
             # Use the slug id as the filename for consistency
             filename = f"{okf_meta['id']}_{i}.md"
 
             # Physically save the OKF-formatted Markdown file to disk
             format_and_save_okf(text=doc.text, metadata=okf_meta, output_dir=okf_dir, filename=filename)
 
-            if okf_meta.get("source_file"):
-                source_files.append(okf_meta["source_file"])
+            saved_count += 1
 
-            processed_docs.append(doc)
+    print(f"💾 Saved {saved_count} OKF documents to {okf_dir}")
 
-    print(f"💾 Saved {len(processed_docs)} OKF documents to {okf_dir}")
+    # 5. Re-read the OKF files just written from disk (the source of truth) and
+    #    index them into Qdrant via the shared indexer path. This guarantees the
+    #    vector store always mirrors the filesystem knowledge base — the same
+    #    documents, metadata, and provenance that search + query layers consume.
+    print("📦 Re-reading OKF files and connecting to Qdrant for vector indexing...")
+    concepts = load_all_concepts(okf_dir, use_cache=False)
+    docs = concepts_to_documents(concepts)
+    if not docs:
+        print("⚠️ No valid OKF concepts were produced; nothing to index.")
+        return {"status": "skipped", "message": "No valid OKF concepts were produced."}
 
-    # 5. Chunk and Index into Qdrant Vector DB
-    print("📦 Connecting to Qdrant for vector indexing...")
-    # Index into the SAME concepts collection that build_index and the semantic
-    # search layer read from, so ingested documents are actually retrievable.
-    vector_store = get_qdrant_vector_store(settings.QDRANT_CONCEPTS_COLLECTION)
-
-    # Make ingestion idempotent: drop any previously stored chunks for the same
-    # source files (node ids are random UUIDs, so a naive re-ingest duplicates).
-    reset_hybrid_collection(settings.QDRANT_CONCEPTS_COLLECTION)
-    delete_points_by_field(settings.QDRANT_CONCEPTS_COLLECTION, "source_file", source_files)
-
-    # Storage context tells LlamaIndex to use Qdrant instead of in-memory storage
-    storage_context = StorageContext.from_defaults(vector_store=vector_store)
-
-    print("🔪 Chunking documents and generating embeddings… (This may take a moment)")
-    # This single call handles: chunking (Settings.transformations),
-    # embedding (Settings.embed_model), and uploading to Qdrant.
-    index = VectorStoreIndex.from_documents(
-        processed_docs,
-        storage_context=storage_context
+    source_files = [d.metadata["source_file"] for d in docs if d.metadata.get("source_file")]
+    index_documents(
+        docs,
+        collection_name=settings.QDRANT_CONCEPTS_COLLECTION,
+        source_files=source_files,
     )
 
     print("✅ Ingestion Pipeline Complete!")
-    return {"status": "success", "indexed_documents": len(processed_docs)}
+    return {"status": "success", "indexed_documents": len(docs)}

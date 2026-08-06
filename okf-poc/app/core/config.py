@@ -16,7 +16,6 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     GOOGLE_API_KEY: Optional[str] = None
     QDRANT_URL: str = "http://localhost:6333"
-    QDRANT_COLLECTION: str = "okf_knowledge"
     QDRANT_CONCEPTS_COLLECTION: str = "okf_concepts"
     API_HOST: str = "http://localhost:8000"
 
@@ -29,10 +28,8 @@ class Settings(BaseSettings):
 
     # RAG Configuration Settings
     TOP_K: int = 5
-    SPARSE_TOP_K: int = 5
     CHUNK_SIZE: int = 512
     CHUNK_OVERLAP: int = 50
-    ALPHA: float = 0.5
 
     # Concept extraction settings
     CONCEPT_MIN_CHARS: int = 200

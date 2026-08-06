@@ -29,15 +29,9 @@ try:
 except ImportError:
     run_ingestion_pipeline = None  # type: ignore[assignment]
 
-try:
-    from app.retrieval.query_engine import get_query_engine
-except ImportError:
-    get_query_engine = None  # type: ignore[assignment]
-
 # Define the public API of the `app` package
 __all__ = [
     "settings",
     "api_app",
-    "run_ingestion_pipeline",
-    "get_query_engine"
+    "run_ingestion_pipeline"
 ]

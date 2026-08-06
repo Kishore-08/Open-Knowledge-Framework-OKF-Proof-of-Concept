@@ -12,16 +12,11 @@ acceleration layer only.
 import os
 from typing import List, Optional
 
-from llama_index.core import Document, StorageContext, VectorStoreIndex
-from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core import Document
 
 from app.core.config import settings
 from app.okf.repository import load_all_concepts
-from app.retrieval.hybrid_search import (
-    get_qdrant_vector_store,
-    reset_hybrid_collection,
-    delete_points_by_field,
-)
+from app.retrieval.hybrid_search import get_qdrant_vector_store, index_documents
 
 
 def _embedding_model_configured() -> bool:
@@ -43,11 +38,11 @@ def _embedding_model_configured() -> bool:
         return False
 
 
-def _to_documents() -> List[Document]:
+def concepts_to_documents(concepts) -> List[Document]:
+    """Convert OKF concepts into LlamaIndex Documents (metadata = Qdrant payload)."""
     docs = []
-    for concept in load_all_concepts():
-        meta = concept.metadata
-        payload = meta.metadata_payload()
+    for concept in concepts:
+        payload = concept.metadata.metadata_payload()
         # Stable provenance per source file so re-building the index replaces
         # (rather than duplicates) the stored chunks for each concept file.
         payload["source_file"] = os.path.relpath(concept.filepath, settings.KNOWLEDGE_DIR)
@@ -71,7 +66,7 @@ def build_concepts_index(*, collection_name: Optional[str] = None, with_embeddin
       and (if Qdrant is reachable) creates the collection and stores metadata-only
       points, useful for CI / offline checks.
     """
-    docs = _to_documents()
+    docs = concepts_to_documents(load_all_concepts())
     if not docs:
         return {"indexed": 0, "message": "No concepts found in the knowledge repository."}
 
@@ -90,19 +85,11 @@ def build_concepts_index(*, collection_name: Optional[str] = None, with_embeddin
     if not configured:
         return {"indexed": 0, "error": "Gemini API key required for embeddings. Set GEMINI_API_KEY."}
 
-    vector_store = get_qdrant_vector_store(collection_name)
-    # Drop any sparse-vector leftovers and previously stored chunks for these
-    # source files so repeated runs are idempotent.
-    reset_hybrid_collection(collection_name)
     source_files = [d.metadata["source_file"] for d in docs if d.metadata.get("source_file")]
-    delete_points_by_field(collection_name, "source_file", source_files)
-
-    storage_context = StorageContext.from_defaults(vector_store=vector_store)
-    splitter = SentenceSplitter(chunk_size=settings.CHUNK_SIZE, chunk_overlap=settings.CHUNK_OVERLAP)
-    index = VectorStoreIndex.from_documents(
+    index_documents(
         docs,
-        storage_context=storage_context,
-        transformations=[splitter],
+        collection_name=collection_name,
+        source_files=source_files,
         show_progress=True,
     )
     return {"indexed": len(docs), "collection": collection_name}

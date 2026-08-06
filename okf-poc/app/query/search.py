@@ -12,7 +12,7 @@ Offers two complementary access paths over the knowledge base:
 from typing import List, Optional
 
 from app.core.config import settings
-from app.okf.repository import list_categories, list_concepts, search_concepts
+from app.okf.repository import list_concepts, search_concepts
 
 
 def search(
@@ -107,11 +107,6 @@ def _get_cached_semantic_index():
         _semantic_cache["key"] = key
         _semantic_cache["index"] = index
     return _semantic_cache["index"]
-
-
-def search_categories() -> List[str]:
-    """All categories present in the knowledge repository."""
-    return list_categories()
 
 
 def search_tags(category: Optional[str] = None) -> List[str]:
