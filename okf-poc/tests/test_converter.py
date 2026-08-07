@@ -57,3 +57,70 @@ def test_split_into_concepts_truncates_overlong_sections():
     body = content.split("---\n", 2)[-1].strip()
     # the body (after frontmatter) must be capped at max_chars
     assert len(body) <= 200 + 20
+
+def test_split_into_concepts_uses_source_url_for_stable_identity():
+    markdown = (
+        "## Configuration\n\n"
+        "This is enough content to become a concept."
+    )
+
+    first = split_into_concepts(
+        markdown,
+        category="kubernetes",
+        source_name="Kubernetes",
+        source_url="https://example.com/docs/configuration/",
+        min_chars=10,
+    )
+
+    second = split_into_concepts(
+        markdown,
+        category="kubernetes",
+        source_name="Kubernetes",
+        source_url="https://example.com/docs/setup/",
+        min_chars=10,
+    )
+
+    assert first[0][0] != second[0][0]
+
+def test_split_into_concepts_identity_is_stable_for_same_source():
+    markdown = (
+        "## Configuration\n\n"
+        "This is enough content to become a concept."
+    )
+
+    first = split_into_concepts(
+        markdown,
+        category="kubernetes",
+        source_name="Kubernetes",
+        source_url="https://example.com/docs/configuration/",
+        min_chars=10,
+    )
+
+    second = split_into_concepts(
+        markdown,
+        category="kubernetes",
+        source_name="Kubernetes",
+        source_url="https://example.com/docs/configuration/",
+        min_chars=10,
+    )
+
+    assert first[0][0] == second[0][0]
+
+def test_concept_identity_does_not_depend_on_content():
+    first = split_into_concepts(
+        "## Configuration\n\nOriginal documentation content.",
+        category="kubernetes",
+        source_name="Kubernetes",
+        source_url="https://example.com/docs/configuration/",
+        min_chars=10,
+    )
+
+    second = split_into_concepts(
+        "## Configuration\n\nUpdated documentation content.",
+        category="kubernetes",
+        source_name="Kubernetes",
+        source_url="https://example.com/docs/configuration/",
+        min_chars=10,
+    )
+
+    assert first[0][0] == second[0][0]

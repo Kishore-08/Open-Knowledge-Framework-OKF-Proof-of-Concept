@@ -277,3 +277,45 @@ def knowledge_stats(knowledge_dir: Optional[str] = None) -> dict:
         "sources": sorted(source_names),
         "files": [c.filepath for c in concepts],
     }
+
+def delete_concepts_by_source_urls(
+    source_urls: List[str],
+    knowledge_dir: Optional[str] = None,
+) -> List[str]:
+    """
+    Remove generated concepts whose official source URL is no longer present.
+
+    Returns the relative knowledge paths that were deleted so the vector index
+    can remove their corresponding Qdrant points.
+    """
+    urls = {url.strip() for url in source_urls if url and url.strip()}
+
+    if not urls:
+        return []
+
+    deleted_paths: List[str] = []
+
+    for concept in load_all_concepts(
+        knowledge_dir,
+        use_cache=False,
+    ):
+        source = concept.metadata.source
+
+        if not source or source.url not in urls:
+            continue
+
+        try:
+            os.remove(concept.filepath)
+            deleted_paths.append(
+                os.path.relpath(
+                    concept.filepath,
+                    knowledge_dir or settings.KNOWLEDGE_DIR,
+                )
+            )
+        except OSError as exc:
+            print(
+                f"⚠️ Failed to remove deleted concept "
+                f"{concept.filepath}: {exc}"
+            )
+
+    return deleted_paths

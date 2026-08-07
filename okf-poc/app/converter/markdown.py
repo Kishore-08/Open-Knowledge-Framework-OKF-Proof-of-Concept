@@ -16,6 +16,7 @@ Concept extraction strategy:
 import os
 import re
 import uuid
+import hashlib
 from datetime import date
 from typing import List, Optional, Tuple
 
@@ -80,6 +81,26 @@ def _slugify(title: str) -> str:
     slug = re.sub(r"[^a-zA-Z0-9]+", "-", title.lower()).strip("-")
     return slug[:60] or "concept"
 
+def _concept_id(category: str, title: str, source_url: str) -> str:
+    """
+    Generate a stable concept ID from its category, source page and section title.
+
+    The source URL is hashed so the ID remains filesystem-safe and compact while
+    distinguishing identical section titles that occur on different pages.
+    """
+    category_slug = _slugify(category)
+    title_slug = _slugify(title)
+
+    if source_url:
+        source_hash = hashlib.sha256(
+            source_url.strip().encode("utf-8")
+        ).hexdigest()[:8]
+
+        return f"{category_slug}-{title_slug}-{source_hash}"
+
+    # Preserve the previous deterministic behavior when no source URL is
+    # available. This keeps existing callers that don't have provenance stable.
+    return f"{category_slug}-{title_slug}"
 
 # ---------------------------------------------------------------------------
 # Concept file generation
@@ -158,7 +179,7 @@ def split_into_concepts(
     concepts: List[Tuple[str, str, str]] = []
     for section in sections:
         title = _section_title(section)
-        concept_id = _slugify(f"{category}-{title}")
+        concept_id = _concept_id(category, title, source_url)
         body = section
         content = generate_concept_file(
             title=title, body=body, category=category,

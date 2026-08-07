@@ -1,10 +1,12 @@
 import os
 import re
+import asyncio
 from datetime import date
 from typing import Optional
 
 # Internal imports
 from .loaders import load_raw_documents
+from .crawler import crawl_configured_sources
 from .metadata_extractor import generate_okf_metadata
 from app.indexing.indexer import concepts_to_documents
 from app.okf.repository import load_all_concepts
@@ -12,7 +14,20 @@ from app.retrieval.hybrid_search import index_documents
 from app.retrieval.query_engine import configure_llm_settings
 from app.core.config import settings
 from app.okf.formatter import format_and_save_okf
-
+from app.parser.cleaner import clean_html, extract_title
+from app.converter.markdown import (
+    html_to_markdown,
+    split_into_concepts,
+    write_concept_file,
+)
+from app.okf.repository import (
+    load_all_concepts,
+    delete_concepts_by_source_urls,
+)
+from app.retrieval.hybrid_search import (
+    index_documents,
+    delete_points_by_field,
+)
 
 def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
     """
@@ -79,6 +94,82 @@ def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
         "source_file": source_file or None,
     }
 
+def _process_crawled_html(
+    raw_dir: str,
+    okf_dir: str,
+    changed_pages: list[dict],
+) -> int:
+    """
+    Convert crawled HTML files under raw_dir into OKF concept files.
+
+    Expected layout:
+        data/raw/<source>/*.html
+    """
+    if not os.path.isdir(raw_dir):
+        return 0
+
+    processed = 0
+
+    for source_name in sorted(os.listdir(raw_dir)):
+        source_dir = os.path.join(raw_dir, source_name)
+
+        if not os.path.isdir(source_dir):
+            continue
+
+        for filename in sorted(os.listdir(source_dir)):
+            if not filename.lower().endswith((".html", ".htm")):
+                continue
+
+            html_path = os.path.join(source_dir, filename)
+
+            try:
+                with open(
+                    html_path,
+                    "r",
+                    encoding="utf-8",
+                    errors="ignore",
+                ) as f:
+                    html = f.read()
+
+                if not html.strip():
+                    continue
+
+                cleaned_html = clean_html(html, base_url=page["url"])
+
+                markdown = html_to_markdown(cleaned_html)
+
+                if not markdown.strip():
+                    print(
+                        f"⚠️ Skipping empty crawled document: {html_path}"
+                    )
+                    continue
+
+                category = source_name.lower()
+
+                concepts = split_into_concepts(
+                    markdown=markdown,
+                    category=category,
+                    source_name=source_name,
+                    source_url="",
+                )
+
+                for concept_id, _title, content in concepts:
+                    write_concept_file(
+                        knowledge_dir=okf_dir,
+                        category=category,
+                        concept_id=concept_id,
+                        content=content,
+                    )
+
+                processed += 1
+
+            except Exception as exc:
+                print(
+                    f"⚠️ Failed to process crawled HTML "
+                    f"{html_path}: {exc}"
+                )
+
+    return processed
 
 def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
     """
@@ -96,14 +187,54 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
 
     print("🚀 Starting OKF Ingestion Pipeline...")
 
-    # Ensure LLM and Embeddings are configured
+    # 0. Crawl configured official documentation sources.
+    crawl_result = asyncio.run(crawl_configured_sources())
+
+    deleted_urls = crawl_result["deleted_urls"]
+
+    if deleted_urls:
+        delete_concepts_by_source_urls(
+            deleted_urls,
+            knowledge_dir=settings.KNOWLEDGE_DIR,
+        )
+
+        delete_points_by_field(
+            settings.QDRANT_CONCEPTS_COLLECTION,
+            "source_url",
+            deleted_urls,
+        )
+
+    print(
+    "🌐 Documentation crawl complete: "
+    f"sources={crawl_result['sources']} "
+    f"discovered={crawl_result['discovered']} "
+    f"fetched={crawl_result['fetched']} "
+    f"cached={crawl_result['cached']} "
+    f"failed={crawl_result['failed']}"
+    )
+
+    # 1. Convert crawled HTML into OKF concept files.
+    crawled_count = _process_crawled_html(
+        raw_dir=raw_dir,
+        okf_dir=okf_dir,
+)
+
+    print(
+        f"📚 Converted {crawled_count} crawled HTML documents "
+        f"into OKF concepts."
+    )
+
+    # 2. Ensure LLM and Embeddings are configured.
     configure_llm_settings()
 
-    # 1. Load Raw Documents
+    # 3. Load existing local raw documents.
     raw_docs = load_raw_documents(raw_dir)
+
     if not raw_docs:
-        print("⚠️ No documents to ingest. Pipeline aborted.")
-        return {"status": "skipped", "message": "No raw documents found."}
+        print(
+            "ℹ️ No additional local raw documents found. "
+            "Continuing with crawled OKF concepts."
+        )
 
     saved_count = 0
 
@@ -149,7 +280,10 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
 
             saved_count += 1
 
-    print(f"💾 Saved {saved_count} OKF documents to {okf_dir}")
+    print(
+    f"💾 Local ingestion saved {saved_count} OKF documents. "
+    f"Crawled documentation produced {crawled_count} source documents."
+    )
 
     # 5. Re-read the OKF files just written from disk (the source of truth) and
     #    index them into Qdrant via the shared indexer path. This guarantees the
