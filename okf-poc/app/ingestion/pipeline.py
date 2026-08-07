@@ -1,6 +1,9 @@
 import os
 import re
 import asyncio
+import hashlib
+import json
+from pathlib import Path
 from datetime import date
 from typing import Optional
 
@@ -8,13 +11,13 @@ from typing import Optional
 from .loaders import load_raw_documents
 from .crawler import crawl_configured_sources
 from .metadata_extractor import generate_okf_metadata
+from app.ingestion.status import update_status
 from app.indexing.indexer import concepts_to_documents
-from app.okf.repository import load_all_concepts
-from app.retrieval.hybrid_search import index_documents
 from app.retrieval.query_engine import configure_llm_settings
 from app.core.config import settings
 from app.okf.formatter import format_and_save_okf
-from app.parser.cleaner import clean_html, extract_title
+from app.parser.cleaner import clean_html
+from llama_index.core import SimpleDirectoryReader
 from app.converter.markdown import (
     html_to_markdown,
     split_into_concepts,
@@ -94,80 +97,166 @@ def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
         "source_file": source_file or None,
     }
 
+def _processing_state_path(raw_dir: str) -> str:
+    state_dir = os.path.join(raw_dir, ".state")
+    os.makedirs(state_dir, exist_ok=True)
+    return os.path.join(state_dir, "processing.json")
+
+
+def _load_processing_state(raw_dir: str) -> dict:
+    path = _processing_state_path(raw_dir)
+
+    if not os.path.exists(path):
+        return {}
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _save_processing_state(raw_dir: str, state: dict) -> None:
+    path = _processing_state_path(raw_dir)
+    temp_path = f"{path}.tmp"
+
+    with open(temp_path, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2, sort_keys=True)
+
+    os.replace(temp_path, path)
+
+def _discover_local_raw_files(raw_dir: str) -> list[str]:
+    """Find manually supplied raw documents, excluding crawler HTML."""
+    supported = {".pdf", ".md", ".txt", ".json"}
+    files = []
+
+    if not os.path.isdir(raw_dir):
+        return files
+
+    for root, _, filenames in os.walk(raw_dir):
+        # Never treat crawler state as an input document.
+        if ".state" in Path(root).parts:
+            continue
+
+        for filename in filenames:
+            path = os.path.join(root, filename)
+
+            if Path(filename).suffix.lower() in supported:
+                files.append(path)
+
+    return sorted(files)
+
+
+def _get_changed_local_files(raw_dir: str, state: dict) -> tuple[list[str], dict]:
+    """
+    Return only local raw files whose content changed since the previous run.
+    """
+    previous_files = state.setdefault("files", {})
+    changed_files = []
+
+    current_files = set()
+
+    for path in _discover_local_raw_files(raw_dir):
+        relative_path = os.path.relpath(path, raw_dir)
+        current_files.add(relative_path)
+
+        content_hash = _file_hash(path)
+        previous = previous_files.get(relative_path, {})
+
+        if previous.get("content_hash") != content_hash:
+            changed_files.append(path)
+
+    # Remove state entries for files that no longer exist.
+    for relative_path in list(previous_files):
+        if relative_path not in current_files:
+            del previous_files[relative_path]
+
+    return changed_files, state
+
+def _file_hash(path: str) -> str:
+    digest = hashlib.sha256()
+
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+
+    return digest.hexdigest()
+
 def _process_crawled_html(
     raw_dir: str,
     okf_dir: str,
     changed_pages: list[dict],
 ) -> int:
-    """
-    Convert crawled HTML files under raw_dir into OKF concept files.
-
-    Expected layout:
-        data/raw/<source>/*.html
-    """
-    if not os.path.isdir(raw_dir):
-        return 0
 
     processed = 0
 
-    for source_name in sorted(os.listdir(raw_dir)):
-        source_dir = os.path.join(raw_dir, source_name)
+    for page in changed_pages:
+        html_path = page["raw_path"]
+        source_name = page["source_name"]
+        source_url = page["url"]
 
-        if not os.path.isdir(source_dir):
+        if not os.path.isfile(html_path):
             continue
 
-        for filename in sorted(os.listdir(source_dir)):
-            if not filename.lower().endswith((".html", ".htm")):
+        try:
+            with open(
+                html_path,
+                "r",
+                encoding="utf-8",
+                errors="ignore",
+            ) as f:
+                html = f.read()
+
+            if not html.strip():
                 continue
 
-            html_path = os.path.join(source_dir, filename)
+            cleaned_html = clean_html(
+                html,
+                base_url=source_url,
+            )
 
-            try:
-                with open(
-                    html_path,
-                    "r",
-                    encoding="utf-8",
-                    errors="ignore",
-                ) as f:
-                    html = f.read()
+            markdown = html_to_markdown(cleaned_html)
 
-                if not html.strip():
-                    continue
+            if not markdown.strip():
+                print(f"⚠️ Skipping empty crawled document: {html_path}")
+                continue
 
-                cleaned_html = clean_html(html, base_url=page["url"])
+            category = source_name.lower()
 
-                markdown = html_to_markdown(cleaned_html)
+            concepts = split_into_concepts(
+                markdown=markdown,
+                category=category,
+                source_name=source_name,
+                source_url=source_url,
+            )
 
-                if not markdown.strip():
-                    print(
-                        f"⚠️ Skipping empty crawled document: {html_path}"
-                    )
-                    continue
+            # Remove previous concepts belonging to this URL.
+            delete_concepts_by_source_urls(
+                [source_url],
+                knowledge_dir=settings.KNOWLEDGE_DIR,
+            )
 
-                category = source_name.lower()
-
-                concepts = split_into_concepts(
-                    markdown=markdown,
+            for concept_id, _title, content in concepts:
+                write_concept_file(
+                    knowledge_dir=okf_dir,
                     category=category,
-                    source_name=source_name,
-                    source_url="",
+                    concept_id=concept_id,
+                    content=content,
                 )
 
-                for concept_id, _title, content in concepts:
-                    write_concept_file(
-                        knowledge_dir=okf_dir,
-                        category=category,
-                        concept_id=concept_id,
-                        content=content,
-                    )
+            processed += 1
 
-                processed += 1
-
-            except Exception as exc:
-                print(
-                    f"⚠️ Failed to process crawled HTML "
-                    f"{html_path}: {exc}"
-                )
+        except Exception as exc:
+            update_status(
+                status="failed",
+                message=str(exc),
+            )
+            print(
+                f"⚠️ Failed to process crawled HTML "
+                f"{html_path}: {exc}"
+            )
 
     return processed
 
@@ -188,7 +277,24 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
     print("🚀 Starting OKF Ingestion Pipeline...")
 
     # 0. Crawl configured official documentation sources.
-    crawl_result = asyncio.run(crawl_configured_sources())
+    crawl_result = asyncio.run(crawl_configured_sources(raw_dir=raw_dir))
+
+    update_status(
+        message="Documentation crawl completed",
+        discovered=crawl_result["discovered"],
+        fetched=crawl_result["fetched"],
+        failed=crawl_result["failed"],
+    )
+
+    print(
+        "🌐 Documentation crawl complete: "
+        f"sources={crawl_result['sources']} "
+        f"discovered={crawl_result['discovered']} "
+        f"changed={crawl_result['changed']} "
+        f"unchanged={crawl_result['unchanged']} "
+        f"deleted={crawl_result['deleted']} "
+        f"failed={crawl_result['failed']}"
+    )
 
     deleted_urls = crawl_result["deleted_urls"]
 
@@ -204,20 +310,17 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
             deleted_urls,
         )
 
-    print(
-    "🌐 Documentation crawl complete: "
-    f"sources={crawl_result['sources']} "
-    f"discovered={crawl_result['discovered']} "
-    f"fetched={crawl_result['fetched']} "
-    f"cached={crawl_result['cached']} "
-    f"failed={crawl_result['failed']}"
-    )
-
     # 1. Convert crawled HTML into OKF concept files.
     crawled_count = _process_crawled_html(
         raw_dir=raw_dir,
         okf_dir=okf_dir,
-)
+        changed_pages=crawl_result.get("changed_pages", []),
+    )
+
+    update_status(
+        message="Processing crawled documentation",
+        processed=crawled_count,
+    )
 
     print(
         f"📚 Converted {crawled_count} crawled HTML documents "
@@ -228,13 +331,37 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
     configure_llm_settings()
 
     # 3. Load existing local raw documents.
-    raw_docs = load_raw_documents(raw_dir)
+    processing_state = _load_processing_state(raw_dir)
 
-    if not raw_docs:
-        print(
-            "ℹ️ No additional local raw documents found. "
-            "Continuing with crawled OKF concepts."
-        )
+    changed_local_files, processing_state = _get_changed_local_files(
+        raw_dir,
+        processing_state,
+    )
+
+    print(
+        f"📂 Local raw files: changed/new={len(changed_local_files)}"
+    )
+
+    if changed_local_files:
+        raw_docs = []
+
+        for file_path in changed_local_files:
+            try:
+                reader = SimpleDirectoryReader(
+                    input_files=[file_path]
+                )
+                raw_docs.extend(reader.load_data())
+            except Exception as exc:
+                print(
+                    f"⚠️ Failed to load changed local file "
+                    f"{file_path}: {exc}"
+                )
+    else:
+        raw_docs = []
+
+    print(
+        f"📄 Loading {len(raw_docs)} changed local documents for processing."
+    )
 
     saved_count = 0
 
@@ -280,6 +407,24 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
 
             saved_count += 1
 
+            source_file = okf_meta.get("source_file")
+
+            if source_file:
+                for changed_path in changed_local_files:
+                    relative_path = os.path.relpath(changed_path, raw_dir)
+
+                    if (
+                        source_file == os.path.basename(changed_path)
+                        or source_file == relative_path
+                    ):
+                        processing_state["files"][relative_path] = {
+                            "content_hash": _file_hash(changed_path),
+                            "okf_file": filename,
+                        }
+                        break
+
+            _save_processing_state(raw_dir, processing_state)
+
     print(
     f"💾 Local ingestion saved {saved_count} OKF documents. "
     f"Crawled documentation produced {crawled_count} source documents."
@@ -301,6 +446,14 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
         docs,
         collection_name=settings.QDRANT_CONCEPTS_COLLECTION,
         source_files=source_files,
+    )
+
+    update_status(
+        status="completed",
+        message="Ingestion completed",
+        processed=crawled_count + saved_count,
+        indexed=len(docs),
+        failed=crawl_result["failed"],
     )
 
     print("✅ Ingestion Pipeline Complete!")

@@ -20,7 +20,7 @@ from app.okf.schema import OKFConcept, OKFConceptFile
 # Loading
 # ---------------------------------------------------------------------------
 
-def _concept_files(knowledge_dir: Optional[str] = None) -> List[str]:
+def _concept_files(knowledge_dir: Optional[str] = None) -> list[str]:
     """Return all *.md files under the knowledge repository (non-recursive by category)."""
     root = knowledge_dir or settings.KNOWLEDGE_DIR
     if not os.path.isdir(root):
@@ -46,7 +46,7 @@ def _cache_key(knowledge_dir: str) -> str:
     return f"{len(files)}:{latest:.0f}"
 
 
-_cache: Dict[str, List[OKFConceptFile]] = {}
+_cache: dict[str, list[OKFConceptFile]] = {}
 _cache_knowledge_dir: Optional[str] = None
 _cache_key_value: Optional[str] = None
 
@@ -64,7 +64,7 @@ def _is_usable_concept(meta) -> bool:
     return True
 
 
-def load_all_concepts(knowledge_dir: Optional[str] = None, use_cache: bool = True) -> List[OKFConceptFile]:
+def load_all_concepts(knowledge_dir: Optional[str] = None, use_cache: bool = True) -> list[OKFConceptFile]:
     """
     Load and validate every concept in the knowledge repository.
     Files whose frontmatter fails validation are skipped with a warning.
@@ -75,7 +75,7 @@ def load_all_concepts(knowledge_dir: Optional[str] = None, use_cache: bool = Tru
     if use_cache and _cache_knowledge_dir == root and _cache_key_value == _cache_key(root):
         return _cache.get(root, [])
 
-    concepts: List[OKFConceptFile] = []
+    concepts: list[OKFConceptFile] = []
     for path in _concept_files(root):
         try:
             raw_meta, body = parse_okf_file(path)
@@ -98,12 +98,12 @@ def load_all_concepts(knowledge_dir: Optional[str] = None, use_cache: bool = Tru
 # Listing / lookup
 # ---------------------------------------------------------------------------
 
-def list_categories(knowledge_dir: Optional[str] = None) -> List[str]:
+def list_categories(knowledge_dir: Optional[str] = None) -> list[str]:
     """Sorted list of knowledge categories present in the repository."""
     return sorted({c.metadata.category for c in load_all_concepts(knowledge_dir)})
 
 
-def list_concepts(category: Optional[str] = None, knowledge_dir: Optional[str] = None) -> List[dict]:
+def list_concepts(category: Optional[str] = None, knowledge_dir: Optional[str] = None) -> list[dict]:
     """Lightweight metadata summaries for the concept browser."""
     out = []
     for concept in load_all_concepts(knowledge_dir):
@@ -260,7 +260,7 @@ def _snippet(content: str, tokens: List[str], radius: int = 120) -> str:
 def knowledge_stats(knowledge_dir: Optional[str] = None) -> dict:
     """Statistics over the knowledge repository (Phase 11 /stats)."""
     concepts = load_all_concepts(knowledge_dir)
-    by_category: Dict[str, int] = {}
+    by_category: dict[str, int] = {}
     all_tags = set()
     source_names = set()
     for concept in concepts:

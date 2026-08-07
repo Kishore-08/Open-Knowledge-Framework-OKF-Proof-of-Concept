@@ -122,6 +122,12 @@ if "messages" not in st.session_state:
         {"role": "assistant", "content": "Hello! I am your Enterprise OKF Knowledge Assistant. How can I help you today?", "citations": []}
     ]
 
+if "ingestion_running" not in st.session_state:
+    st.session_state.ingestion_running = False
+
+if "ingestion_message" not in st.session_state:
+    st.session_state.ingestion_message = ""
+
 def check_api_health():
     """Pings the FastAPI health endpoint and returns its parsed checks (or None)."""
     try:
@@ -133,19 +139,49 @@ def check_api_health():
         return None
 
 def trigger_ingestion():
-    """Calls the FastAPI ingestion endpoint."""
+    """Starts ingestion and displays live backend progress."""
     try:
-        with st.spinner("Processing documents, extracting OKF metadata, and generating embeddings..."):
-            payload = {"raw_dir": "data/raw", "okf_dir": "knowledge/source_1"}
-            res = requests.post(f"{API_HOST}/api/v1/ingest/", json=payload, timeout=600)
-            
-            if res.status_code == 200:
-                data = res.json()
-                st.sidebar.success(f"✅ Success! Indexed {data.get('indexed_documents')} documents.")
-            else:
-                st.sidebar.error(f"❌ Error: {res.text}")
-    except Exception as e:
+        payload = {
+            "raw_dir": "data/raw",
+            "okf_dir": "knowledge/source_1",
+        }
+
+        res = requests.post(
+            f"{API_HOST}/api/v1/ingest/",
+            json=payload,
+            timeout=10,
+        )
+
+        if res.status_code != 200:
+            st.sidebar.error(f"❌ Error: {res.text}")
+            return
+
+        data = res.json()
+
+        st.session_state.ingestion_running = True
+        st.session_state.ingestion_message = data.get(
+            "message",
+            "Ingestion started."
+        )
+
+    except requests.exceptions.RequestException as e:
         st.sidebar.error(f"Connection Error: {e}")
+
+def get_ingestion_status():
+    """Gets the current ingestion status from FastAPI."""
+    try:
+        res = requests.get(
+            f"{API_HOST}/api/v1/ingest/status",
+            timeout=5,
+        )
+
+        if res.status_code == 200:
+            return res.json()
+
+        return None
+
+    except requests.exceptions.RequestException:
+        return None
 
 def simulated_typing_effect(text):
     """Simulates a typewriter effect for better UX."""
@@ -288,8 +324,67 @@ with st.sidebar:
     st.markdown("Drop files into `data/raw`, then click below to convert them to OKF Standard and push to Qdrant.")
     st.caption("Supported formats: PDF (.pdf), Markdown (.md), plain text (.txt), JSON (.json). "
                "Keep files small and well-structured so ingestion stays fast.")
-    if st.button("🚀 Trigger Ingestion Pipeline", disabled=not is_healthy, use_container_width=True):
+    if st.button(
+        "🚀 Trigger Ingestion Pipeline",
+        disabled=not is_healthy or st.session_state.ingestion_running,
+        use_container_width=True,
+    ):
         trigger_ingestion()
+        st.rerun()
+
+    if st.session_state.ingestion_running:
+        status = get_ingestion_status()
+
+        if status:
+            current_status = status.get("status", "running")
+
+            st.markdown("### 📊 Ingestion Progress")
+
+            if current_status in ("completed", "success"):
+                st.success("✅ Ingestion completed")
+                st.session_state.ingestion_running = False
+
+            elif current_status == "failed":
+                st.error(
+                    f"❌ Ingestion failed: "
+                    f"{status.get('error', 'Unknown error')}"
+                )
+                st.session_state.ingestion_running = False
+
+            else:
+                st.info("🔄 Ingestion in progress...")
+
+            col1, col2, col3, col4 = st.columns(4)
+
+            col1.metric(
+                "Discovered",
+                status.get("discovered", 0),
+            )
+
+            col2.metric(
+                "Fetched",
+                status.get("fetched", 0),
+            )
+
+            col3.metric(
+                "Processed",
+                status.get("processed", 0),
+            )
+
+            col4.metric(
+                "Failed",
+                status.get("failed", 0),
+            )
+
+            if status.get("indexed_documents") is not None:
+                st.metric(
+                    "Indexed",
+                    status.get("indexed_documents", 0),
+                )
+
+            if st.session_state.ingestion_running:
+                time.sleep(2)
+                st.rerun()
 
     st.divider()
     st.caption("Powered by Google OKF, LlamaIndex, and Qdrant.")

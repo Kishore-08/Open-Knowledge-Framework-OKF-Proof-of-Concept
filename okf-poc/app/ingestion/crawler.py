@@ -34,6 +34,7 @@ class CrawlResult:
     failed: int = 0
     urls: List[str] = field(default_factory=list)
     changed_urls: List[str] = field(default_factory=list)
+    changed_pages: List[dict] = field(default_factory=list)
     deleted_urls: List[str] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
 
@@ -48,9 +49,9 @@ def _state_path(source: str, raw_dir: str) -> str:
     return os.path.join(state_dir, f"{_safe_name(source)}.json")
 
 
-def raw_path(source: str, url: str) -> str:
-    """Local path for the cached raw HTML of a URL."""
-    root = os.path.join(settings.CACHE_DIR, _safe_name(source))
+def raw_path(source: str, url: str, raw_dir: str) -> str:
+    """Return the filesystem path for a source URL's raw HTML."""
+    root = os.path.join(raw_dir, _safe_name(source))
     os.makedirs(root, exist_ok=True)
     return os.path.join(root, f"{_url_hash(url)}.html")
 
@@ -70,7 +71,7 @@ def load_sources() -> dict:
 
     return data
 
-def _load_state(source: str, raw_dir: str) -> Dict[str, dict]:
+def _load_state(source: str, raw_dir: str) -> dict[str, dict]:
     """Load persisted synchronization state for a documentation source."""
     path = _state_path(source, raw_dir)
 
@@ -90,7 +91,7 @@ def _load_state(source: str, raw_dir: str) -> Dict[str, dict]:
         print(f"⚠️ Could not load crawler state {path}: {exc}")
         return {}
 
-def _save_state(source: str, raw_dir: str, pages: Dict[str, dict]) -> None:
+def _save_state(source: str, raw_dir: str, pages: dict[str, dict]) -> None:
     """Persist synchronization state atomically."""
     path = _state_path(source, raw_dir)
     temp_path = f"{path}.tmp"
@@ -130,6 +131,53 @@ class DocsCrawler:
             resp = await client.get(url)
             resp.raise_for_status()
             return resp.content
+
+    async def _fetch_with_metadata(
+        self,
+        url: str,
+        headers: Optional[dict[str, str]] = None,
+    ):
+        """Fetch a URL and return status, content and cache validators."""
+        await asyncio.sleep(
+            max(
+                0.0,
+                self._last_request + self.delay - time.monotonic(),
+            )
+        )
+
+        self._last_request = time.monotonic()
+
+        request_headers = {
+            "User-Agent": self.user_agent,
+            "Accept": "text/html,*/*;q=0.8",
+        }
+
+        if headers:
+            request_headers.update(headers)
+
+        async with httpx.AsyncClient(
+            timeout=self.timeout,
+            follow_redirects=True,
+            headers=request_headers,
+        ) as client:
+            response = await client.get(url)
+
+            if response.status_code == 304:
+                return {
+                    "status_code": 304,
+                    "content": b"",
+                    "etag": response.headers.get("ETag"),
+                    "last_modified": response.headers.get("Last-Modified"),
+                }
+
+            response.raise_for_status()
+
+            return {
+                "status_code": response.status_code,
+                "content": response.content,
+                "etag": response.headers.get("ETag"),
+                "last_modified": response.headers.get("Last-Modified"),
+            }
 
     async def _fetch_robots(self, base_url: str) -> List[str]:
         """Read robots.txt and return the Sitemap: URLs listed there."""
@@ -172,13 +220,14 @@ class DocsCrawler:
 
         Returns only changed and deleted URLs for downstream processing.
         """
+        
         result = CrawlResult(
             source_name=source_name,
             urls=urls,
         )
 
         previous_state = _load_state(source_name, raw_dir)
-        current_state: Dict[str, dict] = {}
+        current_state: dict[str, dict] = {}
 
         discovered_urls = set(urls)
 
@@ -228,22 +277,21 @@ class DocsCrawler:
 
                 # If a state file is missing but the raw file exists, treat the
                 # downloaded content as new state rather than trusting the file.
-                if is_new:
-                    result.fetched += 1
-                    result.changed += 1
-                    result.changed_urls.append(url)
-
-                elif is_changed:
-                    result.fetched += 1
-                    result.changed += 1
-                    result.changed_urls.append(url)
-
-                else:
-                    result.unchanged += 1
-
                 if is_new or is_changed:
+                    result.fetched += 1
+                    result.changed += 1
+                    result.changed_urls.append(url)
+
                     with open(target, "wb") as f:
                         f.write(content)
+
+                    result.changed_pages.append({
+                        "source_name": source_name,
+                        "url": url,
+                        "raw_path": target,
+                    })
+                else:
+                    result.unchanged += 1
 
                 current_state[url] = {
                     "raw_file": os.path.relpath(target, raw_dir),
@@ -355,6 +403,7 @@ async def crawl_configured_sources(    raw_dir: Optional[str] = None,) -> dict:
         "deleted": 0,
         "failed": 0,
         "changed_urls": [],
+        "changed_pages": [],
         "deleted_urls": [],
     }
 
@@ -391,6 +440,7 @@ async def crawl_configured_sources(    raw_dir: Optional[str] = None,) -> dict:
         totals["failed"] += result.failed
 
         totals["changed_urls"].extend(result.changed_urls)
+        totals["changed_pages"].extend(result.changed_pages)
         totals["deleted_urls"].extend(result.deleted_urls)
 
         print(
@@ -407,49 +457,3 @@ async def crawl_configured_sources(    raw_dir: Optional[str] = None,) -> dict:
 
     return totals
 
-async def _fetch_with_metadata(
-    self,
-    url: str,
-    headers: Optional[Dict[str, str]] = None,
-):
-    """Fetch a URL and return status, content and cache validators."""
-    await asyncio.sleep(
-        max(
-            0.0,
-            self._last_request + self.delay - time.monotonic(),
-        )
-    )
-
-    self._last_request = time.monotonic()
-
-    request_headers = {
-        "User-Agent": self.user_agent,
-        "Accept": "text/html,*/*;q=0.8",
-    }
-
-    if headers:
-        request_headers.update(headers)
-
-    async with httpx.AsyncClient(
-        timeout=self.timeout,
-        follow_redirects=True,
-        headers=request_headers,
-    ) as client:
-        response = await client.get(url)
-
-        if response.status_code == 304:
-            return {
-                "status_code": 304,
-                "content": b"",
-                "etag": response.headers.get("ETag"),
-                "last_modified": response.headers.get("Last-Modified"),
-            }
-
-        response.raise_for_status()
-
-        return {
-            "status_code": response.status_code,
-            "content": response.content,
-            "etag": response.headers.get("ETag"),
-            "last_modified": response.headers.get("Last-Modified"),
-        }
