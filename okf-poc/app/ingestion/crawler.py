@@ -21,6 +21,7 @@ import httpx
 from app.core.config import settings
 from app.parser.sitemap import parse_robots_txt, discover_urls_from_sitemap
 from app.ingestion.status import update_status
+from app.storage.state_manager import StateManager
 
 
 @dataclass
@@ -43,22 +44,12 @@ class CrawlResult:
 def _url_hash(url: str) -> str:
     return hashlib.sha256(url.encode("utf-8")).hexdigest()[:16]
 
-def _state_path(source: str, raw_dir: str) -> str:
-    """Return the synchronization state file for a documentation source."""
-    state_dir = os.path.join(raw_dir, ".state")
-    os.makedirs(state_dir, exist_ok=True)
-    return os.path.join(state_dir, f"{_safe_name(source)}.json")
 
-
-def raw_path(source: str, url: str, raw_dir: str) -> str:
-    """Return the filesystem path for a source URL's raw HTML."""
-    root = os.path.join(raw_dir, _safe_name(source))
+def raw_path(source: str, url: str, cache_dir: str) -> str:
+    """Return the filesystem path for a source URL's cached HTML."""
+    root = os.path.join(cache_dir, StateManager._safe_name(source))
     os.makedirs(root, exist_ok=True)
     return os.path.join(root, f"{_url_hash(url)}.html")
-
-
-def _safe_name(name: str) -> str:
-    return re.sub(r"[^a-zA-Z0-9-_]+", "-", name).strip("-").lower() or "source"
 
 def load_sources() -> dict:
     """Load enabled documentation sources from the application configuration."""
@@ -71,42 +62,6 @@ def load_sources() -> dict:
         data = yaml.safe_load(f) or {}
 
     return data
-
-def _load_state(source: str, raw_dir: str) -> dict[str, dict]:
-    """Load persisted synchronization state for a documentation source."""
-    path = _state_path(source, raw_dir)
-
-    if not os.path.exists(path):
-        return {}
-
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        if not isinstance(data, dict):
-            return {}
-
-        return data.get("pages", {})
-
-    except (OSError, json.JSONDecodeError) as exc:
-        print(f"⚠️ Could not load crawler state {path}: {exc}")
-        return {}
-
-def _save_state(source: str, raw_dir: str, pages: dict[str, dict]) -> None:
-    """Persist synchronization state atomically."""
-    path = _state_path(source, raw_dir)
-    temp_path = f"{path}.tmp"
-
-    payload = {
-        "version": 1,
-        "source": source,
-        "pages": pages,
-    }
-
-    with open(temp_path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2, sort_keys=True)
-
-    os.replace(temp_path, path)
 
 def _content_hash(content: bytes) -> str:
     """Return the SHA-256 hash of downloaded document content."""
@@ -210,10 +165,10 @@ class DocsCrawler:
         self,
         source_name: str,
         urls: List[str],
-        raw_dir: str,
+        cache_dir: str,
         ) -> CrawlResult:
         """
-        Fetch discovered documentation pages and synchronize their raw files.
+        Fetch discovered documentation pages and synchronize their cached files.
 
         Determines page state using:
         1. HTTP ETag / Last-Modified when available.
@@ -227,13 +182,14 @@ class DocsCrawler:
             urls=urls,
         )
 
-        previous_state = _load_state(source_name, raw_dir)
+        state_manager = StateManager(cache_dir)
+        previous_state = state_manager.load_crawler_state(source_name)
         current_state: dict[str, dict] = {}
 
         discovered_urls = set(urls)
 
         for url in urls:
-            target = raw_path(source_name, url, raw_dir)
+            target = raw_path(source_name, url, cache_dir)
             previous = previous_state.get(url, {})
 
             conditional_headers = {}
@@ -255,7 +211,7 @@ class DocsCrawler:
                         **previous,
                         "raw_file": os.path.relpath(
                             target,
-                            raw_dir,
+                            cache_dir,
                         ),
                     }
 
@@ -276,7 +232,7 @@ class DocsCrawler:
                     and previous_hash != content_hash
                 )
 
-                # If a state file is missing but the raw file exists, treat the
+                # If a state file is missing but the cached file exists, treat the
                 # downloaded content as new state rather than trusting the file.
                 if is_new or is_changed:
                     result.fetched += 1
@@ -295,7 +251,7 @@ class DocsCrawler:
                     result.unchanged += 1
 
                 current_state[url] = {
-                    "raw_file": os.path.relpath(target, raw_dir),
+                    "raw_file": os.path.relpath(target, cache_dir),
                     "content_hash": content_hash,
                     "etag": response.get("etag"),
                     "last_modified": response.get("last_modified"),
@@ -321,19 +277,18 @@ class DocsCrawler:
             raw_file = previous.get("raw_file")
 
             if raw_file:
-                path = os.path.join(raw_dir, raw_file)
+                path = os.path.join(cache_dir, raw_file)
 
                 try:
                     if os.path.exists(path):
                         os.remove(path)
                 except OSError as exc:
                     result.errors.append(
-                        f"{url}: failed to remove raw file {path}: {exc}"
+                        f"{url}: failed to remove cached file {path}: {exc}"
                     )
 
-        _save_state(
+        state_manager.save_crawler_state(
             source_name,
-            raw_dir,
             current_state,
         )
 
@@ -348,11 +303,11 @@ class DocsCrawler:
         url_filter: Optional[str] = None,
         max_urls: int = 500,
         urls: Optional[List[str]] = None,
-        raw_dir: Optional[str] = None,
+        cache_dir: Optional[str] = None,
     ) -> CrawlResult:
         """Discover + synchronize a documentation source end to end."""
-        if raw_dir is None:
-            raw_dir = settings.RAW_DATA_DIR
+        if cache_dir is None:
+            cache_dir = settings.CACHE_DIR
 
         if urls is None:
             urls = await self.discover(
@@ -365,14 +320,14 @@ class DocsCrawler:
         return await self.crawl_source(
             source_name,
             urls,
-            raw_dir,
+            cache_dir,
         )
 
-async def crawl_configured_sources(    raw_dir: Optional[str] = None,) -> dict:
+async def crawl_configured_sources(cache_dir: Optional[str] = None) -> dict:
     """
     Crawl all enabled documentation sources configured in sources.yaml.
 
-    Raw downloaded documents are stored under settings.RAW_DATA_DIR.
+    Downloaded HTML is cached under settings.CACHE_DIR (disposable cache).
     """
     config = load_sources()
 
@@ -429,7 +384,7 @@ async def crawl_configured_sources(    raw_dir: Optional[str] = None,) -> dict:
             ),
             url_filter=source.get("url_filter"),
             max_urls=max_urls,
-            raw_dir=raw_dir,
+            cache_dir=cache_dir,
         )
 
         totals["sources"] += 1

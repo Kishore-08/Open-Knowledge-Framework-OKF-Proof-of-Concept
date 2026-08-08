@@ -9,7 +9,7 @@ services:
     volumes:
       - ./app:/app/app
       - ./knowledge:/app/knowledge
-      - ./data:/app/data
+      - ./cache:/app/cache
       - ./config:/app/config
     env_file:
       - .env

@@ -1,0 +1,16 @@
+{
+  "files": {
+    "ci-cd-pipeline.pdf": {
+      "content_hash": "3a69616d78a808c75aeefc53485a188d30899f87f0188abafa34e27690eb09f6",
+      "okf_file": "tutorial-ci-cd-pipeline-guide-for-devops_0.md"
+    },
+    "docker-basics.txt": {
+      "content_hash": "50ae38f4b7275945aed87d409b78a2e5f138fd090ba9cb1918395345c378d6a0",
+      "okf_file": "tutorial-docker-basics-for-devops_1.md"
+    },
+    "kubernetes-troubleshooting.json": {
+      "content_hash": "732b2bffd903f16592b2103775e26dadfaa2cd9d4f590959c05d68eb252269a6",
+      "okf_file": "kubernetes-troubleshooting-guide_2.md"
+    }
+  }
+}

@@ -20,10 +20,13 @@ class Settings(BaseSettings):
     API_HOST: str = "http://localhost:8000"
 
     # Data Directories
-    RAW_DATA_DIR: str = "data/raw"
-    OKF_DATA_DIR: str = "data/knowledge"
-    KNOWLEDGE_DIR: str = "data/knowledge"
+    # Cache: Disposable data (crawled HTML, processing state) - can be deleted and rebuilt
     CACHE_DIR: str = "cache"
+    
+    # Knowledge: Source of truth (generated OKF Markdown files) - must be preserved
+    KNOWLEDGE_DIR: str = "knowledge"
+    
+    # Configuration
     SOURCES_CONFIG: str = "config/sources.yaml"
 
     # RAG Configuration Settings

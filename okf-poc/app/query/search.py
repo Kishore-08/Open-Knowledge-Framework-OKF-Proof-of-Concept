@@ -39,13 +39,22 @@ def search(
         results = _semantic_search(query, category=category, top_k=top_k)
         return {"mode": "semantic", "results": results}
 
-    # auto: merge, prefer semantic hits but keep keyword hits for coverage
+    # auto: merge keyword and semantic, preferring keyword for incomplete indices
+    # If semantic search returns results with low relevance or wrong category,
+    # keyword search provides better fallback
     semantic_results = _semantic_search(query, category=category, top_k=top_k)
-    merged = list(semantic_results)
+    
+    # Start with keyword results (always accurate)
+    merged = list(keyword_results[: (top_k or settings.TOP_K)])
     seen = {r["id"] for r in merged}
-    for r in keyword_results:
-        if r["id"] not in seen:
+    
+    # Add high-quality semantic results that aren't already present
+    for r in semantic_results:
+        if r["id"] not in seen and r.get("score", 0) > 0.8:  # Only high-confidence semantic results
             merged.append(r)
+            if len(merged) >= (top_k or settings.TOP_K):
+                break
+    
     return {"mode": "auto", "results": merged[: (top_k or settings.TOP_K)]}
 
 

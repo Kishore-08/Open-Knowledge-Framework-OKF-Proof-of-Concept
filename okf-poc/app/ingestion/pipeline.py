@@ -31,6 +31,7 @@ from app.retrieval.hybrid_search import (
     index_documents,
     delete_points_by_field,
 )
+from app.storage.state_manager import StateManager
 
 def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
     """
@@ -107,14 +108,14 @@ def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
         "source_file": source_file or None,
     }
 
-def _processing_state_path(raw_dir: str) -> str:
-    state_dir = os.path.join(raw_dir, ".state")
+def _processing_state_path(cache_dir: str) -> str:
+    state_dir = os.path.join(cache_dir, ".state")
     os.makedirs(state_dir, exist_ok=True)
     return os.path.join(state_dir, "processing.json")
 
 
-def _load_processing_state(raw_dir: str) -> dict:
-    path = _processing_state_path(raw_dir)
+def _load_processing_state(cache_dir: str) -> dict:
+    path = _processing_state_path(cache_dir)
 
     if not os.path.exists(path):
         return {}
@@ -128,8 +129,8 @@ def _load_processing_state(raw_dir: str) -> dict:
         return {}
 
 
-def _save_processing_state(raw_dir: str, state: dict) -> None:
-    path = _processing_state_path(raw_dir)
+def _save_processing_state(cache_dir: str, state: dict) -> None:
+    path = _processing_state_path(cache_dir)
     temp_path = f"{path}.tmp"
 
     with open(temp_path, "w", encoding="utf-8") as f:
@@ -137,15 +138,15 @@ def _save_processing_state(raw_dir: str, state: dict) -> None:
 
     os.replace(temp_path, path)
 
-def _discover_local_raw_files(raw_dir: str) -> list[str]:
-    """Find manually supplied raw documents, excluding crawler HTML."""
+def _discover_local_raw_files(cache_dir: str) -> list[str]:
+    """Find manually supplied raw documents in cache, excluding crawler HTML."""
     supported = {".pdf", ".md", ".txt", ".json"}
     files = []
 
-    if not os.path.isdir(raw_dir):
+    if not os.path.isdir(cache_dir):
         return files
 
-    for root, _, filenames in os.walk(raw_dir):
+    for root, _, filenames in os.walk(cache_dir):
         # Never treat crawler state as an input document.
         if ".state" in Path(root).parts:
             continue
@@ -159,17 +160,17 @@ def _discover_local_raw_files(raw_dir: str) -> list[str]:
     return sorted(files)
 
 
-def _get_changed_local_files(raw_dir: str, state: dict) -> tuple[list[str], dict]:
+def _get_changed_local_files(cache_dir: str, state: dict) -> tuple[list[str], dict]:
     """
-    Return only local raw files whose content changed since the previous run.
+    Return only local cached files whose content changed since the previous run.
     """
     previous_files = state.setdefault("files", {})
     changed_files = []
 
     current_files = set()
 
-    for path in _discover_local_raw_files(raw_dir):
-        relative_path = os.path.relpath(path, raw_dir)
+    for path in _discover_local_raw_files(cache_dir):
+        relative_path = os.path.relpath(path, cache_dir)
         current_files.add(relative_path)
 
         content_hash = _file_hash(path)
@@ -194,17 +195,17 @@ def _file_hash(path: str) -> str:
 
     return digest.hexdigest()
 
-def _discover_cached_crawl_pages(raw_dir: str) -> list[dict]:
+def _discover_cached_crawl_pages(cache_dir: str) -> list[dict]:
     """
     Recover crawl pages from the on-disk crawler state so that a rerun can rebuild
-    the knowledge output from already downloaded raw HTML when a cache hit (
+    the knowledge output from already downloaded cached HTML when a cache hit (
     304 Not Modified) means the changed_pages set is empty.
 
-    The state files live under data/raw/.state/*.json and map URLs to a relative
+    The state files live under cache/.state/*.json and map URLs to a relative
     raw_file path that should be re-read from disk.
     """
     pages: list[dict] = []
-    state_dir = os.path.join(raw_dir, ".state")
+    state_dir = os.path.join(cache_dir, ".state")
     if not os.path.isdir(state_dir):
         return pages
 
@@ -220,7 +221,7 @@ def _discover_cached_crawl_pages(raw_dir: str) -> list[dict]:
                 raw_file = (meta or {}).get("raw_file")
                 if not raw_file:
                     continue
-                html_path = os.path.join(raw_dir, raw_file)
+                html_path = os.path.join(cache_dir, raw_file)
                 if os.path.isfile(html_path):
                     pages.append(
                         {
@@ -236,19 +237,20 @@ def _discover_cached_crawl_pages(raw_dir: str) -> list[dict]:
 
 
 def _process_crawled_html(
-    raw_dir: str,
-    okf_dir: str,
+    cache_dir: str,
+    knowledge_dir: str,
     changed_pages: list[dict],
 ) -> int:
     """
     Process the crawler output into OKF concept files. The legacy code only read
     the changed pages produced from the latest HTTP downloads. That means a
-    cache-driven crawl that receives 304 responses can leave `data/raw` populated
+    cache-driven crawl that receives 304 responses can leave cache/ populated
     but the knowledge repo empty because `changed_pages` is empty. This function now
     recovers the cached crawler pages from the on-disk state whenever the latest
     crawl didn't actually change any pages.
     """
-    pages_to_process = changed_pages or _discover_cached_crawl_pages(raw_dir)
+    state_manager = StateManager(cache_dir)
+    pages_to_process = changed_pages or state_manager.get_all_crawler_states()
 
     # Keep the live UI honest while the HTML->Markdown conversion is happening:
     # the crawler discovered a list of candidate source URLs, and the conversion
@@ -310,7 +312,7 @@ def _process_crawled_html(
 
             for concept_id, _title, content in concepts:
                 write_concept_file(
-                    knowledge_dir=okf_dir,
+                    knowledge_dir=knowledge_dir,
                     category=category,
                     concept_id=concept_id,
                     content=content,
@@ -339,19 +341,24 @@ def _process_crawled_html(
 
     return processed
 
-def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
+def run_ingestion_pipeline(cache_dir: str = None, knowledge_dir: str = None):
     """
     The master orchestration function.
-    1. Loads raw documents.
-    2. Extracts OKF Metadata via LLM.
-    3. Converts to OKF-compliant frontmatter.
-    4. Saves physical OKF Markdown files.
-    5. Chunks and indexes into Qdrant.
+    1. Crawls official documentation (stored in cache).
+    2. Loads local raw documents from cache.
+    3. Extracts OKF Metadata via LLM.
+    4. Converts to OKF-compliant frontmatter.
+    5. Saves physical OKF Markdown files to knowledge directory (source of truth).
+    6. Chunks and indexes into Qdrant.
+    
+    Args:
+        cache_dir: Disposable cache for HTML and raw files (default: settings.CACHE_DIR)
+        knowledge_dir: Source of truth for OKF Markdown (default: settings.KNOWLEDGE_DIR)
     """
-    if raw_dir is None:
-        raw_dir = settings.RAW_DATA_DIR
-    if okf_dir is None:
-        okf_dir = settings.KNOWLEDGE_DIR
+    if cache_dir is None:
+        cache_dir = settings.CACHE_DIR
+    if knowledge_dir is None:
+        knowledge_dir = settings.KNOWLEDGE_DIR
 
     print("🚀 Starting OKF Ingestion Pipeline...")
     update_status(
@@ -366,7 +373,7 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
     )
 
     # 0. Crawl configured official documentation sources.
-    crawl_result = asyncio.run(crawl_configured_sources(raw_dir=raw_dir))
+    crawl_result = asyncio.run(crawl_configured_sources(cache_dir=cache_dir))
 
     update_status(
         message="Documentation crawl completed",
@@ -401,8 +408,8 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
 
     # 1. Convert crawled HTML into OKF concept files.
     crawled_count = _process_crawled_html(
-        raw_dir=raw_dir,
-        okf_dir=okf_dir,
+        cache_dir=cache_dir,
+        knowledge_dir=knowledge_dir,
         changed_pages=crawl_result.get("changed_pages", []),
     )
 
@@ -419,28 +426,26 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
     # 2. Ensure LLM and Embeddings are configured.
     configure_llm_settings()
 
-    # 3. Load existing local raw documents.
-    processing_state = _load_processing_state(raw_dir)
+    # 3. Load existing local raw documents using StateManager.
+    state_manager = StateManager(cache_dir)
+    processing_state = state_manager.load_processing_state()
 
-    changed_local_files, processing_state = _get_changed_local_files(
-        raw_dir,
-        processing_state,
-    )
+    changed_local_files, processing_state = state_manager.get_changed_files(processing_state)
 
     print(
-        f"📂 Local raw files: changed/new={len(changed_local_files)}"
+        f"📂 Local cached files: changed/new={len(changed_local_files)}"
     )
 
     # Re-run the local raw conversion whenever the pipeline is invoked from the
     # API even for a cache hit crawl. The incremental state only tells us which
     # inputs changed. However a fresh call into the API should still have the
     # filesystem authoritative input count at its disposal. When the state
-    # indicates 'no changed files' we can fall back to the full raw tree rather
+    # indicates 'no changed files' we can fall back to the full cache tree rather
     # than silently treating the repository as empty.
     if changed_local_files:
         local_files = changed_local_files
     else:
-        local_files = _discover_local_raw_files(raw_dir)
+        local_files = state_manager.discover_local_files()
 
     raw_docs = []
     for file_path in local_files:
@@ -507,7 +512,7 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
 
             # Use the slug id as the filename for consistency
             filename = f"{okf_meta['id']}_{i}.md"
-            category_dir = os.path.join(okf_dir, str(okf_meta.get("category") or "reference").strip())
+            category_dir = os.path.join(knowledge_dir, str(okf_meta.get("category") or "reference").strip())
             os.makedirs(category_dir, exist_ok=True)
 
             # Physically save the OKF-formatted Markdown file to disk
@@ -531,19 +536,20 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
 
             if source_file:
                 for changed_path in changed_local_files:
-                    relative_path = os.path.relpath(changed_path, raw_dir)
+                    relative_path = os.path.relpath(changed_path, cache_dir)
 
                     if (
                         source_file == os.path.basename(changed_path)
                         or source_file == relative_path
                     ):
-                        processing_state["files"][relative_path] = {
-                            "content_hash": _file_hash(changed_path),
-                            "okf_file": filename,
-                        }
+                        processing_state = state_manager.update_file_state(
+                            changed_path,
+                            filename,
+                            processing_state
+                        )
                         break
 
-            _save_processing_state(raw_dir, processing_state)
+            state_manager.save_processing_state(processing_state)
 
     print(
     f"💾 Local ingestion saved {saved_count} OKF documents. "
@@ -555,7 +561,7 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
     #    vector store always mirrors the filesystem knowledge base — the same
     #    documents, metadata, and provenance that search + query layers consume.
     print("📦 Re-reading OKF files and connecting to Qdrant for vector indexing...")
-    concepts = load_all_concepts(okf_dir, use_cache=False)
+    concepts = load_all_concepts(knowledge_dir, use_cache=False)
     docs = concepts_to_documents(concepts)
     if not docs:
         print("⚠️ No valid OKF concepts were produced; nothing to index.")

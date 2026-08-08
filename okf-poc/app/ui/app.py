@@ -142,7 +142,7 @@ def trigger_ingestion():
     """Starts ingestion and displays live backend progress."""
     try:
         # No hardcoded paths here: let the API fall back to its own settings
-        # (RAW_DATA_DIR / KNOWLEDGE_DIR) so the UI never disagrees with the
+        # (CACHE_DIR / KNOWLEDGE_DIR) so the UI never disagrees with the
         # backend about where the disposable cache or the knowledge source of
         # truth live.
         payload = {}
@@ -322,11 +322,229 @@ with st.sidebar:
     
     # Ingestion Controls
     st.subheader("Knowledge Ingestion")
-    st.markdown("Drop files into `data/raw`, then click below to convert them to OKF Standard and push to Qdrant.")
-    st.caption("Supported formats: PDF (.pdf), Markdown (.md), plain text (.txt), JSON (.json). "
-               "Keep files small and well-structured so ingestion stays fast.")
+    
+    # Initialize upload state
+    if "uploaded_files_list" not in st.session_state:
+        st.session_state.uploaded_files_list = []
+    if "upload_success_message" not in st.session_state:
+        st.session_state.upload_success_message = ""
+    
+    st.markdown("""
+    <style>
+    /* Upload Area Glassmorphism */
+    .upload-container {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 2px dashed rgba(96, 165, 250, 0.3);
+        border-radius: 1.25rem;
+        padding: 2.5rem 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        margin: 1rem 0;
+    }
+    
+    .upload-container:hover {
+        border-color: rgba(96, 165, 250, 0.6);
+        background: rgba(255, 255, 255, 0.05);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.1);
+    }
+    
+    .upload-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.7;
+    }
+    
+    .upload-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #bfdbfe;
+        margin-bottom: 0.5rem;
+    }
+    
+    .upload-subtitle {
+        font-size: 0.95rem;
+        color: #9ca3af;
+        margin-bottom: 1rem;
+    }
+    
+    .upload-formats {
+        font-size: 0.85rem;
+        color: #6b7280;
+        font-family: 'Courier New', monospace;
+    }
+    
+    /* File List Card */
+    .file-card {
+        background: rgba(255, 255, 255, 0.04);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(96, 165, 250, 0.2);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        margin: 0.5rem 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s ease;
+    }
+    
+    .file-card:hover {
+        border-color: rgba(96, 165, 250, 0.4);
+        transform: translateX(4px);
+    }
+    
+    .file-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .file-icon {
+        font-size: 1.5rem;
+    }
+    
+    .file-name {
+        font-weight: 500;
+        color: #d1d5db;
+    }
+    
+    .file-size {
+        font-size: 0.8rem;
+        color: #9ca3af;
+        margin-left: 0.5rem;
+    }
+    
+    /* Success Message */
+    .success-card {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05));
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .success-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #34d399;
+        margin-bottom: 0.5rem;
+    }
+    
+    .success-details {
+        font-size: 0.9rem;
+        color: #d1d5db;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # File uploader with custom styling
+    uploaded_files = st.file_uploader(
+        "Choose files to upload",
+        type=['pdf', 'md', 'txt', 'json'],
+        accept_multiple_files=True,
+        help="Supported formats: PDF, Markdown, Text, JSON (max 50MB per file)",
+        label_visibility="collapsed"
+    )
+    
+    # Display upload area with glassmorphism
+    if not uploaded_files:
+        st.markdown("""
+        <div class="upload-container">
+            <div class="upload-icon">☁️</div>
+            <div class="upload-title">Upload Knowledge Documents</div>
+            <div class="upload-subtitle">Drag & drop files or click Browse above</div>
+            <div class="upload-formats">PDF · MD · TXT · JSON</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Display selected files
+    if uploaded_files:
+        st.markdown("<div style='margin-top: 1rem;'><strong>📁 Selected Documents</strong></div>", unsafe_allow_html=True)
+        
+        for file in uploaded_files:
+            file_size_mb = len(file.getvalue()) / (1024 * 1024)
+            file_size_str = f"{file_size_mb:.2f} MB" if file_size_mb >= 1 else f"{len(file.getvalue()) / 1024:.2f} KB"
+            
+            # Determine file icon
+            ext = Path(file.name).suffix.lower()
+            icon_map = {'.pdf': '📄', '.md': '📝', '.txt': '📃', '.json': '📊'}
+            icon = icon_map.get(ext, '📄')
+            
+            st.markdown(f"""
+            <div class="file-card">
+                <div class="file-info">
+                    <span class="file-icon">{icon}</span>
+                    <span class="file-name">{file.name}</span>
+                    <span class="file-size">{file_size_str}</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Process button
+        col1, col2 = st.columns([3, 1])
+        with col2:
+            process_button = st.button(
+                "✨ Process Documents",
+                use_container_width=True,
+                disabled=not is_healthy or st.session_state.ingestion_running,
+                type="primary"
+            )
+        
+        if process_button:
+            # Upload files via API
+            try:
+                with st.spinner("🔄 Uploading files..."):
+                    files_data = []
+                    for file in uploaded_files:
+                        file.seek(0)  # Reset file pointer
+                        files_data.append(
+                            ('files', (file.name, file.getvalue(), file.type))
+                        )
+                    
+                    response = requests.post(
+                        f"{API_HOST}/api/v1/ingest/upload",
+                        files=files_data,
+                        timeout=30
+                    )
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        st.session_state.ingestion_running = True
+                        st.session_state.upload_success_message = result.get('message', 'Upload successful')
+                        
+                        # Show success message
+                        st.markdown(f"""
+                        <div class="success-card">
+                            <div class="success-title">✅ Upload Successful</div>
+                            <div class="success-details">
+                                {result.get('uploaded_files', 0)} file(s) uploaded<br/>
+                                Processing started in background...
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"Upload failed: {response.text}")
+            
+            except requests.exceptions.RequestException as e:
+                st.error(f"Connection error: {e}")
+    
+    # Show success message if exists
+    if st.session_state.upload_success_message and not st.session_state.ingestion_running:
+        st.success(st.session_state.upload_success_message)
+        if st.button("Clear"):
+            st.session_state.upload_success_message = ""
+            st.rerun()
+    
+    # Legacy ingestion trigger (for files already in cache)
+    st.divider()
+    st.caption("Or process files already in cache directory:")
     if st.button(
-        "🚀 Trigger Ingestion Pipeline",
+        "🚀 Trigger Pipeline (Cache Files)",
         disabled=not is_healthy or st.session_state.ingestion_running,
         use_container_width=True,
     ):

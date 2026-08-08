@@ -19,3 +19,4 @@ markdownify
 httpx
 fastembed
 llama-index-readers-file
+python-multipart>=0.0.6

@@ -197,6 +197,38 @@ def search_concepts(
     knowledge_dir: Optional[str] = None,
 ) -> List[dict]:
     """
+    Filesystem keyword + metadata + tag search over the knowledge repository. """
+
+
+def knowledge_stats(knowledge_dir: Optional[str] = None) -> dict:
+    """Statistics about the knowledge repository."""
+    concepts = load_all_concepts(knowledge_dir)
+    categories = {}
+    tags_count = {}
+    
+    for concept in concepts:
+        cat = concept.metadata.category
+        categories[cat] = categories.get(cat, 0) + 1
+        
+        for tag in concept.metadata.tags:
+            tags_count[tag] = tags_count.get(tag, 0) + 1
+    
+    return {
+        "total_concepts": len(concepts),
+        "categories": len(categories),
+        "category_breakdown": categories,
+        "unique_tags": len(tags_count),
+        "top_tags": sorted(tags_count.items(), key=lambda x: x[1], reverse=True)[:10]
+    }
+
+
+def search_concepts(
+    query: str,
+    category: Optional[str] = None,
+    tag: Optional[str] = None,
+    knowledge_dir: Optional[str] = None,
+) -> List[dict]:
+    """
     Filesystem keyword + metadata + tag search over the knowledge repository.
 
     Returns concepts that match, ranked by how many searchable fields matched.
@@ -205,6 +237,10 @@ def search_concepts(
     tokens = [t.lower() for t in re.findall(r"[a-z0-9_-]+", query.lower())] if query else []
     tokens = [t for t in tokens if t not in _STOPWORDS]
     results = []
+
+    # Detect "What is X?" pattern to boost overview/intro documents
+    is_definition_query = query.lower().startswith(("what is", "what are", "define"))
+    overview_keywords = ["overview", "introduction", "intro", "basics", "getting started", "what is"]
 
     for concept in load_all_concepts(knowledge_dir):
         meta = concept.metadata
@@ -228,7 +264,22 @@ def search_concepts(
             hits = sum(text.count(t) for t in tokens)
             if hits:
                 matched_fields.append(field)
-                score += hits * (2.0 if field in ("title", "aliases", "tags") else 1.0)
+                weight = 2.0 if field in ("title", "aliases", "tags") else 1.0
+                score += hits * weight
+
+        # Boost overview/introduction documents for definition queries
+        if is_definition_query and matched_fields:
+            title_lower = meta.title.lower()
+            desc_lower = (meta.description or "").lower()
+            
+            # Strong boost for overview/intro titles
+            if any(kw in title_lower for kw in overview_keywords):
+                score *= 5.0
+            
+            # Boost if description starts with "X is a/an"
+            if any(desc_lower.startswith(t + " is a") or desc_lower.startswith(t + " is an") 
+                   for t in tokens):
+                score *= 3.0
 
         if matched_fields:
             snippet = _snippet(concept.content, tokens)
@@ -289,8 +340,8 @@ def delete_concepts_by_source_urls(
     Remove generated concepts whose official source URL is no longer present.
 
     Returns the relative knowledge paths that were deleted so the vector index
-    can remove their corresponding Qdrant points.
-    """
+    can remove their corresponding Qdrant points."""
+    
     urls = {url.strip() for url in source_urls if url and url.strip()}
 
     if not urls:
