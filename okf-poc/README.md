@@ -37,25 +37,59 @@ okf-poc/
 ├── app/
 │   ├── api/                     # FastAPI backend and routers
 │   ├── core/                    # Configuration & settings
-│   ├── ingestion/               # Document loaders & indexing pipeline
-│   ├── okf/                     # OKF Formatter & Parser
-│   ├── retrieval/               # Hybrid Search & Query Engine
+│   ├── parser/                  # HTML cleaning, sitemap discovery
+│   ├── converter/               # HTML/raw text -> OKF Markdown
+│   ├── ingestion/               # Crawler, loaders & the ingestion pipeline
+│   ├── okf/                     # OKF schema, parser, formatter, repository
+│   ├── indexing/                # Concept -> LlamaIndex Document -> Qdrant
+│   ├── retrieval/                # Qdrant plumbing, LLM config, search & answer generation
 │   └── ui/                      # Streamlit UI
 │
-├── config/                      # Prompt templates & system settings
+├── config/                      # Source definitions (config/sources.yaml)
 ├── data/
-│   └── raw/                     # Place raw PDFs, JSON, Markdown here
+│   └── raw/                     # DISPOSABLE CACHE ONLY (see below) — crawled HTML,
+│                                 # crawler sync state, and manually dropped raw files
 │
+├── knowledge/                   # SOURCE OF TRUTH — generated OKF Markdown concept files
 ├── docs/                        # Architecture diagrams & reports
 ├── evaluation/                  # Ragas evaluation scripts
-├── knowledge/                   # Generated OKF Markdown files
+├── notebooks/                   # Exploratory notebooks
+├── requirements/                # Split requirement files (api/ui/dev/eval/base)
+├── scripts/                     # CLI maintenance scripts (build_index, cleanup_unknown, ...)
 ├── tests/                       # Unit tests
 │
 ├── docker-compose.yml
-├── requirements.txt
+├── Dockerfile.api / Dockerfile.ui
 ├── .env.example
 └── README.md
 ```
+
+## 🗂️ `data/` vs `knowledge/` — cache vs. source of truth
+
+This project intentionally keeps two very different kinds of data apart:
+
+- **`data/raw/` — disposable cache.** Crawled HTML, the crawler's sync state
+  (`data/raw/.state/`), and any raw PDFs/JSON/Markdown/text you drop in by hand.
+  None of this is authored content — it's either a byte-for-byte mirror of an
+  official documentation page, or a raw input file you supplied. **You can
+  delete `data/raw/` at any time.** Re-running ingestion re-crawls the sources
+  in `config/sources.yaml` and re-reads any raw files still present, and
+  rebuilds this cache from scratch.
+
+- **`knowledge/` — source of truth.** The generated OKF Markdown files (YAML
+  frontmatter + body) that the repository, search and query layers actually
+  read from. These are produced by running an LLM over the raw cache, so they
+  are *not* free to regenerate — treat this folder like any other project
+  asset: back it up, keep it out of `.gitignore`, and don't hand-edit
+  `data/raw/` expecting `knowledge/` to update itself.
+
+Both directories are controlled by `app/core/config.py` (`RAW_DATA_DIR`,
+`KNOWLEDGE_DIR`) and can be overridden via `.env`. There is exactly one
+`KNOWLEDGE_DIR` setting — earlier revisions of this project had two settings
+(`OKF_DATA_DIR` and `KNOWLEDGE_DIR`) that could point at different folders,
+which is why generated files could silently end up outside `knowledge/`. That
+has been fixed: the whole codebase now reads/writes through the single
+`settings.KNOWLEDGE_DIR`.
 
 ---
 

@@ -4,8 +4,8 @@ type: concept
 title: Docker Basics for DevOps
 description: This document provides an introduction to Docker containerization, covering
   core concepts like images and containers, essential CLI commands, a minimal Dockerfile
-  example, and key production best practices. It serves as a foundational guide for
-  integrating Docker into CI/CD pipelines.
+  example, and best practices for production deployments. It highlights Docker's role
+  in CI/CD pipelines and modern infrastructure.
 category: tutorial
 tags:
 - Docker

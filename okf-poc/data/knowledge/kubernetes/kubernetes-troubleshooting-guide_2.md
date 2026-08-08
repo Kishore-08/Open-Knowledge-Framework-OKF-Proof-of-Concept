@@ -3,15 +3,15 @@ id: kubernetes-troubleshooting-guide
 type: concept
 title: Kubernetes Troubleshooting Guide
 description: This document provides troubleshooting steps for common Kubernetes issues
-  such as pods stuck in Pending state, ImagePullBackOff errors, CrashLoopBackOff errors,
-  and unreachable services. Each entry details the symptom, probable cause, diagnosis
-  command, and practical solution.
+  such as Pods stuck in the Pending state, ImagePullBackOff, CrashLoopBackOff, and
+  unreachable Services. For each issue, it outlines the symptoms, probable causes,
+  diagnostic commands, and practical solutions.
 category: kubernetes
 tags:
 - Kubernetes
-- Troubleshooting
-- Pod Management
-- Container Networking
+- Pod Troubleshooting
+- Container Errors
+- Cluster Management
 source:
   name: Ingested document
   url: ''

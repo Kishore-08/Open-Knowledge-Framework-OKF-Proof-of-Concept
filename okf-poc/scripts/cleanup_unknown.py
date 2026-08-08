@@ -22,6 +22,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from app.core.config import settings
 from app.okf.parser import parse_okf_file
 
 
@@ -86,13 +87,18 @@ def main() -> None:
         help="List junk concepts without moving anything",
     )
     parser.add_argument(
+        "--knowledge-dir",
+        default=settings.KNOWLEDGE_DIR,
+        help=f"OKF knowledge repository to scan (default: {settings.KNOWLEDGE_DIR})",
+    )
+    parser.add_argument(
         "--quarantine-dir",
-        default="knowledge/_quarantine",
-        help="Where to move junk concepts (default: knowledge/_quarantine)",
+        default=None,
+        help="Where to move junk concepts (default: <knowledge-dir>/_quarantine)",
     )
     args = parser.parse_args()
 
-    knowledge_dir = "knowledge"
+    knowledge_dir = args.knowledge_dir
     junk = collect_junk(knowledge_dir)
 
     if not junk:
@@ -107,7 +113,7 @@ def main() -> None:
         print("\n--dry-run: nothing was moved.")
         return
 
-    quarantine = args.quarantine_dir
+    quarantine = args.quarantine_dir or os.path.join(knowledge_dir, "_quarantine")
     os.makedirs(quarantine, exist_ok=True)
 
     for path, _reason in junk:
@@ -123,4 +129,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main()git

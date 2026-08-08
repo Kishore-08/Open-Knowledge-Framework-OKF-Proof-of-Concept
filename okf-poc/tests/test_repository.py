@@ -61,9 +61,15 @@ def test_get_concept_dict_serializable(repo):
 def test_search_concepts_ranking(repo):
     results = search_concepts("scale a deployment")
     assert results, "expected at least one hit"
-    # deployment should rank highest for 'deployment'
-    top = results[0]["id"]
-    assert top in ("k8s-deployment", "k8s-service", "k8s-pod")
+    # The top hit should be a kubernetes concept whose title/content is about
+    # deployments/scaling — not tied to a specific fixed set of IDs, since the
+    # real ingested knowledge base (600+ kubernetes docs) can contain a more
+    # specific match than the 3 small seed concepts.
+    top = results[0]
+    assert top["category"] == "kubernetes"
+    assert "deploy" in top["id"] or "scal" in top["id"] or top["id"] in (
+        "k8s-deployment", "k8s-service", "k8s-pod"
+    )
 
 
 def test_search_tag_filter(repo):

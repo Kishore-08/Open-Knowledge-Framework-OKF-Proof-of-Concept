@@ -2,17 +2,17 @@
 id: tutorial-ci-cd-pipeline-guide-for-devops
 type: concept
 title: CI/CD Pipeline Guide for DevOps
-description: This document outlines the fundamentals of Continuous Integration and
-  Continuous Delivery (CI/CD) pipelines, detailing typical stages from source code
-  trigger to deployment verification. It also highlights popular CI/CD tools and best
-  practices for creating efficient, reliable pipelines.
+description: This document outlines the core concepts of Continuous Integration and
+  Continuous Delivery, detailing the six typical stages of a DevOps pipeline from
+  source to verification. It also highlights popular CI/CD tools and best practices
+  for creating efficient, automated deployment workflows.
 category: tutorial
 tags:
 - Continuous Integration
 - Continuous Delivery
 - DevOps
 - Automation
-- Deployment
+- Containerization
 source:
   name: Ingested document
   url: ''

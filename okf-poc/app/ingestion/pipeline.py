@@ -244,7 +244,7 @@ def _process_crawled_html(
     Process the crawler output into OKF concept files. The legacy code only read
     the changed pages produced from the latest HTTP downloads. That means a
     cache-driven crawl that receives 304 responses can leave `data/raw` populated
-    but `data/knowledge` empty because `changed_pages` is empty. This function now
+    but the knowledge repo empty because `changed_pages` is empty. This function now
     recovers the cached crawler pages from the on-disk state whenever the latest
     crawl didn't actually change any pages.
     """
@@ -351,7 +351,7 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
     if raw_dir is None:
         raw_dir = settings.RAW_DATA_DIR
     if okf_dir is None:
-        okf_dir = settings.OKF_DATA_DIR
+        okf_dir = settings.KNOWLEDGE_DIR
 
     print("🚀 Starting OKF Ingestion Pipeline...")
     update_status(

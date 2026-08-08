@@ -141,10 +141,11 @@ def check_api_health():
 def trigger_ingestion():
     """Starts ingestion and displays live backend progress."""
     try:
-        payload = {
-            "raw_dir": "data/raw",
-            "okf_dir": "data/knowledge",
-        }
+        # No hardcoded paths here: let the API fall back to its own settings
+        # (RAW_DATA_DIR / KNOWLEDGE_DIR) so the UI never disagrees with the
+        # backend about where the disposable cache or the knowledge source of
+        # truth live.
+        payload = {}
 
         res = requests.post(
             f"{API_HOST}/api/v1/ingest/",
