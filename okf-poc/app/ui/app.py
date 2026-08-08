@@ -143,7 +143,7 @@ def trigger_ingestion():
     try:
         payload = {
             "raw_dir": "data/raw",
-            "okf_dir": "knowledge/source_1",
+            "okf_dir": "data/knowledge",
         }
 
         res = requests.post(
@@ -338,53 +338,98 @@ with st.sidebar:
         if status:
             current_status = status.get("status", "running")
 
-            st.markdown("### 📊 Ingestion Progress")
+            # Dedicated side-panel placement for the live ingestion telemetry.
+            st.markdown(
+                """
+                <style>
+                .okf-top-telemetry {
+                    margin-top: 0.9rem;
+                    border-radius: 0.80rem;
+                    border: 1px solid rgba(96, 165, 250, 0.35);
+                    padding: 0.75rem;
+                    background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.90));
+                }
+                .okf-top-telemetry .subheader {
+                    font-weight: 700;
+                    font-size: 0.88rem;
+                    margin-bottom: 0.25rem;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
 
-            if current_status in ("completed", "success"):
-                st.success("✅ Ingestion completed")
-                st.session_state.ingestion_running = False
+            with st.container():
+                st.markdown("### 📊 Ingestion Progress")
 
-            elif current_status == "failed":
-                st.error(
-                    f"❌ Ingestion failed: "
-                    f"{status.get('error', 'Unknown error')}"
+                if current_status in ("completed", "success"):
+                    st.success("✅ Ingestion completed")
+                    st.session_state.ingestion_running = False
+
+                elif current_status == "failed":
+                    st.error(
+                        f"❌ Ingestion failed: "
+                        f"{status.get('error', 'Unknown error')}"
+                    )
+                    st.session_state.ingestion_running = False
+
+                else:
+                    st.info("🔄 Ingestion in progress...")
+
+                col1, col2, col3, col4 = st.columns(4)
+
+                col1.metric(
+                    "Discovered",
+                    status.get("discovered", 0),
                 )
-                st.session_state.ingestion_running = False
 
-            else:
-                st.info("🔄 Ingestion in progress...")
-
-            col1, col2, col3, col4 = st.columns(4)
-
-            col1.metric(
-                "Discovered",
-                status.get("discovered", 0),
-            )
-
-            col2.metric(
-                "Fetched",
-                status.get("fetched", 0),
-            )
-
-            col3.metric(
-                "Processed",
-                status.get("processed", 0),
-            )
-
-            col4.metric(
-                "Failed",
-                status.get("failed", 0),
-            )
-
-            if status.get("indexed_documents") is not None:
-                st.metric(
-                    "Indexed",
-                    status.get("indexed_documents", 0),
+                col2.metric(
+                    "Fetched",
+                    status.get("fetched", 0),
                 )
 
-            if st.session_state.ingestion_running:
-                time.sleep(2)
-                st.rerun()
+                col3.metric(
+                    "Processed",
+                    status.get("processed", 0),
+                )
+
+                col4.metric(
+                    "Failed",
+                    status.get("failed", 0),
+                )
+
+                if status.get("indexed_documents") is not None:
+                    st.metric(
+                        "Indexed",
+                        status.get("indexed_documents", 0),
+                    )
+
+                total_docs = status.get("total_documents") or 0
+                processed_docs = status.get("processed") or 0
+                if total_docs:
+                    progress_value = min(100, max(0, int(round((processed_docs / total_docs) * 100))))
+                elif status.get("status") in {"completed", "success"}:
+                    progress_value = 100
+                else:
+                    progress_value = status.get("progress_percent", 0) or 0
+
+                st.subheader("📈 Live Progress")
+                st.progress(progress_value / 100.0, text=f"{progress_value}% complete")
+
+                token_bar = {
+                    "Prompt": status.get("prompt_tokens_estimate", 0) or 0,
+                    "Completion": status.get("completion_tokens_estimate", 0) or 0,
+                }
+                st.markdown("### Token Consumption Estimate")
+                st.bar_chart(token_bar)
+                st.caption(
+                    f"Estimated token usage: {status.get('total_tokens_estimate', 0) or 0} / "
+                    f"{max(total_docs, 1)} document(s)"
+                )
+
+                if st.session_state.ingestion_running:
+                    time.sleep(2)
+                    st.rerun()
 
     st.divider()
     st.caption("Powered by Google OKF, LlamaIndex, and Qdrant.")
@@ -395,6 +440,68 @@ if page == "📚 Knowledge Base":
 
 st.title("🧠 OKF Knowledge Retrieval")
 st.markdown("Ask questions against your enterprise knowledge base. Answers are generated using Hybrid Search and strict OKF citations.")
+
+# Top-right telemetry overlay for the current ingestion cycle. Streamlit does not
+# expose a true absolute top-right layout element, so this is the nearest stable
+# contract: a right-hand, compact, progress-only panel that appears in the main
+# page area whenever a background ingestion is visible to the API.
+if st.session_state.ingestion_running:
+    status = get_ingestion_status() or {}
+    progress_value = status.get("progress_percent") or 0
+    if not progress_value and status.get("total_documents"):
+        processed_docs = status.get("processed") or 0
+        total_docs = status.get("total_documents") or 1
+        progress_value = min(100, int(round((processed_docs / total_docs) * 100)))
+
+    st.markdown(
+        """
+        <style>
+        .okf-right-telemetry {
+            position: fixed;
+            z-index: 10;
+            top: 6rem;
+            right: 1rem;
+            width: min(26rem, 36vw);
+            border-radius: 0.9rem;
+            padding: 0.85rem 1.0rem;
+            background: rgba(15, 23, 42, 0.96);
+            border: 1px solid rgba(125, 211, 252, 0.55);
+            box-shadow: 0 8px 18px rgba(0,0,0,0.16);
+        }
+        .okf-right-telemetry .label {
+            font-size: 0.70rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #93c5fd;
+        }
+        .okf-right-telemetry .big {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: white;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.container():
+        st.markdown(
+            f"""
+            <div class="okf-right-telemetry">
+                <div class="label">Ingestion Telemetry</div>
+                <div class="big">{status.get('status', 'running').title()}</div>
+                <div style="margin-top: 0.4rem;">
+                    <div class="label">Progress</div>
+                    <div style="margin-top: 0.2rem;">{status.get('processed', 0)} / {status.get('total_documents') or max(status.get('processed', 0), 1)} processed</div>
+                </div>
+                <div style="margin-top: 0.4rem;">
+                    <div class="label">Token Estimate</div>
+                    <div style="margin-top: 0.2rem;">Prompt {status.get('prompt_tokens_estimate', 0) or 0} &middot; Completion {status.get('completion_tokens_estimate', 0) or 0}</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 # Display Chat History
 for message in st.session_state.messages:

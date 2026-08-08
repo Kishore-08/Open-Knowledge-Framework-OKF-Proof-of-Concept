@@ -20,6 +20,7 @@ import httpx
 
 from app.core.config import settings
 from app.parser.sitemap import parse_robots_txt, discover_urls_from_sitemap
+from app.ingestion.status import update_status
 
 
 @dataclass
@@ -442,6 +443,14 @@ async def crawl_configured_sources(    raw_dir: Optional[str] = None,) -> dict:
         totals["changed_urls"].extend(result.changed_urls)
         totals["changed_pages"].extend(result.changed_pages)
         totals["deleted_urls"].extend(result.deleted_urls)
+
+        update_status(
+            status="running",
+            message=f"Crawling source {name}",
+            discovered=totals["discovered"],
+            fetched=totals["fetched"],
+            failed=totals["failed"],
+        )
 
         print(
             f"📊 {name}: "

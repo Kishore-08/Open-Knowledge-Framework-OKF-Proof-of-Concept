@@ -45,9 +45,19 @@ def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
     placeholder category) so the pipeline can skip the document instead of writing a
     junk "Unknown Document" concept to the knowledge base.
     """
-    title = (raw_meta or {}).get("title") or ""
-    title = title.strip()
-    placeholder_titles = {"unknown document", "unknown", "unclassified", "metadata extraction failed"}
+    raw_title = (raw_meta or {}).get("title") or ""
+    title = str(raw_title).strip() if raw_title is not None else ""
+    placeholder_titles = {
+        "unknown document",
+        "unknown",
+        "unclassified",
+        "metadata extraction failed",
+        "none",
+        "null",
+        "n/a",
+        "na",
+        "",
+    }
     if not title or title.lower() in placeholder_titles:
         return None
 
@@ -184,15 +194,75 @@ def _file_hash(path: str) -> str:
 
     return digest.hexdigest()
 
+def _discover_cached_crawl_pages(raw_dir: str) -> list[dict]:
+    """
+    Recover crawl pages from the on-disk crawler state so that a rerun can rebuild
+    the knowledge output from already downloaded raw HTML when a cache hit (
+    304 Not Modified) means the changed_pages set is empty.
+
+    The state files live under data/raw/.state/*.json and map URLs to a relative
+    raw_file path that should be re-read from disk.
+    """
+    pages: list[dict] = []
+    state_dir = os.path.join(raw_dir, ".state")
+    if not os.path.isdir(state_dir):
+        return pages
+
+    for filename in sorted(os.listdir(state_dir)):
+        if not filename.endswith(".json"):
+            continue
+        state_path = os.path.join(state_dir, filename)
+        try:
+            with open(state_path, "r", encoding="utf-8") as f:
+                payload = json.load(f) or {}
+            source_name = payload.get("source") or os.path.splitext(filename)[0]
+            for url, meta in (payload.get("pages") or {}).items():
+                raw_file = (meta or {}).get("raw_file")
+                if not raw_file:
+                    continue
+                html_path = os.path.join(raw_dir, raw_file)
+                if os.path.isfile(html_path):
+                    pages.append(
+                        {
+                            "source_name": source_name,
+                            "url": url,
+                            "raw_path": html_path,
+                        }
+                    )
+        except Exception as exc:
+            print(f"⚠️ Could not read crawler state {state_path}: {exc}")
+
+    return pages
+
+
 def _process_crawled_html(
     raw_dir: str,
     okf_dir: str,
     changed_pages: list[dict],
 ) -> int:
+    """
+    Process the crawler output into OKF concept files. The legacy code only read
+    the changed pages produced from the latest HTTP downloads. That means a
+    cache-driven crawl that receives 304 responses can leave `data/raw` populated
+    but `data/knowledge` empty because `changed_pages` is empty. This function now
+    recovers the cached crawler pages from the on-disk state whenever the latest
+    crawl didn't actually change any pages.
+    """
+    pages_to_process = changed_pages or _discover_cached_crawl_pages(raw_dir)
+
+    # Keep the live UI honest while the HTML->Markdown conversion is happening:
+    # the crawler discovered a list of candidate source URLs, and the conversion
+    # step can immediately report a progress denominator to the shared status object.
+    update_status(
+        message="Processing crawled documentation",
+        discovered=len(pages_to_process) if pages_to_process else 0,
+        total_documents=max(0, len(pages_to_process)),
+        processed=0,
+    )
 
     processed = 0
 
-    for page in changed_pages:
+    for page in pages_to_process:
         html_path = page["raw_path"]
         source_name = page["source_name"]
         source_url = page["url"]
@@ -247,6 +317,15 @@ def _process_crawled_html(
                 )
 
             processed += 1
+            update_status(
+                message="Formatting crawled HTML into OKF knowledge",
+                processed=processed,
+                total_documents=max(0, len(pages_to_process)),
+                progress_percent=min(
+                    100,
+                    int(round((processed / max(1, len(pages_to_process))) * 100)),
+                ),
+            )
 
         except Exception as exc:
             update_status(
@@ -275,6 +354,16 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
         okf_dir = settings.OKF_DATA_DIR
 
     print("🚀 Starting OKF Ingestion Pipeline...")
+    update_status(
+        status="running",
+        message="Ingestion started",
+        discovered=0,
+        fetched=0,
+        processed=0,
+        failed=0,
+        indexed=0,
+        indexed_documents=0,
+    )
 
     # 0. Crawl configured official documentation sources.
     crawl_result = asyncio.run(crawl_configured_sources(raw_dir=raw_dir))
@@ -342,25 +431,42 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
         f"📂 Local raw files: changed/new={len(changed_local_files)}"
     )
 
+    # Re-run the local raw conversion whenever the pipeline is invoked from the
+    # API even for a cache hit crawl. The incremental state only tells us which
+    # inputs changed. However a fresh call into the API should still have the
+    # filesystem authoritative input count at its disposal. When the state
+    # indicates 'no changed files' we can fall back to the full raw tree rather
+    # than silently treating the repository as empty.
     if changed_local_files:
-        raw_docs = []
-
-        for file_path in changed_local_files:
-            try:
-                reader = SimpleDirectoryReader(
-                    input_files=[file_path]
-                )
-                raw_docs.extend(reader.load_data())
-            except Exception as exc:
-                print(
-                    f"⚠️ Failed to load changed local file "
-                    f"{file_path}: {exc}"
-                )
+        local_files = changed_local_files
     else:
-        raw_docs = []
+        local_files = _discover_local_raw_files(raw_dir)
+
+    raw_docs = []
+    for file_path in local_files:
+        try:
+            reader = SimpleDirectoryReader(
+                input_files=[file_path]
+            )
+            raw_docs.extend(reader.load_data())
+        except Exception as exc:
+            print(
+                f"⚠️ Failed to load local file "
+                f"{file_path}: {exc}"
+            )
 
     print(
-        f"📄 Loading {len(raw_docs)} changed local documents for processing."
+        f"📄 Loading {len(raw_docs)} local documents for processing."
+    )
+
+    update_status(
+        status="running",
+        message="Preparing local document conversion",
+        total_documents=len(raw_docs),
+        processed=crawled_count,
+        discovered=crawl_result.get("discovered", 0),
+        fetched=crawl_result.get("fetched", 0),
+        failed=crawl_result.get("failed", 0),
     )
 
     saved_count = 0
@@ -401,11 +507,25 @@ def run_ingestion_pipeline(raw_dir: str = None, okf_dir: str = None):
 
             # Use the slug id as the filename for consistency
             filename = f"{okf_meta['id']}_{i}.md"
+            category_dir = os.path.join(okf_dir, str(okf_meta.get("category") or "reference").strip())
+            os.makedirs(category_dir, exist_ok=True)
 
             # Physically save the OKF-formatted Markdown file to disk
-            format_and_save_okf(text=doc.text, metadata=okf_meta, output_dir=okf_dir, filename=filename)
+            format_and_save_okf(
+                text=doc.text,
+                metadata=okf_meta,
+                output_dir=category_dir,
+                filename=filename,
+            )
 
             saved_count += 1
+            update_status(
+                status="running",
+                message=f"Saving OKF file {saved_count}/{len(raw_docs)}",
+                processed=crawled_count + saved_count,
+                total_documents=len(raw_docs) + max(0, crawled_count),
+                indexed_documents=0,
+            )
 
             source_file = okf_meta.get("source_file")
 

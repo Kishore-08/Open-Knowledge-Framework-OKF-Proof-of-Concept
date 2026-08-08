@@ -21,8 +21,8 @@ class Settings(BaseSettings):
 
     # Data Directories
     RAW_DATA_DIR: str = "data/raw"
-    OKF_DATA_DIR: str = "knowledge/source_1"
-    KNOWLEDGE_DIR: str = "knowledge"
+    OKF_DATA_DIR: str = "data/knowledge"
+    KNOWLEDGE_DIR: str = "data/knowledge"
     CACHE_DIR: str = "cache"
     SOURCES_CONFIG: str = "config/sources.yaml"
 

@@ -1,0 +1,31 @@
+---
+id: kubernetes-extending-the-kubernetes-api-6340108f
+type: concept
+title: Extending the Kubernetes API
+description: 'Custom resources are extensions of the Kubernetes API. Kubernetes provides
+  two ways to add custom resources to your cluster:'
+category: kubernetes
+tags: []
+source:
+  name: kubernetes
+  url: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/
+updated_at: '2026-08-08'
+created_at: '2026-08-08'
+---
+
+# Extending the Kubernetes API
+
+Custom resources are extensions of the Kubernetes API. Kubernetes provides two ways to add custom resources to your cluster:
+
+- The [CustomResourceDefinition](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
+  (CRD) mechanism allows you to declaratively define a new custom API with an API group, kind, and
+  schema that you specify.
+  The Kubernetes control plane serves and handles the storage of your custom resource. CRDs allow you to
+  create new types of resources for your cluster without writing and running a custom API server.
+- The [aggregation layer](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/apiserver-aggregation/)
+  sits behind the primary API server, which acts as a proxy.
+  This arrangement is called API Aggregation (AA), which allows you to provide
+  specialized implementations for your custom resources by writing and
+  deploying your own API server.
+  The main API server delegates requests to your API server for the custom APIs that you specify,
+  making them available to all of its clients.

@@ -64,28 +64,74 @@ def _is_usable_concept(meta) -> bool:
     return True
 
 
+def _resolve_knowledge_roots(knowledge_dir: Optional[str] = None) -> list[str]:
+    """Return the repository roots that should be used for a read."""
+    if knowledge_dir:
+        # An explicit directory should be authoritative for that call.
+        return [knowledge_dir]
+
+    requested = settings.KNOWLEDGE_DIR
+    roots = []
+
+    if requested:
+        roots.append(requested)
+
+    # Backwards-compatible read path for repositories already checked into the repo
+    # under the old `knowledge/` location. The runtime can still populate the new
+    # `data/knowledge` root, but tests and legacy APIs need a compatible
+    # filesystem fallback instead of an empty knowledge view when the current root
+    # is not yet populated.
+    legacy_root = "knowledge"
+    if legacy_root not in roots:
+        roots.append(legacy_root)
+
+    # De-duplicate while preserving order.
+    ordered: list[str] = []
+    seen = set()
+    for root in roots:
+        resolved = os.path.abspath(root)
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        ordered.append(root)
+    return ordered
+
+
 def load_all_concepts(knowledge_dir: Optional[str] = None, use_cache: bool = True) -> list[OKFConceptFile]:
     """
     Load and validate every concept in the knowledge repository.
     Files whose frontmatter fails validation are skipped with a warning.
+
+    When the configured repository root is empty (e.g. a fresh data/knowledge layout
+    before ingestion has produced files), the function falls back to the legacy
+    checked-in repository root so callers continue to see a valid knowledge set.
     """
     global _cache, _cache_knowledge_dir, _cache_key_value
     root = knowledge_dir or settings.KNOWLEDGE_DIR
 
+    # A simple compatibility path: keep the canonical runtime root and add the
+    # legacy checked-in knowledge repository as a filesystem fallback.
     if use_cache and _cache_knowledge_dir == root and _cache_key_value == _cache_key(root):
         return _cache.get(root, [])
 
     concepts: list[OKFConceptFile] = []
-    for path in _concept_files(root):
-        try:
-            raw_meta, body = parse_okf_file(path)
-            meta = OKFConcept.model_validate(raw_meta)
-            if not _is_usable_concept(meta):
-                print(f"⚠️ Skipping unusable OKF concept (bad title/category): {path}")
+    seen_paths = set()
+    for candidate_root in _resolve_knowledge_roots(knowledge_dir):
+        if not os.path.isdir(candidate_root):
+            continue
+        for path in _concept_files(candidate_root):
+            if path in seen_paths:
                 continue
-            concepts.append(OKFConceptFile(metadata=meta, content=body.strip(), filepath=path))
-        except Exception as exc:  # noqa: BLE001 - a single bad file must not break the repo
-            print(f"⚠️ Skipping invalid OKF concept: {path} ({exc})")
+            seen_paths.add(path)
+            try:
+                raw_meta, body = parse_okf_file(path)
+                meta = OKFConcept.model_validate(raw_meta)
+                if not _is_usable_concept(meta):
+                    print(f"⚠️ Skipping unusable OKF concept (bad title/category): {path}")
+                    continue
+                concepts.append(OKFConceptFile(metadata=meta, content=body.strip(), filepath=path))
+            except Exception as exc:  # noqa: BLE001 - a single bad file must not break the repo
+                print(f"⚠️ Skipping invalid OKF concept: {path} ({exc})")
 
     # cache for the duration of a process
     _cache[root] = concepts

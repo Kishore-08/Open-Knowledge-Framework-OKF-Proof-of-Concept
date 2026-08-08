@@ -33,7 +33,7 @@ sources:
     enabled: false
 
 crawler:
-  delay: 0.5          # seconds between requests (politeness)
+  delay: 0.05          # seconds between requests (politeness)
   timeout: 30
-  max_urls_per_source: 500
+  max_urls_per_source: 50
   user_agent: "OKF-Crawler/1.0"
