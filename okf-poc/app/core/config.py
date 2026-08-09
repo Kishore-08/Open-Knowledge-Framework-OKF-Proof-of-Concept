@@ -44,7 +44,10 @@ class Settings(BaseSettings):
     # larger free allowance and produces good grounded answers for this PoC.
     LLM_MODEL: str = "gemini-flash-lite-latest"
     # If LLM_MODEL fails (400 unknown model / 429 quota exhausted), fall back to
-    # this model. It shares the same API key but has a separate quota pool.
+    # this model. It must be a DIFFERENT model from LLM_MODEL - each Gemini model
+    # has its own quota pool, so falling back to the same model provides no
+    # resilience at all (app/core/gemini_llm.complete() also de-dupes identical
+    # model names, so a matching fallback is silently skipped).
     LLM_FALLBACK_MODEL: str = "gemini-flash-lite-latest"
     EMBEDDING_MODEL: str = "models/gemini-embedding-001"
     TEMPERATURE: float = 0.1

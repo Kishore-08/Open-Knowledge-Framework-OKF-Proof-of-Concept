@@ -197,38 +197,6 @@ def search_concepts(
     knowledge_dir: Optional[str] = None,
 ) -> List[dict]:
     """
-    Filesystem keyword + metadata + tag search over the knowledge repository. """
-
-
-def knowledge_stats(knowledge_dir: Optional[str] = None) -> dict:
-    """Statistics about the knowledge repository."""
-    concepts = load_all_concepts(knowledge_dir)
-    categories = {}
-    tags_count = {}
-    
-    for concept in concepts:
-        cat = concept.metadata.category
-        categories[cat] = categories.get(cat, 0) + 1
-        
-        for tag in concept.metadata.tags:
-            tags_count[tag] = tags_count.get(tag, 0) + 1
-    
-    return {
-        "total_concepts": len(concepts),
-        "categories": len(categories),
-        "category_breakdown": categories,
-        "unique_tags": len(tags_count),
-        "top_tags": sorted(tags_count.items(), key=lambda x: x[1], reverse=True)[:10]
-    }
-
-
-def search_concepts(
-    query: str,
-    category: Optional[str] = None,
-    tag: Optional[str] = None,
-    knowledge_dir: Optional[str] = None,
-) -> List[dict]:
-    """
     Filesystem keyword + metadata + tag search over the knowledge repository.
 
     Returns concepts that match, ranked by how many searchable fields matched.

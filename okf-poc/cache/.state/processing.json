@@ -1,5 +1,9 @@
 {
   "files": {
+    "aws_services_project_guide.pdf": {
+      "content_hash": "e5690c0cebd91b507ce968ccecb315d2ecd9de1b986717256402d3ec72600b8b",
+      "okf_file": "architecture-aws-services-roadmap-for-okf-poc_10.md"
+    },
     "ci-cd-pipeline.pdf": {
       "content_hash": "3a69616d78a808c75aeefc53485a188d30899f87f0188abafa34e27690eb09f6",
       "okf_file": "tutorial-ci-cd-pipeline-guide-for-devops_0.md"
