@@ -39,18 +39,22 @@ class Settings(BaseSettings):
     CONCEPT_MAX_CHARS: int = 4000
 
     # Models
-    # gemini-3.5-flash also works, but the free-tier quota for it is very
-    # tight (20 requests/day for fresh keys). gemini-flash-lite-latest has a
-    # larger free allowance and produces good grounded answers for this PoC.
-    LLM_MODEL: str = "gemini-flash-lite-latest"
+     # gemini-3.5-flash is the current default answer-generation model. The
+    # free-tier quota for it is tighter than gemini-flash-lite-latest, so you
+    # may want to fall back to the latter if you hit 429 quota exhaustion often.
+    LLM_MODEL: str = "gemini-3.5-flash"
     # If LLM_MODEL fails (400 unknown model / 429 quota exhausted), fall back to
     # this model. It must be a DIFFERENT model from LLM_MODEL - each Gemini model
     # has its own quota pool, so falling back to the same model provides no
     # resilience at all (app/core/gemini_llm.complete() also de-dupes identical
     # model names, so a matching fallback is silently skipped).
-    LLM_FALLBACK_MODEL: str = "gemini-2.0-flash-lite"
-    EMBEDDING_MODEL: str = "models/gemini-embedding-001"
-    TEMPERATURE: float = 0.1
+    # NOTE: plain `gemini-3.5` does NOT exist in the API - use
+    # `gemini-3.5-flash-lite` as the alternate-quota fallback.
+    LLM_FALLBACK_MODEL: str = "gemini-3.5-flash-lite"
+    # gemini-embedding-001's free-tier quota (1000 req/day) is easily exhausted;
+    # gemini-embedding-2 has a separate quota pool and produces 3072-dim vectors.
+    EMBEDDING_MODEL: str = "models/gemini-embedding-2"
+    TEMPERATURE: float = 0.0
 
     # LLM resilience: retry Gemini calls on 429 quota/rate-limit errors.
     LLM_MAX_RETRIES: int = 3

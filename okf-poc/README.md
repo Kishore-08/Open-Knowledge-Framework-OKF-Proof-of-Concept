@@ -395,20 +395,31 @@ The project includes a complete **Ragas Evaluation** suite.
 
 It evaluates:
 
-- Faithfulness (used as the RAG hallucination / grounding proxy)
-- Context Precision
-- Context Recall
-- Answer Correctness
-- Citation Quality (fraction of retrieved, citable sources actually cited in the answer)
+- Retrieval Quality (Context Precision, Context Recall, Answer Relevancy)
+- Answer Correctness (accuracy against the ground truth)
+- Hallucination Rate (`1 - faithfulness`, using Faithfulness as the RAG hallucination / grounding proxy)
+- Source Citation Quality (fraction of retrieved, citable sources actually cited in the answer)
+- Document Observations (per-document retrieval/citation tallies across the run)
 
 ---
 
 ## Install Dependencies
 
-```bash
-pip install -r requirements.txt
-```
+The evaluation requires the RAGAS 0.1.9 stack. Install it in a dedicated
+virtualenv (the pinned versions in `requirements/eval.txt` are the only ones
+compatible with `evaluation/evaluate_ragas.py`):
+ 
 
+```bash
+python3 -m venv .venv-eval
+source .venv-eval/bin/activate
+pip install -r requirements/eval.txt
+```
+ 
+> Do not upgrade ragas: `ragas.metrics.collections` exports metric **classes**
+> (not instances) in ragas>=0.2, and `response_relevancy` does not exist in any
+> ragas version — the metric is named `answer_relevancy`. The script pins the
+> 0.1.9-era API it actually uses.
 ---
 
 ## Ensure Services are Running
@@ -424,9 +435,11 @@ Make sure:
 ## Execute Evaluation
 
 ```bash
-python evaluation/evaluate_ragas.py
+GEMINI_API_KEY=<your-key> GEMINI_EVAL_MODEL=gemini-3.5-flash \
+  python evaluation/evaluate_ragas.py
 ```
-
+The judge model defaults to `gemini-3.5-flash` and can be overridden with
+`GEMINI_EVAL_MODEL` (e.g. `gemini-3.5-flash-lite`).
 ---
 
 ## Output
@@ -442,7 +455,7 @@ Generated files include:
 ```text
 evaluation_details_<timestamp>.csv   Per-question metrics + citation-quality columns
 
-evaluation_summary_<timestamp>.json  Overall averages + 80% success-rate verdict
+evaluation_summary_<timestamp>.json  Overall averages + per-area scores + document observations
 ```
 
 ---
