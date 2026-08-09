@@ -86,13 +86,19 @@ def build_concepts_index(*, collection_name: Optional[str] = None, with_embeddin
         return {"indexed": 0, "error": "Gemini API key required for embeddings. Set GEMINI_API_KEY."}
 
     source_files = [d.metadata["source_file"] for d in docs if d.metadata.get("source_file")]
-    index_documents(
+    _index, failed_ids = index_documents(
         docs,
         collection_name=collection_name,
         source_files=source_files,
         show_progress=True,
     )
-    return {"indexed": len(docs), "collection": collection_name}
+    result = {
+        "indexed": len(docs) - len(failed_ids),
+        "collection": collection_name,
+    }
+    if failed_ids:
+        result["failed"] = failed_ids
+    return result
 
 
 if __name__ == "__main__":

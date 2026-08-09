@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     # has its own quota pool, so falling back to the same model provides no
     # resilience at all (app/core/gemini_llm.complete() also de-dupes identical
     # model names, so a matching fallback is silently skipped).
-    LLM_FALLBACK_MODEL: str = "gemini-flash-lite-latest"
+    LLM_FALLBACK_MODEL: str = "gemini-2.0-flash-lite"
     EMBEDDING_MODEL: str = "models/gemini-embedding-001"
     TEMPERATURE: float = 0.1
 

@@ -14,6 +14,7 @@ import time
 from typing import List, Optional
 
 from app.core.config import settings
+from app.core.retry import retry_with_backoff
 from app.okf.repository import get_concept_dict
 from app.query.search import search
 
@@ -112,26 +113,16 @@ def _call_llm(query: str, context_block: str) -> str:
     # Retry with exponential backoff on Gemini 429 quota/rate-limit errors.
     # The free tier reports `limit: 0` for generate_content_free_tier_requests,
     # so transient quota exhaustion is retried before degrading gracefully.
-    for attempt in range(1, settings.LLM_MAX_RETRIES + 1):
-        try:
-            return gemini_complete(prompt_text, temperature=settings.TEMPERATURE)
-        except Exception as exc:
-            if attempt == settings.LLM_MAX_RETRIES or not _is_retryable_429(exc):
-                raise
-            delay = settings.LLM_RETRY_BASE_DELAY * (2 ** (attempt - 1))
-            print(
-                f"⚠️ Gemini rate limit (429) hit, retrying in {delay:.0f}s "
-                f"(attempt {attempt}/{settings.LLM_MAX_RETRIES})"
-            )
-            time.sleep(delay)
+    def _on_retry(attempt: int, delay: float, exc: Exception) -> None:
+        print(
+            f"⚠️ Gemini rate limit (429) hit, retrying in {delay:.0f}s "
+            f"(attempt {attempt}/{settings.LLM_MAX_RETRIES})"
+        )
 
-    raise RuntimeError("unreachable")
-
-
-def _is_retryable_429(exc: Exception) -> bool:
-    """Return True when an exception indicates a Gemini quota/rate-limit error."""
-    text = str(exc)
-    if "429" in text:
-        return True
-    lowered = text.lower()
-    return "quota" in lowered or "rate limit" in lowered or "resource_exhausted" in lowered
+    return retry_with_backoff(
+        lambda: gemini_complete(prompt_text, temperature=settings.TEMPERATURE),
+        max_retries=settings.LLM_MAX_RETRIES,
+        base_delay=settings.LLM_RETRY_BASE_DELAY,
+        sleep=time.sleep,
+        on_retry=_on_retry,
+    )

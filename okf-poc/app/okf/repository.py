@@ -168,6 +168,32 @@ def get_concept_dict(concept_id: str, knowledge_dir: Optional[str] = None) -> Op
 
 _SEARCHABLE = ("title", "aliases", "description", "tags", "content")
 
+# Keyword scores are computed as an unbounded sum of weighted token-hit
+# counts (see `search_concepts` below), then optionally multiplied by up to
+# 15x for definition-style queries - production values of 27.0 and 135.0
+# have been observed for the same query. Semantic search (`app.query.
+# search._semantic_search`) reports cosine similarity, always 0.0-1.0. Both
+# lists get merged in `app.query.search.search()` and are exposed verbatim
+# via `Citation.score`, which the API documents as "0.0 to 1.0" - so a raw
+# keyword score leaking through violates that contract and makes the two
+# result types visually incomparable to API consumers.
+#
+# `_normalize_keyword_score` squashes the raw score into [0.0, 1.0) via
+# score / (score + K). This is monotonic (search-result ordering, which is
+# computed from the raw score before normalization, is unaffected) and maps
+# 0 -> 0.0, a single weak hit (score=2.0) -> ~0.2, and a strong boosted
+# match (score=100+) -> ~0.9+. K was chosen so a solid single-field keyword
+# match (score ~= 4-6, e.g. two tag/title hits) lands in a similar range to
+# a good semantic match (~0.5-0.7), rather than always looking weaker.
+_KEYWORD_SCORE_NORMALIZATION_K = 8.0
+
+
+def _normalize_keyword_score(raw_score: float) -> float:
+    """Squash an unbounded keyword score into [0.0, 1.0); see constant above."""
+    if raw_score <= 0:
+        return 0.0
+    return raw_score / (raw_score + _KEYWORD_SCORE_NORMALIZATION_K)
+
 _STOPWORDS = {
     "a", "an", "the", "and", "or", "of", "in", "on", "for", "to", "do", "does",
     "did", "i", "you", "we", "they", "he", "she", "it", "is", "are", "was",
@@ -201,6 +227,9 @@ def search_concepts(
 
     Returns concepts that match, ranked by how many searchable fields matched.
     This is intentionally dependency-free and complements semantic search.
+    `score` is normalized into [0.0, 1.0) (see `_normalize_keyword_score`) so
+    it is comparable with, and safe to merge alongside, semantic search's
+    cosine-similarity scores - see `app.query.search.search()`.
     """
     tokens = [t.lower() for t in re.findall(r"[a-z0-9_-]+", query.lower())] if query else []
     tokens = [t for t in tokens if t not in _STOPWORDS]
@@ -254,7 +283,7 @@ def search_concepts(
             results.append({"id": meta.id, "title": meta.title, "category": meta.category,
                             "description": meta.description, "tags": meta.tags,
                             "source_url": meta.source.url if meta.source else None,
-                            "snippet": snippet, "score": round(score, 3),
+                            "snippet": snippet, "score": round(_normalize_keyword_score(score), 3),
                             "matched_fields": matched_fields})
 
     results.sort(key=lambda r: r["score"], reverse=True)

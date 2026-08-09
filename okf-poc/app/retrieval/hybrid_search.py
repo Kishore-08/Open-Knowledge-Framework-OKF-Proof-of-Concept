@@ -1,4 +1,5 @@
 import os
+import time
 from typing import List, Optional
 
 import qdrant_client
@@ -8,6 +9,7 @@ from llama_index.core.node_parser import SentenceSplitter
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 
 from app.core.config import settings
+from app.core.retry import retry_with_backoff
 
 
 def get_qdrant_vector_store(collection_name: str = None) -> QdrantVectorStore:
@@ -135,9 +137,22 @@ def index_documents(
     write to the vector store identically:
       1. reset any hybrid (sparse) leftovers,
       2. delete previously stored chunks for the given source files (idempotent),
-      3. chunk + embed + upsert the documents.
+      3. chunk + embed + upsert the documents, one at a time, with the same
+         429/quota retry-with-backoff policy used for answer generation.
 
-    Returns the built VectorStoreIndex (unused by callers; the upsert is the point).
+    IMPORTANT: this used to call `VectorStoreIndex.from_documents(documents, ...)`
+    in one shot with no retry handling around the embedding calls. On the Gemini
+    free tier that meant the *first* 429 anywhere in a batch of hundreds of
+    documents raised and aborted the whole call - which is why ingestion runs
+    were observed to silently stop after ~79/874 documents indexed, leaving
+    semantic search permanently degraded until a full manual re-run. Indexing
+    one document at a time means a transient quota error only costs that one
+    document (which is retried with backoff, same as `app.query.engine`), and a
+    failure that exhausts retries is skipped and reported instead of aborting
+    the remaining hundreds of documents.
+
+    Returns the VectorStoreIndex plus the list of document ids that failed to
+    index after retries were exhausted (empty on full success).
     """
     collection_name = collection_name or settings.QDRANT_CONCEPTS_COLLECTION
     source_files = source_files or []
@@ -151,9 +166,45 @@ def index_documents(
         chunk_size=settings.CHUNK_SIZE,
         chunk_overlap=settings.CHUNK_OVERLAP,
     )
-    return VectorStoreIndex.from_documents(
-        documents,
+
+    index = VectorStoreIndex(
+        nodes=[],
         storage_context=storage_context,
         transformations=[splitter],
-        show_progress=show_progress,
     )
+
+    failed_ids: List[str] = []
+    total = len(documents)
+    for i, doc in enumerate(documents, start=1):
+        doc_id = doc.metadata.get("id") or doc.metadata.get("source_file") or f"doc-{i}"
+
+        def _on_retry(attempt: int, delay: float, exc: Exception, doc_id=doc_id) -> None:
+            print(
+                f"⚠️ Embedding rate limit (429) hit for '{doc_id}', retrying in "
+                f"{delay:.0f}s (attempt {attempt}/{settings.LLM_MAX_RETRIES})"
+            )
+
+        try:
+            retry_with_backoff(
+                lambda doc=doc: index.insert(doc),
+                max_retries=settings.LLM_MAX_RETRIES,
+                base_delay=settings.LLM_RETRY_BASE_DELAY,
+                sleep=time.sleep,
+                on_retry=_on_retry,
+            )
+        except Exception as exc:  # noqa: BLE001 - one bad document must not abort the run
+            failed_ids.append(doc_id)
+            print(f"❌ Failed to index '{doc_id}' after retries, skipping: {exc}")
+
+        if show_progress and (i % 25 == 0 or i == total):
+            print(f"  ...indexed {i - len(failed_ids)}/{total} documents ({len(failed_ids)} failed so far)")
+
+    if failed_ids:
+        print(
+            f"⚠️ Indexing finished with {len(failed_ids)}/{total} document(s) failed "
+            f"after retries: {failed_ids[:10]}{'...' if len(failed_ids) > 10 else ''}. "
+            "Re-run indexing later to retry just the failures (idempotent re-ingest "
+            "will replace any partially-indexed chunks for these source files)."
+        )
+
+    return index, failed_ids

@@ -568,18 +568,25 @@ def run_ingestion_pipeline(cache_dir: str = None, knowledge_dir: str = None):
         return {"status": "skipped", "message": "No valid OKF concepts were produced."}
 
     source_files = [d.metadata["source_file"] for d in docs if d.metadata.get("source_file")]
-    index_documents(
+    _index, failed_ids = index_documents(
         docs,
         collection_name=settings.QDRANT_CONCEPTS_COLLECTION,
         source_files=source_files,
+        show_progress=True,
     )
+    if failed_ids:
+        print(
+            f"⚠️ {len(failed_ids)}/{len(docs)} document(s) were not indexed into Qdrant "
+            "after retries (see log above). Filesystem knowledge/ still has them, so "
+            "keyword search will find them; re-run ingestion to retry indexing."
+        )
 
     update_status(
         status="completed",
         message="Ingestion completed",
         processed=crawled_count + saved_count,
-        indexed=len(docs),
-        failed=crawl_result["failed"],
+        indexed=len(docs) - len(failed_ids),
+        failed=crawl_result["failed"] + len(failed_ids),
     )
 
     print("✅ Ingestion Pipeline Complete!")

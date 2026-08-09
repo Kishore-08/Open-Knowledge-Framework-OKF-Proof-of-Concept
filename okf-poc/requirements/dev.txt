@@ -2,6 +2,7 @@
 -r ui.txt
 
 pytest
+pytest-asyncio
 pytest-cov
 
 black
