@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from .routers import ingest_router, query_router, concepts_router, ask_router
+from .routers import ingest_router, query_router, concepts_router, ask_router, jobs_router
 
 # Initialize the FastAPI application
 app = FastAPI(
@@ -27,6 +27,7 @@ app.include_router(ingest_router, prefix="/api/v1")
 app.include_router(query_router, prefix="/api/v1")
 app.include_router(concepts_router, prefix="/api/v1")
 app.include_router(ask_router, prefix="/api/v1")
+app.include_router(jobs_router, prefix="/api/v1")
 
 # Health Check Endpoint
 @app.get("/health", tags=["System"])

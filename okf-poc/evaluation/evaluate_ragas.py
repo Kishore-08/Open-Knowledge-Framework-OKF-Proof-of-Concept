@@ -25,9 +25,69 @@ def load_dataset(filepath: str) -> list:
         data = json.load(f)
     return data["questions"]
 
+
+def citation_quality(answer: str, sources: list) -> dict:
+    """
+    Deterministic citation-quality proxy (no extra LLM judge call).
+
+    A well-grounded OKF answer must cite the retrieved evidence. For each source
+    we check:
+
+    * citable    - the source carries both a `title` and a `source_url`
+      (the fields the query engine ships to the LLM as the citation line),
+    * cited      - the answer text actually mentions that title or URL.
+
+    Returns the per-question sub-scores; the overall `citation_score` is the
+    fraction of citable sources that the answer visibly cited. This is a
+    grounding/attribution proxy - it measures whether the answer points at its
+    evidence, not whether the evidence was used verbatim.
+    """
+    if not sources:
+        return {
+            "source_count": 0,
+            "citable_sources": 0,
+            "cited_in_answer": 0,
+            "citation_score": 0.0,
+            "source_completeness": 0.0,
+        }
+
+    citable = [
+        s
+        for s in sources
+        if (s.get("title") or "").strip() and (s.get("source_url") or "").strip()
+    ]
+
+    if not citable:
+        return {
+            "source_count": len(sources),
+            "citable_sources": 0,
+            "cited_in_answer": 0,
+            "citation_score": 0.0,
+            "source_completeness": 0.0,
+        }
+
+    answer_lower = (answer or "").lower()
+    cited = 0
+    for s in citable:
+        title = (s.get("title") or "").strip().lower()
+        url = (s.get("source_url") or "").strip().lower()
+        if title and title in answer_lower:
+            cited += 1
+        elif url and url in answer_lower:
+            cited += 1
+
+    return {
+        "source_count": len(sources),
+        "citable_sources": len(citable),
+        "cited_in_answer": cited,
+        "citation_score": cited / len(citable),
+        "source_completeness": len(citable) / len(sources),
+    }
+
+
 def run_evaluation():
     """
-    Executes the 20 questions against our OKF PoC pipeline, formats the results 
+    Executes the 20 questions against our OKF PoC pipeline, formats the results
     for the Ragas framework, and calculates performance metrics.
     """
     print("🚀 Starting OKF Pipeline Evaluation using Ragas...")
@@ -40,12 +100,18 @@ def run_evaluation():
         
     questions_data = load_dataset(dataset_path)
 
-    # Data structures required by Ragas
+    # Data structures required by Ragas (plus the citation-quality columns we
+    # keep alongside for evidence in the results CSV/JSON).
     data = {
         "question": [],
         "answer": [],
         "contexts": [],
-        "ground_truth": []
+        "ground_truth": [],
+        "citation_score": [],
+        "source_count": [],
+        "citable_sources": [],
+        "cited_in_answer": [],
+        "citation_sources": [],
     }
 
     print(f"🧠 Querying {len(questions_data)} questions. This may take a few minutes...")
@@ -68,11 +134,29 @@ def run_evaluation():
             for s in result.sources
         ]
 
+        # Citation-quality evidence: which sources were citable and did the
+        # answer actually cite them?
+        citation = citation_quality(answer, result.sources)
+
         # Append to our dataset
         data["question"].append(q)
         data["answer"].append(answer)
         data["contexts"].append(contexts)
         data["ground_truth"].append(gt)
+        data["citation_score"].append(citation["citation_score"])
+        data["source_count"].append(citation["source_count"])
+        data["citable_sources"].append(citation["citable_sources"])
+        data["cited_in_answer"].append(citation["cited_in_answer"])
+        data["citation_sources"].append(
+            [
+                {
+                    "title": s.get("title"),
+                    "source_url": s.get("source_url"),
+                    "score": s.get("score"),
+                }
+                for s in result.sources
+            ]
+        )
 
     # 3. Convert to HuggingFace Dataset format (required by Ragas)
     hf_dataset = Dataset.from_dict(data)
@@ -81,7 +165,7 @@ def run_evaluation():
     print("\n📊 Running Ragas metrics (Faithfulness, Correctness, Precision, Relevance)...")
     
     metrics = [
-        faithfulness,        # Measures hallucination rate
+        faithfulness,        # Grounding proxy: used as the RAG hallucination/faithfulness proxy
         answer_correctness,  # Measures accuracy against ground truth
         response_relevancy,   # Measures if the retrieved OKF chunks actually pertain to the question
         context_precision    # Measures if the relevant OKF chunks were ranked at the top
@@ -116,7 +200,10 @@ def run_evaluation():
             "faithfulness_score": df["faithfulness"].mean(),
             "answer_correctness_score": df["answer_correctness"].mean(),
             "response_relevancy_score": df["response_relevancy"].mean(),
-            "context_precision_score": df["context_precision"].mean()
+            "context_precision_score": df["context_precision"].mean(),
+            "citation_quality_score": df["citation_score"].mean(),
+            "average_cited_sources": df["cited_in_answer"].mean(),
+            "average_citable_sources": df["citable_sources"].mean(),
         },
         "success_rate_estimate": df["answer_correctness"].mean() * 100 
     }
@@ -132,6 +219,7 @@ def run_evaluation():
     print(f"   Faithfulness (Anti-Hallucination): {summary['overall_scores']['faithfulness_score']:.2f}")
     print(f"   Answer Correctness: {summary['overall_scores']['answer_correctness_score']:.2f}")
     print(f"   Retrieval Precision: {summary['overall_scores']['context_precision_score']:.2f}")
+    print(f"   Citation Quality: {summary['overall_scores']['citation_quality_score']:.2f}")
     print(f"   Estimated Success Rate: {summary['success_rate_estimate']:.1f}%")
     
     if summary['success_rate_estimate'] >= 80:

@@ -346,11 +346,11 @@ This enables:
 
 The solution integrates **Ragas** to continuously evaluate:
 
-- Faithfulness
+- Faithfulness (used as the RAG hallucination / grounding proxy)
 - Answer Correctness
 - Context Recall
 - Context Precision
-- Hallucination Rate
+- Citation Quality (fraction of retrieved, citable sources actually cited in the answer)
 
 This ensures the system consistently meets enterprise accuracy requirements before deployment.
 

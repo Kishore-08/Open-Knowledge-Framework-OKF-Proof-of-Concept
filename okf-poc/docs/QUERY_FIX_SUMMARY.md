@@ -96,7 +96,7 @@ Answer: "Kubernetes is a portable, extensible, open source platform for managing
 
 ## Test Results
 
-Comprehensive test suite (`test_queries_comprehensive.py`):
+Comprehensive test suite (`tests/integration/test_queries_comprehensive.py`):
 
 | Query | Status | Notes |
 |-------|--------|-------|

@@ -3,6 +3,7 @@ import re
 import asyncio
 import hashlib
 import json
+import threading
 from pathlib import Path
 from datetime import date
 from typing import Optional
@@ -32,6 +33,8 @@ from app.retrieval.hybrid_search import (
     delete_points_by_field,
 )
 from app.storage.state_manager import StateManager
+
+from app.jobs.manager import JobCancelledError
 
 def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
     """
@@ -107,6 +110,16 @@ def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
         "trust_level": raw_meta.get("trust_level") or "Medium",
         "source_file": source_file or None,
     }
+
+def _check_cancelled(cancel_event: Optional[threading.Event]) -> None:
+    """Cooperative cancellation check between pipeline stages."""
+    if cancel_event is not None and cancel_event.is_set():
+        update_status(
+            status="failed",
+            message="Ingestion cancelled by user",
+        )
+        raise JobCancelledError
+
 
 def _processing_state_path(cache_dir: str) -> str:
     state_dir = os.path.join(cache_dir, ".state")
@@ -240,6 +253,7 @@ def _process_crawled_html(
     cache_dir: str,
     knowledge_dir: str,
     changed_pages: list[dict],
+    cancel_event: Optional[threading.Event] = None,
 ) -> int:
     """
     Process the crawler output into OKF concept files. The legacy code only read
@@ -265,6 +279,7 @@ def _process_crawled_html(
     processed = 0
 
     for page in pages_to_process:
+        _check_cancelled(cancel_event)
         html_path = page["raw_path"]
         source_name = page["source_name"]
         source_url = page["url"]
@@ -341,7 +356,7 @@ def _process_crawled_html(
 
     return processed
 
-def run_ingestion_pipeline(cache_dir: str = None, knowledge_dir: str = None):
+def run_ingestion_pipeline(cache_dir: str = None, knowledge_dir: str = None, cancel_event: Optional[threading.Event] = None):
     """
     The master orchestration function.
     1. Crawls official documentation (stored in cache).
@@ -354,6 +369,8 @@ def run_ingestion_pipeline(cache_dir: str = None, knowledge_dir: str = None):
     Args:
         cache_dir: Disposable cache for HTML and raw files (default: settings.CACHE_DIR)
         knowledge_dir: Source of truth for OKF Markdown (default: settings.KNOWLEDGE_DIR)
+        cancel_event: Optional threading.Event; when set, the pipeline aborts at the
+            next stage boundary (cooperative cancellation).
     """
     if cache_dir is None:
         cache_dir = settings.CACHE_DIR
@@ -374,6 +391,8 @@ def run_ingestion_pipeline(cache_dir: str = None, knowledge_dir: str = None):
 
     # 0. Crawl configured official documentation sources.
     crawl_result = asyncio.run(crawl_configured_sources(cache_dir=cache_dir))
+
+    _check_cancelled(cancel_event)
 
     update_status(
         message="Documentation crawl completed",
@@ -407,10 +426,13 @@ def run_ingestion_pipeline(cache_dir: str = None, knowledge_dir: str = None):
         )
 
     # 1. Convert crawled HTML into OKF concept files.
+    _check_cancelled(cancel_event)
+
     crawled_count = _process_crawled_html(
         cache_dir=cache_dir,
         knowledge_dir=knowledge_dir,
         changed_pages=crawl_result.get("changed_pages", []),
+        cancel_event=cancel_event,
     )
 
     update_status(
@@ -560,6 +582,8 @@ def run_ingestion_pipeline(cache_dir: str = None, knowledge_dir: str = None):
     #    index them into Qdrant via the shared indexer path. This guarantees the
     #    vector store always mirrors the filesystem knowledge base — the same
     #    documents, metadata, and provenance that search + query layers consume.
+    _check_cancelled(cancel_event)
+
     print("📦 Re-reading OKF files and connecting to Qdrant for vector indexing...")
     concepts = load_all_concepts(knowledge_dir, use_cache=False)
     docs = concepts_to_documents(concepts)

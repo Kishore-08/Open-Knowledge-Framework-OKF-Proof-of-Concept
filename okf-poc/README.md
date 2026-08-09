@@ -395,11 +395,11 @@ The project includes a complete **Ragas Evaluation** suite.
 
 It evaluates:
 
-- Faithfulness
+- Faithfulness (used as the RAG hallucination / grounding proxy)
 - Context Precision
 - Context Recall
 - Answer Correctness
-- Hallucination Rate
+- Citation Quality (fraction of retrieved, citable sources actually cited in the answer)
 
 ---
 
@@ -440,11 +440,9 @@ evaluation/results/
 Generated files include:
 
 ```text
-results.csv
+evaluation_details_<timestamp>.csv   Per-question metrics + citation-quality columns
 
-results.json
-
-summary.txt
+evaluation_summary_<timestamp>.json  Overall averages + 80% success-rate verdict
 ```
 
 ---

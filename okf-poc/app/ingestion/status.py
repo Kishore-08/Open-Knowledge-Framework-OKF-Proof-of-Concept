@@ -1,7 +1,12 @@
 import threading
 
+from app.jobs.manager import job_manager
+
 _lock = threading.Lock()
 
+# Legacy fallback dict used when no job is active (idle state). The JobManager is
+# the source of truth while a job runs; these helpers keep the old
+# `/api/v1/ingest/status` contract working for callers that poll it directly.
 _status = {
     "status": "idle",
     "message": "No ingestion running",
@@ -20,6 +25,10 @@ _status = {
 
 
 def update_status(**kwargs):
+    # Forward progress onto the active job (job manager derives the same derived
+    # fields the legacy dict computed). Ignored when no job is running.
+    job_manager.update_active_status(**kwargs)
+
     with _lock:
         _status.update(kwargs)
         if "indexed" in kwargs and "indexed_documents" not in kwargs:
@@ -44,6 +53,12 @@ def update_status(**kwargs):
 
 
 def get_status():
+    # Prefer the live job when one exists so the legacy endpoint reports the
+    # same progress as the new /jobs endpoints.
+    active_job = job_manager.get_active_job()
+    if active_job is not None:
+        return active_job.to_status_dict()
+
     with _lock:
         payload = dict(_status)
         if "indexed_documents" not in payload and "indexed" in payload:

@@ -234,7 +234,7 @@ ui:
 ```bash
 cd okf-poc
 curl -X POST "http://localhost:8000/api/v1/ingest/upload" \
-  -F "files=@test_upload.md"
+  -F "files=@tests/fixtures/test_upload.md"
 ```
 
 **Result:**

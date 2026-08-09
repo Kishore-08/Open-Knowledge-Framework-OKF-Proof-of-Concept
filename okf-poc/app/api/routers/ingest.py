@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel
-import asyncio
 import os
 from pathlib import Path
 from typing import Optional, List
@@ -10,9 +9,31 @@ import re
 from app.ingestion import run_ingestion_pipeline
 from app.core.config import settings
 from app.ingestion.status import get_status, update_status
+from app.jobs.manager import job_manager, JobCancelledError
 
-# Tags help group endpoints neatly in the Swagger UI
+# Tags help endpoints group neatly in the Swagger UI
 router = APIRouter(prefix="/ingest", tags=["Ingestion"])
+
+
+def _run_ingest_job(job):
+    """JobManager handler for the 'ingest' job type."""
+    params = job.params or {}
+    try:
+        result = run_ingestion_pipeline(
+            cache_dir=params.get("cache_dir") or settings.CACHE_DIR,
+            knowledge_dir=params.get("knowledge_dir") or settings.KNOWLEDGE_DIR,
+            cancel_event=job.cancel_event,
+        )
+        return result
+    except JobCancelledError:
+        raise
+    except Exception as exc:
+        update_status(status="failed", message=str(exc))
+        raise
+
+
+# Register the ingestion handler once at import time.
+job_manager.register_handler("ingest", _run_ingest_job)
 
 @router.get("/status")
 async def get_ingestion_status():
@@ -38,38 +59,31 @@ async def ingest_documents(request: IngestRequest):
     Triggers the OKF ingestion pipeline.
     Reads cached/raw documents from `cache_dir`, generates OKF metadata,
     saves them to `knowledge_dir`, and indexes them into Qdrant.
+
+    The pipeline runs as a tracked Job (see /api/v1/jobs) with a queue:
+    if ingestion is already running, the new request is queued instead of
+    being silently dropped.
     """
     try:
-        current = get_status()
-        if current.get("status") in {"running", "starting"}:
+        if job_manager.has_active_jobs():
+            active = job_manager.get_active_job()
             return IngestResponse(
-                status=current.get("status", "running"),
-                message="Ingestion is already running.",
-                indexed_documents=current.get("indexed_documents", current.get("indexed", 0)),
+                status="queued",
+                message="Ingestion is already running; your request was queued.",
+                indexed_documents=active.indexed_documents if active else 0,
             )
 
-        update_status(
-            status="starting",
-            message="Ingestion started",
-            discovered=0,
-            fetched=0,
-            processed=0,
-            failed=0,
-            indexed=0,
-            indexed_documents=0,
-        )
-
-        asyncio.create_task(
-            asyncio.to_thread(
-                run_ingestion_pipeline,
-                cache_dir=request.cache_dir,
-                knowledge_dir=request.knowledge_dir,
-            )
+        job = job_manager.submit(
+            "ingest",
+            params={
+                "cache_dir": request.cache_dir,
+                "knowledge_dir": request.knowledge_dir,
+            },
         )
 
         return IngestResponse(
             status="started",
-            message="Ingestion pipeline started in the background.",
+            message="Ingestion pipeline started in the background (job id: {job.id}).".format(job=job),
             indexed_documents=0,
         )
 
@@ -138,8 +152,7 @@ async def upload_documents(files: List[UploadFile] = File(...)):
         raise HTTPException(status_code=400, detail="No files provided")
     
     # Check if ingestion is already running
-    current = get_status()
-    if current.get("status") in {"running", "starting"}:
+    if job_manager.has_active_jobs():
         raise HTTPException(
             status_code=409,
             detail="Ingestion is already running. Please wait for it to complete."
@@ -215,24 +228,12 @@ async def upload_documents(files: List[UploadFile] = File(...)):
     
     # Trigger ingestion pipeline
     try:
-        update_status(
-            status="starting",
-            message="Processing uploaded documents",
-            discovered=len(uploaded_files),
-            fetched=0,
-            processed=0,
-            failed=0,
-            indexed=0,
-            indexed_documents=0,
-        )
-        
-        # Run ingestion in background
-        asyncio.create_task(
-            asyncio.to_thread(
-                run_ingestion_pipeline,
-                cache_dir=cache_dir,
-                knowledge_dir=knowledge_dir,
-            )
+        job = job_manager.submit(
+            "ingest",
+            params={
+                "cache_dir": cache_dir,
+                "knowledge_dir": knowledge_dir,
+            },
         )
         
         return UploadResponse(
@@ -242,7 +243,7 @@ async def upload_documents(files: List[UploadFile] = File(...)):
             concepts_created=0,  # Will be updated by status endpoint
             indexed=False,  # Will be updated by status endpoint
             files=uploaded_files,
-            message=f"Successfully uploaded {len(uploaded_files)} file(s). Processing started in background.",
+            message=f"Successfully uploaded {len(uploaded_files)} file(s). Processing started in background (job id: {job.id}).",
             errors=errors
         )
         
