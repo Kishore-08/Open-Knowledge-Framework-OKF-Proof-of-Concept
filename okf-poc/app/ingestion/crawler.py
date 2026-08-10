@@ -19,7 +19,11 @@ from typing import List, Optional
 import httpx
 
 from app.core.config import settings
-from app.parser.sitemap import parse_robots_txt, discover_urls_from_sitemap
+from app.parser.sitemap import (
+    parse_robots_txt,
+    discover_urls_from_sitemap,
+    discover_urls_from_html_index,
+)
 from app.ingestion.status import update_status
 from app.storage.state_manager import StateManager
 
@@ -188,15 +192,50 @@ class DocsCrawler:
         sitemap_urls: Optional[List[str]] = None,
         url_filter: Optional[str] = None,
         max_urls: int = 500,
+        seed_urls: Optional[List[str]] = None,
+        index_url: Optional[str] = None,
+        exclude_filters: Optional[List[str]] = None,
     ) -> List[str]:
         """
-        Discover documentation URLs for a source. If `sitemap_urls` is not given,
-        tries robots.txt first, then the conventional /sitemap.xml location.
+        Discover documentation URLs for a source.
+
+        Discovery order:
+        1. ``seed_urls`` — an explicit list of pages to crawl (used when the
+           source has no sitemap at all).
+        2. ``index_url`` — a plain HTML index page whose links are collected
+           (used when the sitemap is unavailable but an index exists, e.g.
+           man7.org's alphabetic man-page listing).
+        3. sitemap(s) — via ``sitemap_urls``, robots.txt, or /sitemap.xml.
         """
+        excludes = exclude_filters or []
+
+        if seed_urls:
+            return [
+                u for u in seed_urls
+                if (not url_filter or url_filter in u)
+                and not any(ex in u for ex in excludes)
+            ][:max_urls]
+
+        if index_url:
+            return await discover_urls_from_html_index(
+                index_url,
+                self._fetch,
+                url_filter=url_filter,
+                max_urls=max_urls,
+                exclude_filters=excludes,
+            )
+
         sitemaps = sitemap_urls or await self._fetch_robots(base_url)
         if not sitemaps:
             sitemaps = [base_url.rstrip("/") + "/sitemap.xml"]
-        return await discover_urls_from_sitemap(sitemaps, self._fetch, url_filter=url_filter, max_urls=max_urls)
+        return await discover_urls_from_sitemap(
+            sitemaps,
+            self._fetch,
+            url_filter=url_filter,
+            max_urls=max_urls,
+            base_url=base_url,
+            exclude_filters=excludes,
+        )
 
     async def crawl_source(
         self,
@@ -306,7 +345,10 @@ class DocsCrawler:
             # instead of jumping straight to the final values.
             update_status(
                 status="running",
+                stage="downloading",
+                stage_message=f"Downloading {source_name} documentation from the official website",
                 message=f"Crawling source {source_name}",
+                current_source=source_name,
                 discovered=len(urls),
                 fetched=result.fetched,
                 failed=result.failed,
@@ -351,6 +393,9 @@ class DocsCrawler:
         max_urls: int = 500,
         urls: Optional[List[str]] = None,
         cache_dir: Optional[str] = None,
+        seed_urls: Optional[List[str]] = None,
+        index_url: Optional[str] = None,
+        exclude_filters: Optional[List[str]] = None,
     ) -> CrawlResult:
         """Discover + synchronize a documentation source end to end."""
         if cache_dir is None:
@@ -362,6 +407,9 @@ class DocsCrawler:
                 sitemap_urls,
                 url_filter,
                 max_urls,
+                seed_urls=seed_urls,
+                index_url=index_url,
+                exclude_filters=exclude_filters,
             )
 
         return await self.crawl_source(
@@ -452,6 +500,14 @@ async def crawl_configured_sources(
         # so the user can ingest a source that is not yet enabled by default.
         name = source["name"]
 
+        update_status(
+            status="running",
+            stage="discovering",
+            stage_message=f"Discovering pages from {name} official documentation",
+            message=f"Discovering pages from {name}",
+            current_source=name,
+        )
+
         print(
             f"🔎 Crawling official documentation: "
             f"{name} ({source['base_url']})"
@@ -466,8 +522,11 @@ async def crawl_configured_sources(
                 else None
             ),
             url_filter=source.get("url_filter"),
-            max_urls=max_urls,
+            max_urls=source.get("max_urls", max_urls),
             cache_dir=cache_dir,
+            seed_urls=source.get("seed_urls"),
+            index_url=source.get("index_url"),
+            exclude_filters=source.get("exclude_filters"),
         )
 
         totals["sources"] += 1
@@ -484,7 +543,10 @@ async def crawl_configured_sources(
 
         update_status(
             status="running",
+            stage="downloading",
+            stage_message=f"Downloading {name} documentation pages",
             message=f"Crawling source {name}",
+            current_source=name,
             discovered=totals["discovered"],
             fetched=totals["fetched"],
             failed=totals["failed"],

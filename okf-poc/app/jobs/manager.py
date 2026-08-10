@@ -40,6 +40,62 @@ class JobCancelledError(Exception):
     """Raised by a job handler when cooperative cancellation is requested."""
 
 
+# ---------------------------------------------------------------------------
+# Stage-aware progress
+# ---------------------------------------------------------------------------
+# The overall progress bar should move continuously from "source selected"
+# through download → cache → OKF conversion → indexing, instead of staying at
+# 0% for the whole crawl (which only counts documents that have been converted,
+# so the old formula could not move before the crawl finished).
+STAGE_PERCENT = {
+    "queued": 2,
+    "starting": 2,
+    "discovering": 6,
+    "downloading": 10,     # 10 -> 48 by fetched/discovered
+    "cached": 48,
+    "converting": 48,      # 48 -> 70 by processed/total
+    "formatting": 70,      # 70 -> 90 by processed/total
+    "indexing": 92,
+    "completed": 100,
+    "success": 100,
+}
+
+
+def compute_stage_progress(
+    *,
+    status: str = "",
+    stage: str = "",
+    fetched: int = 0,
+    discovered: int = 0,
+    processed: int = 0,
+    total_documents: int = 0,
+) -> int:
+    """
+    Return a 0-100 progress figure that reflects both the pipeline stage and the
+    live counters, so the progress bar animates continuously instead of jumping.
+    """
+    status = (status or "").lower()
+    if status in ("completed", "success"):
+        return 100
+
+    stage = (stage or "starting").lower()
+    base = STAGE_PERCENT.get(stage, 2)
+    total = int(total_documents or 0)
+
+    if stage == "downloading":
+        if discovered:
+            ratio = min(1.0, int(fetched or 0) / int(discovered))
+            return min(46, base + int(36 * ratio))
+        return base
+    if stage in ("converting", "formatting"):
+        if total:
+            ratio = min(1.0, int(processed or 0) / total)
+            span = 22 if stage == "converting" else 20
+            return min(base + span - 1, base + int(span * ratio))
+        return base
+    return base
+
+
 class JobManager:
     def __init__(self, persist_dir: str = "cache/.jobs"):
         self._lock = threading.RLock()
@@ -150,13 +206,14 @@ class JobManager:
         if "indexed_documents" in vars(job):
             if job.indexed_documents != job.indexed:
                 job.indexed_documents = job.indexed
-        if job.total_documents:
-            job.progress_percent = min(
-                100,
-                int(round((job.processed / job.total_documents) * 100)),
-            )
-        elif job.status == STATUS_COMPLETED:
-            job.progress_percent = 100
+        job.progress_percent = compute_stage_progress(
+            status=job.status,
+            stage=job.stage,
+            fetched=job.fetched,
+            discovered=job.discovered,
+            processed=job.processed,
+            total_documents=job.total_documents,
+        )
         job.total_tokens_estimate = (
             job.prompt_tokens_estimate + job.completion_tokens_estimate
         )
@@ -205,6 +262,10 @@ class JobManager:
         with self._lock:
             job.status = status
             job.error = error or (job.error if status == STATUS_FAILED else None)
+            if status == STATUS_COMPLETED:
+                job.progress_percent = 100
+                if not job.stage:
+                    job.stage = "completed"
             if result is not None:
                 job.result = result
             job.finished_at = time.time()

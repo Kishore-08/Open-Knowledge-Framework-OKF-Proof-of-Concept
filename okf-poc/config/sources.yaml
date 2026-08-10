@@ -1,7 +1,14 @@
 # OKF data source definitions (Phase 2 - data collection).
 # Each source points at official documentation. The crawler discovers pages via
-# sitemap.xml / robots.txt and stores raw HTML under cache/<source>/.
+# sitemap.xml / robots.txt / an HTML index, and stores raw HTML under
+# cache/<source>/.
 # url_filter keeps only the pages that belong to the documentation section.
+#
+# Discovery modes (per source, in priority order):
+#   seed_urls  : explicit list of pages to crawl (no sitemap needed)
+#   index_url  : a plain HTML index page whose links are crawled
+#   sitemap_url: a sitemap.xml (relative <loc> entries are resolved against base_url)
+# max_urls overrides the global crawler.max_urls_per_source for a single source.
 
 sources:
   - name: kubernetes
@@ -19,11 +26,40 @@ sources:
     enabled: false
 
   - name: linux-man-pages
-    base_url: "https://www.kernel.org/doc/man-pages/"
-    sitemap_url: "https://www.kernel.org/doc/man-pages/sitemap.xml"
-    url_filter: ""
+    base_url: "https://man7.org/linux/man-pages/"
+    index_url: "https://man7.org/linux/man-pages/dir_all_alphabetic.html"
+    url_filter: "man7.org/linux/man-pages/man"
     category: linux
-    enabled: false
+    enabled: true
+    max_urls: 60
+
+  - name: python
+    base_url: "https://docs.python.org/3/library/"
+    index_url: "https://docs.python.org/3/library/index.html"
+    url_filter: "docs.python.org/3/library/"
+    category: python
+    enabled: true
+
+  - name: apache-airflow
+    base_url: "https://airflow.apache.org/docs/apache-airflow/stable/"
+    index_url: "https://airflow.apache.org/docs/apache-airflow/stable/index.html"
+    url_filter: "docs/apache-airflow/stable/"
+    exclude_filters:
+      - "/_static/"
+      - "/_images/"
+      - "/_sources/"
+      - "genindex.html"
+      - "search.html"
+      - "py-modindex.html"
+    category: airflow
+    enabled: true
+
+  - name: fastapi
+    base_url: "https://fastapi.tiangolo.com"
+    sitemap_url: "https://fastapi.tiangolo.com/sitemap.xml"
+    url_filter: "fastapi.tiangolo.com/tutorial/"
+    category: fastapi
+    enabled: true
 
   - name: langchain
     base_url: "https://python.langchain.com"

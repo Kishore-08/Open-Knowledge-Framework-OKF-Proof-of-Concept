@@ -58,6 +58,15 @@ class Job:
     completion_tokens_estimate: int = 0
     total_tokens_estimate: int = 0
 
+    # Pipeline stage for the live process-flow timeline in the UI.
+    # One of: starting, discovering, downloading, cached, converting,
+    # formatting, indexing, completed, failed, cancelled.
+    stage: str = "starting"
+    # Human readable headline for the current stage.
+    stage_message: str = ""
+    # The documentation source currently being processed (e.g. "kubernetes").
+    current_source: str = ""
+
     # Not serialized: cooperative cancellation signal checked by the pipeline.
     cancel_event: Any = field(default_factory=threading.Event, repr=False)
 
@@ -84,6 +93,9 @@ class Job:
             "prompt_tokens_estimate": self.prompt_tokens_estimate,
             "completion_tokens_estimate": self.completion_tokens_estimate,
             "total_tokens_estimate": self.total_tokens_estimate,
+            "stage": self.stage,
+            "stage_message": self.stage_message,
+            "current_source": self.current_source,
         }
 
     def to_status_dict(self) -> dict:
@@ -103,6 +115,9 @@ class Job:
             "prompt_tokens_estimate": self.prompt_tokens_estimate,
             "completion_tokens_estimate": self.completion_tokens_estimate,
             "total_tokens_estimate": self.total_tokens_estimate,
+            "stage": self.stage,
+            "stage_message": self.stage_message,
+            "current_source": self.current_source,
             "error": self.error,
         }
 

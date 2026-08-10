@@ -68,41 +68,43 @@ def _theme_palette(theme: str) -> dict:
         "okf-placeholder": "#64748b",
     }
     if theme == "light":
+        # Google-inspired light mode: crisp white glass surfaces, soft blue-grey
+        # shadows and Google's blue as the single accent color.
         return {
-            "okf-bg": "#eef2f9",
-            "okf-glow-1": "rgba(99, 102, 241, 0.12)",
-            "okf-glow-2": "rgba(236, 72, 153, 0.07)",
-            "okf-glow-3": "rgba(139, 92, 246, 0.10)",
-            "okf-glass-bg": "rgba(255, 255, 255, 0.68)",
-            "okf-glass-border": "rgba(15, 23, 42, 0.10)",
-            "okf-glass-shadow": "rgba(15, 23, 42, 0.12)",
-            "okf-text": "#1e293b",
-            "okf-text-dim": "#475569",
+            "okf-bg": "#f6f8fb",
+            "okf-glow-1": "rgba(66, 133, 244, 0.14)",
+            "okf-glow-2": "rgba(52, 168, 83, 0.07)",
+            "okf-glow-3": "rgba(251, 188, 5, 0.08)",
+            "okf-glass-bg": "rgba(255, 255, 255, 0.92)",
+            "okf-glass-border": "rgba(15, 23, 42, 0.08)",
+            "okf-glass-shadow": "rgba(60, 64, 67, 0.14)",
+            "okf-text": "#1f2937",
+            "okf-text-dim": "#4b5563",
             "okf-text-faint": "#94a3b8",
             "okf-heading": "#0f172a",
-            "okf-sidebar-bg": "rgba(255, 255, 255, 0.74)",
-            "okf-border": "rgba(15, 23, 42, 0.12)",
-            "okf-border-soft": "rgba(15, 23, 42, 0.08)",
-            "okf-hover-bg": "rgba(99, 102, 241, 0.12)",
-            "okf-hover-border": "rgba(99, 102, 241, 0.6)",
-            "okf-primary-grad": "linear-gradient(135deg, #6366f1, #8b5cf6)",
-            "okf-input-bg": "rgba(255, 255, 255, 0.9)",
-            "okf-chat-bg": "rgba(255, 255, 255, 0.82)",
-            "okf-chat-border": "rgba(15, 23, 42, 0.08)",
-            "okf-metric-bg": "rgba(255, 255, 255, 0.7)",
-            "okf-alert-bg": "rgba(255, 255, 255, 0.82)",
-            "okf-chip-bg": "rgba(99, 102, 241, 0.15)",
-            "okf-chip-text": "#4338ca",
-            "okf-hero-grad": "linear-gradient(90deg, #1e293b 0%, #4f46e5 45%, #7c3aed 100%)",
-            "okf-scrollbar": "rgba(15, 23, 42, 0.2)",
-            "okf-citation-bg": "rgba(255, 255, 255, 0.7)",
-            "okf-citation-border": "rgba(15, 23, 42, 0.08)",
-            "okf-citation-title": "#4f46e5",
-            "okf-citation-score-bg": "rgba(99, 102, 241, 0.15)",
-            "okf-citation-content": "#475569",
-            "okf-src-chip-text": "#475569",
+            "okf-sidebar-bg": "rgba(255, 255, 255, 0.9)",
+            "okf-border": "rgba(15, 23, 42, 0.13)",
+            "okf-border-soft": "rgba(15, 23, 42, 0.09)",
+            "okf-hover-bg": "rgba(66, 133, 244, 0.12)",
+            "okf-hover-border": "rgba(66, 133, 244, 0.6)",
+            "okf-primary-grad": "linear-gradient(135deg, #4285f4, #1a73e8)",
+            "okf-input-bg": "#ffffff",
+            "okf-chat-bg": "rgba(255, 255, 255, 0.94)",
+            "okf-chat-border": "rgba(15, 23, 42, 0.09)",
+            "okf-metric-bg": "rgba(255, 255, 255, 0.88)",
+            "okf-alert-bg": "rgba(255, 255, 255, 0.94)",
+            "okf-chip-bg": "rgba(66, 133, 244, 0.16)",
+            "okf-chip-text": "#1a73e8",
+            "okf-hero-grad": "linear-gradient(90deg, #174ea6 0%, #4285f4 45%, #1a73e8 100%)",
+            "okf-scrollbar": "rgba(15, 23, 42, 0.25)",
+            "okf-citation-bg": "rgba(255, 255, 255, 0.9)",
+            "okf-citation-border": "rgba(15, 23, 42, 0.11)",
+            "okf-citation-title": "#1a73e8",
+            "okf-citation-score-bg": "rgba(66, 133, 244, 0.14)",
+            "okf-citation-content": "#334155",
+            "okf-src-chip-text": "#334155",
             "okf-src-chip-bold": "#0f172a",
-            "okf-placeholder": "#94a3b8",
+            "okf-placeholder": "#9aa0a6",
         }
     return dark
 
@@ -124,8 +126,9 @@ def _build_theme_css(theme: str) -> str:
         font-family: 'Inter', sans-serif;
     }}
 
-    /* Hide Streamlit chrome */
+    /* Hide Streamlit chrome (Deploy button, toolbar, footer, menu) */
     #MainMenu, footer {{ visibility: hidden; }}
+    [data-testid="stToolbar"], [data-testid="stDecoration"] {{ display: none; }}
     .block-container {{ padding-top: 1.5rem; max-width: 1400px; }}
     [data-testid="stHeader"] {{ background: transparent; }}
 
@@ -221,8 +224,16 @@ def _build_theme_css(theme: str) -> str:
         border: 1px solid {p['okf-border']} !important;
         border-radius: 12px !important;
         color: {p['okf-text']} !important;
+        padding: 0.55rem 0.95rem !important;
     }}
-    .stTextInput input::placeholder, .stTextArea textarea::placeholder {{ color: {p['okf-placeholder']} !important; }}
+    .stTextInput input::placeholder, .stTextArea textarea::placeholder {{
+        color: {p['okf-placeholder']} !important;
+        opacity: 1;
+    }}
+    .stTextInput input:focus, .stTextArea textarea:focus {{
+        border-color: rgba(66, 133, 244, 0.6) !important;
+        box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.15) !important;
+    }}
 
     /* ---- Chat ---- */
     [data-testid="stChatMessage"] {{
@@ -235,18 +246,26 @@ def _build_theme_css(theme: str) -> str:
     }}
     [data-testid="stChatMessage"] p {{ color: {p['okf-text']}; }}
 
-    /* Search bar (chat input) — full-width, comfortably tall */
+    /* Search bar (chat input) — full-width, comfortably tall, padded placeholder */
     [data-testid="stChatInput"] {{
         max-width: 100%;
     }}
     [data-testid="stChatInput"] textarea {{
         background: {p['okf-input-bg']} !important;
         border: 1px solid {p['okf-border']} !important;
-        border-radius: 18px !important;
+        border-radius: 22px !important;
         color: {p['okf-text']} !important;
         font-size: 1.02rem !important;
         line-height: 1.5 !important;
         min-height: 56px !important;
+        padding: 0.7rem 3.2rem 0.7rem 1.2rem !important;
+    }}
+    [data-testid="stChatInput"] textarea::placeholder {{
+        color: {p['okf-placeholder']} !important;
+        opacity: 1;
+    }}
+    [data-testid="stChatInput"] [data-testid="stChatInputSuggestion"] {{
+        padding-left: 1.2rem !important;
     }}
 
     /* ---- Multiselect chips ---- */
@@ -361,14 +380,96 @@ def _build_theme_css(theme: str) -> str:
     [data-testid="stDialog"] h1, [data-testid="stDialog"] h2 {{
         color: {p['okf-heading']} !important;
     }}
+    [data-testid="stDialog"] [role="dialog"] > div {{
+        border-radius: 28px !important;
+    }}
+    /* Hide Streamlit's built-in close (X) so the dialog has a single clear
+       Close/Cancel action (our own footer button). */
+    [data-testid="stDialog"] [data-testid="stIconButton"],
+    [data-testid="stDialog"] button[aria-label="Close"],
+    [data-testid="stDialog"] button[aria-label="Close dialog"] {{
+        display: none !important;
+    }}
+    .dialog-hint {{
+        font-size: 0.8rem;
+        color: {p['okf-text-dim']};
+        margin: -0.2rem 0 0.6rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 10px;
+        background: {p['okf-metric-bg']};
+        border: 1px solid {p['okf-border-soft']};
+    }}
+
+    /* ---- Top-right theme toggle (working sun/moon segmented switch) ----
+       Implemented as two plain anchors that reload with ?theme=dark/light —
+       no inline JS, so it works reliably inside Streamlit. */
+    .theme-float {{
+        position: fixed;
+        top: 14px;
+        right: 22px;
+        z-index: 1000;
+        display: inline-flex;
+        gap: 4px;
+        padding: 4px;
+        border-radius: 999px;
+        border: 1px solid {p['okf-border']};
+        background: {p['okf-glass-bg']};
+        backdrop-filter: blur(14px) saturate(140%);
+        -webkit-backdrop-filter: blur(14px) saturate(140%);
+        box-shadow: 0 6px 20px {p['okf-glass-shadow']};
+    }}
+    .theme-float a {{
+        width: 38px;
+        height: 34px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.05rem;
+        color: {p['okf-text-dim']};
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }}
+    .theme-float a:hover {{
+        background: {p['okf-hover-bg']};
+        color: {p['okf-text']};
+    }}
+    .theme-float a.active {{
+        background: {p['okf-primary-grad']};
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(66, 133, 244, 0.45);
+    }}
 </style>
 """
 
-# Theme state (default dark)
-if "theme" not in st.session_state:
-    st.session_state.theme = "dark"
+def _render_theme_toggle():
+    """Render the fixed top-right sun/moon segmented theme toggle.
+
+    Implemented as two plain <a> anchors pointing at ``?theme=dark`` and
+    ``?theme=light``. Clicking one navigates to the new URL and Streamlit picks
+    up the query param on the next run — no inline JS required (Streamlit strips
+    ``<script>`` tags from markdown, which is why a JS-based toggle never fired).
+    """
+    active = st.session_state.theme
+    dark_cls = " active" if active == "dark" else ""
+    light_cls = " active" if active == "light" else ""
+    st.markdown(f"""
+<div class="theme-float" role="group" aria-label="Color theme">
+  <a href="?theme=dark" class="tf-opt{dark_cls}" title="Dark mode" aria-label="Dark mode">&#127769;</a>
+  <a href="?theme=light" class="tf-opt{light_cls}" title="Light mode" aria-label="Light mode">&#9728;&#65039;</a>
+</div>
+""", unsafe_allow_html=True)
+
+# Theme state: read from ?theme= query param (set by the top-right toggle).
+# Defaults to light (Google-inspired).
+_theme_param = st.query_params.get("theme", "light")
+if _theme_param not in ("dark", "light"):
+    _theme_param = "light"
+st.session_state.theme = _theme_param
 
 st.markdown(_build_theme_css(st.session_state.theme), unsafe_allow_html=True)
+
+_render_theme_toggle()
 
 # ---------------------------------------------------------------------------
 # API helpers
@@ -577,17 +678,6 @@ with st.sidebar:
     st.title("⚙️ OKF Control Panel")
     st.markdown("Manage your Open Knowledge Framework pipeline.")
 
-    # Dual-mode theme toggle
-    theme = st.toggle(
-        "🌙 Dark mode",
-        value=st.session_state.theme == "dark",
-        help="Switch between the dark and light glassmorphism themes.",
-    )
-    new_theme = "dark" if theme else "light"
-    if new_theme != st.session_state.theme:
-        st.session_state.theme = new_theme
-        st.rerun()
-
     st.divider()
 
     # System status
@@ -710,7 +800,49 @@ with st.sidebar:
             st.rerun()
 
     if not can_run and st.session_state.ingestion_running:
-        st.caption("🔄 Ingestion is already running…")
+        running_status = get_ingestion_status()
+        stage = (running_status or {}).get("stage", "")
+        stage_labels = {
+            "starting": "Starting pipeline…",
+            "discovering": "Discovering documentation…",
+            "downloading": "Downloading from official websites…",
+            "cached": "Raw data stored in cache…",
+            "converting": "Running ingestion pipeline (→ OKF)…",
+            "formatting": "Writing OKF knowledge files…",
+            "indexing": "Indexing into Qdrant…",
+        }
+        stage_label = stage_labels.get(stage, "Ingestion is running…")
+        if running_status:
+            pct = running_status.get("progress_percent", 0)
+            pct_clamped = min(100, max(0, pct))
+            pct_color = "#1a73e8" if st.session_state.theme == "light" else "#a5b4fc"
+            track_color = "rgba(15,23,42,0.10)" if st.session_state.theme == "light" else "rgba(255,255,255,0.10)"
+            st.markdown(
+                f'<div class="glass-card" style="padding: 0.7rem 0.9rem; margin: 0.4rem 0;">'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+                f'<b style="font-size:0.85rem;">⚙️ {stage_label}</b>'
+                f'<span style="font-size:0.85rem;font-weight:700;color:{pct_color};">{pct}%</span>'
+                f'</div>'
+                f'<div style="height:8px;border-radius:999px;background:{track_color};overflow:hidden;">'
+                f'<div style="height:100%;width:{pct_clamped}%;border-radius:999px;'
+                f'background:linear-gradient(90deg,#4285f4,#1a73e8);transition:width 0.4s ease;"></div>'
+                f'</div></div>',
+                unsafe_allow_html=True,
+            )
+        if st.button("⏹ Stop Ingestion", use_container_width=True, key="stop_ingestion_btn"):
+            job_id = (running_status or {}).get("job_id")
+            if job_id:
+                try:
+                    requests.post(
+                        f"{API_HOST}/api/v1/jobs/{job_id}/cancel",
+                        timeout=5,
+                    )
+                    st.success("Cancellation requested. The pipeline will stop at the next stage.")
+                except requests.exceptions.RequestException as e:
+                    st.error(f"Could not reach the API: {e}")
+            else:
+                st.session_state.ingestion_running = False
+            st.rerun()
 
     st.divider()
     st.caption("Powered by Google OKF, LlamaIndex, and Qdrant.")
@@ -734,11 +866,22 @@ st.markdown(
 # curved edges (st.dialog). The dashboard component embeds the server-side
 # status on every rerun so the counters move even if the browser cannot reach
 # the API directly.
-@st.dialog("⏳ Ingestion Progress", width="large")
+@st.dialog("Live Ingestion Pipeline", width="large", dismissible=False)
 def ingestion_overlay() -> None:
     status = get_ingestion_status()
+    st.markdown(
+        '<div class="dialog-hint">Watching the pipeline in real time: '
+        'Download from official website → store raw data in cache → run the '
+        'ingestion pipeline → OKF knowledge files → indexed into Qdrant.</div>',
+        unsafe_allow_html=True,
+    )
     render_live_dashboard(API_HOST, status=status, theme=st.session_state.theme)
-    if st.button("✕ Close", key="close_ingestion_overlay", use_container_width=True):
+    col_hint, col_btn = st.columns([3, 1])
+    col_hint.caption(
+        "The pipeline keeps running in the background. You can close this "
+        "overlay and monitor progress from the sidebar."
+    )
+    if col_btn.button("Close", key="close_ingestion_overlay", use_container_width=True):
         st.session_state.ingestion_running = False
         st.rerun()
 

@@ -1,10 +1,19 @@
 """
 Self-contained live ingestion dashboard.
 
-Rendered as a Streamlit HTML component so the counters, progress bar and
-token graphs animate smoothly in the browser instead of re-rendering on every
+Rendered as a Streamlit HTML component so the counters, progress bar, process
+flow and charts animate smoothly in the browser instead of re-rendering on every
 Streamlit rerun. The component eases every number toward its target one step at
 a time (+1 increments), which is what makes the "live progress" feel smooth.
+
+Process flow
+------------
+The dashboard renders a horizontal stage timeline that mirrors the real
+architecture: source selection -> discovering docs -> downloading from the
+official website -> storing raw data in the cache folder -> running the
+ingestion pipeline from cache -> OKF knowledge files -> indexed into Qdrant.
+The backend reports the current ``stage`` (see ``app.ingestion.status``) and the
+component highlights the matching step.
 
 Data flow
 ---------
@@ -18,7 +27,7 @@ the browser as an enhancement, but never relies on it.
 
 import html as _html
 import json as _json
-from typing import Dict, Optional
+from typing import Optional
 
 import streamlit as st
 
@@ -43,7 +52,7 @@ def browser_api_base(configured: str) -> str:
         return "http://localhost:8000"
 
 
-def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dict] = None) -> str:
+def _build_html(api_base: str, theme: str = "light", initial_status: Optional[dict] = None) -> str:
     """Build the full self-contained HTML+JS dashboard.
 
     ``initial_status`` is embedded as ``window.__OKF_STATUS__`` and applied
@@ -69,9 +78,9 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif; }
 
     :root {
-        --accent: #6366f1;
-        --accent-2: #8b5cf6;
-        --accent-3: #ec4899;
+        --accent: #4285f4;
+        --accent-2: #1a73e8;
+        --accent-3: #34a853;
         --success: #10b981;
         --warn: #f59e0b;
         --danger: #ef4444;
@@ -91,31 +100,35 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
         --donut-border: #0b1020;
         --badge-bg: rgba(255,255,255,0.06);
         --badge-border: rgba(255,255,255,0.14);
+        --track-line: rgba(255,255,255,0.16);
+        --step-ico: rgba(255,255,255,0.05);
         --body-bg:
-            radial-gradient(900px 400px at 10% -10%, rgba(99, 102, 241, 0.28), transparent 60%),
-            radial-gradient(700px 400px at 110% 0%, rgba(236, 72, 153, 0.18), transparent 55%),
-            radial-gradient(600px 500px at 50% 120%, rgba(139, 92, 246, 0.16), transparent 60%),
+            radial-gradient(900px 400px at 10% -10%, rgba(66, 133, 244, 0.28), transparent 60%),
+            radial-gradient(700px 400px at 110% 0%, rgba(52, 168, 83, 0.14), transparent 55%),
+            radial-gradient(600px 500px at 50% 120%, rgba(251, 188, 5, 0.12), transparent 60%),
             #0b1020;
     }
 
     body[data-theme="light"] {
-        --text: #1e293b;
-        --text-dim: #64748b;
-        --glass-bg: rgba(255, 255, 255, 0.72);
+        --text: #1f2937;
+        --text-dim: #5f6368;
+        --glass-bg: rgba(255, 255, 255, 0.78);
         --glass-border: rgba(15,23,42,0.10);
-        --glass-shadow: rgba(15, 23, 42, 0.10);
+        --glass-shadow: rgba(60, 64, 67, 0.12);
         --axis-line: rgba(15,23,42,0.15);
-        --axis-label: #94a3b8;
+        --axis-label: #9aa0a6;
         --split-line: rgba(15,23,42,0.07);
         --bar-track: rgba(15,23,42,0.08);
-        --donut-center: rgba(255,255,255,0.92);
+        --donut-center: rgba(255,255,255,0.95);
         --donut-border: #ffffff;
-        --badge-bg: rgba(255,255,255,0.85);
+        --badge-bg: rgba(255,255,255,0.9);
         --badge-border: rgba(15,23,42,0.12);
+        --track-line: rgba(66,133,244,0.25);
+        --step-ico: rgba(66,133,244,0.08);
         --body-bg:
-            radial-gradient(900px 400px at 10% -10%, rgba(99,102,241,0.14), transparent 60%),
-            radial-gradient(700px 400px at 110% 0%, rgba(236,72,153,0.08), transparent 55%),
-            radial-gradient(600px 500px at 50% 120%, rgba(139,92,246,0.10), transparent 60%),
+            radial-gradient(900px 400px at 10% -10%, rgba(66,133,244,0.12), transparent 60%),
+            radial-gradient(700px 400px at 110% 0%, rgba(52,168,83,0.06), transparent 55%),
+            radial-gradient(600px 500px at 50% 120%, rgba(251,188,5,0.07), transparent 60%),
             #f2f5fc;
     }
 
@@ -138,7 +151,7 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
     .dash {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 14px;
     }
 
     .head {
@@ -150,7 +163,7 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
 
     .head h2 {
         font-size: 1.15rem;
-        font-weight: 650;
+        font-weight: 700;
         letter-spacing: 0.01em;
         background: linear-gradient(90deg, var(--text), var(--accent-2));
         -webkit-background-clip: text;
@@ -181,11 +194,151 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
     .badge.failed .dot { background: var(--danger); }
 
     @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(99,102,241,0.7); }
-        70% { box-shadow: 0 0 0 8px rgba(99,102,241,0); }
-        100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+        0% { box-shadow: 0 0 0 0 rgba(66,133,244,0.7); }
+        70% { box-shadow: 0 0 0 8px rgba(66,133,244,0); }
+        100% { box-shadow: 0 0 0 0 rgba(66,133,244,0); }
     }
 
+    /* ---- Process flow timeline ---- */
+    .flow { padding: 20px 16px 14px; }
+    .flow-head {
+        display: flex; justify-content: space-between; align-items: baseline;
+        margin-bottom: 16px; padding: 0 4px;
+    }
+    .flow-head .ttl {
+        font-size: 0.85rem; font-weight: 700; color: var(--text);
+    }
+    .flow-head .live-note {
+        font-size: 0.72rem; color: var(--accent); font-weight: 600;
+        display: inline-flex; align-items: center; gap: 6px;
+    }
+    .flow-head .live-note .ldot {
+        width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+        animation: pulse 1.4s infinite;
+    }
+    .steps {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        position: relative;
+        padding-top: 4px;
+    }
+    .steps::before {
+        content: "";
+        position: absolute;
+        top: 22px; left: 7%; right: 7%;
+        height: 2px;
+        background: var(--split-line);
+        z-index: 0;
+    }
+    .steps .track {
+        position: absolute;
+        top: 22px; left: 7%;
+        height: 2px;
+        width: 0%;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        box-shadow: 0 0 8px rgba(66,133,244,0.6);
+        z-index: 0;
+        transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .step {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        min-width: 0;
+    }
+    .step .ico {
+        width: 44px; height: 44px;
+        border-radius: 50%;
+        display: grid; place-items: center;
+        font-size: 17px;
+        background: var(--step-ico);
+        border: 2px solid var(--split-line);
+        color: var(--text-dim);
+        transition: all 0.3s ease;
+    }
+    .step .lbl {
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+        transition: color 0.3s ease;
+    }
+    .step .desc {
+        font-size: 0.66rem;
+        color: var(--text-dim);
+        opacity: 0;
+        max-height: 0;
+        overflow: hidden;
+        transition: opacity 0.3s ease, max-height 0.3s ease;
+        line-height: 1.35;
+        max-width: 110px;
+    }
+    .step.active .ico {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: #fff;
+        box-shadow: 0 0 0 5px rgba(66,133,244,0.15), 0 0 18px rgba(66,133,244,0.5);
+        animation: pulse 1.6s infinite;
+        transform: scale(1.08);
+    }
+    .step.active .lbl { color: var(--accent); }
+    .step.active .desc { opacity: 1; max-height: 3em; }
+    .step.done .ico {
+        background: var(--success);
+        border-color: var(--success);
+        color: #fff;
+    }
+    .step.done .lbl { color: var(--success); }
+    .step.error .ico {
+        background: var(--danger);
+        border-color: var(--danger);
+        color: #fff;
+        animation: none;
+    }
+    .step.error .lbl { color: var(--danger); }
+
+    @media (max-width: 760px) {
+        .step .desc { display: none; }
+        .step .lbl { font-size: 0.6rem; }
+        .step .ico { width: 36px; height: 36px; font-size: 14px; }
+        .steps::before, .steps .track { top: 18px; }
+    }
+
+    /* ---- Current activity strip ---- */
+    .activity {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 13px 18px;
+    }
+    .activity .act-ico {
+        width: 40px; height: 40px;
+        border-radius: 12px;
+        flex-shrink: 0;
+        display: grid; place-items: center;
+        font-size: 18px;
+        background: rgba(66,133,244,0.14);
+        color: var(--accent);
+    }
+    .activity .act-body { min-width: 0; }
+    .activity .act-title {
+        font-size: 0.9rem; font-weight: 650; color: var(--text);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .activity .act-sub {
+        font-size: 0.74rem; color: var(--text-dim); margin-top: 2px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* ---- Stat cards ---- */
     .cards {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
@@ -241,7 +394,7 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
     }
     .progress-top .pct {
         font-size: 1.5rem; font-weight: 750; font-variant-numeric: tabular-nums;
-        background: linear-gradient(90deg, var(--accent), var(--accent-3));
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent;
     }
@@ -249,7 +402,7 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
     .bar .fill {
         height: 100%; width: 0%;
         border-radius: 999px;
-        background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3));
+        background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--success));
         background-size: 200% 100%;
         animation: slide 2.5s linear infinite;
         transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
@@ -291,7 +444,7 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
         transition: height 0.4s cubic-bezier(0.22, 1, 0.36, 1);
     }
     .token-line .col .seg.prompt { background: linear-gradient(180deg, var(--accent), var(--accent-2)); }
-    .token-line .col .seg.completion { background: linear-gradient(180deg, var(--accent-3), #f472b6); }
+    .token-line .col .seg.completion { background: linear-gradient(180deg, #34a853, #1e8e3e); }
     .token-line .col .lbl {
         font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -318,15 +471,35 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
 <div class="dash">
 
     <div class="glass head">
-        <h2>&#9203; Ingestion Progress</h2>
+        <h2>Ingestion Pipeline</h2>
         <span class="badge running" id="statusBadge">
             <span class="dot"></span>
             <span id="statusText">Connecting&hellip;</span>
         </span>
     </div>
 
+    <!-- Process flow timeline -->
+    <div class="glass flow">
+        <div class="flow-head">
+            <span class="ttl">Process Flow</span>
+            <span class="live-note" id="liveNote"><span class="ldot"></span><span id="liveNoteText">Live</span></span>
+        </div>
+        <div class="steps" id="steps">
+            <div class="track" id="flowTrack"></div>
+        </div>
+    </div>
+
+    <!-- Current activity -->
+    <div class="glass activity">
+        <div class="act-ico" id="actIco">&#9881;&#65039;</div>
+        <div class="act-body">
+            <div class="act-title" id="actTitle">Waiting for the pipeline&hellip;</div>
+            <div class="act-sub" id="actSub">Select a source and trigger ingestion to begin.</div>
+        </div>
+    </div>
+
     <div class="cards" id="cards">
-        <div class="stat glass" style="--c:#60a5fa;">
+        <div class="stat glass" style="--c:#4285f4;">
             <div class="ico">&#128269;</div>
             <div class="num" id="discovered">0</div>
             <div class="lbl">Discovered</div>
@@ -384,7 +557,7 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
 <script>
 (function () {
     const API_BASE = "__API_BASE_JS__";
-    const THEME = document.body.dataset.theme || "dark";
+    const THEME = document.body.dataset.theme || "light";
     // Server-side status embedded on every Streamlit rerun. This is the primary
     // source of truth so the counters move even when the browser cannot reach
     // the API directly.
@@ -392,8 +565,44 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
     const EMBEDDED = !!(INITIAL && Object.keys(INITIAL).length);
     let echartsReady = false;
 
+    // ---- process flow definition (mirrors the real architecture) ----
+    const STEPS = [
+        { key: "starting",    label: "Source",          icon: "🎯", desc: "Sources selected" },
+        { key: "discovering", label: "Discover",        icon: "🧭", desc: "Scanning official docs" },
+        { key: "downloading", label: "Download",        icon: "⬇️", desc: "Fetching pages from the web" },
+        { key: "cached",      label: "Cache",           icon: "🗄️", desc: "Raw data stored in cache" },
+        { key: "converting",  label: "Ingest \u2192 OKF", icon: "🔄", desc: "Ingestion pipeline running" },
+        { key: "indexing",    label: "Index",           icon: "📊", desc: "Indexing into Qdrant" },
+        { key: "completed",   label: "Done",            icon: "✅", desc: "Ingestion complete" },
+    ];
+
+    const STAGE_INDEX = {
+        queued: 0, starting: 0, pending: 0,
+        discovering: 1,
+        downloading: 2,
+        cached: 3,
+        converting: 4, formatting: 4,
+        indexing: 5,
+        completed: 6, success: 6,
+    };
+
+    const STAGE_COPY = {
+        starting:    ["⚙️", "Initializing the pipeline", "Preparing the ingestion pipeline"],
+        discovering: ["🧭", "Discovering documentation", "Scanning official websites for pages"],
+        downloading: ["⬇️", "Downloading from official website", "Fetching documentation pages into the cache folder"],
+        cached:      ["🗄️", "Stored in cache", "Raw data cached \u2014 starting the ingestion pipeline from cache"],
+        converting:  ["🔄", "Ingestion pipeline running", "Converting cached raw data into OKF knowledge files"],
+        formatting:  ["🔄", "Formatting OKF knowledge", "Extracting metadata \u00B7 writing OKF knowledge files"],
+        indexing:    ["📊", "Indexing knowledge", "Storing vectors into Qdrant"],
+        completed:   ["✅", "Completed", "All documents indexed successfully"],
+        success:     ["✅", "Completed", "All documents indexed successfully"],
+        failed:      ["⛔", "Failed", "Check the sidebar for details"],
+        cancelled:   ["⏹", "Cancelled", "Ingestion was stopped"],
+        idle:        ["⚙️", "Waiting for the pipeline", "Select a source and trigger ingestion to begin"],
+    };
+
     // ---- state (persist across iframe remounts so counts never reset) ----
-    const KEY = "okf_live_dash_v1";
+    const KEY = "okf_live_dash_v2";
     let state = null;
     try {
         state = JSON.parse(sessionStorage.getItem(KEY) || "null");
@@ -405,6 +614,10 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
             tokenHistory: [],
             running: true,
             total: 0,
+            stage: "starting",
+            currentSource: "",
+            message: "",
+            lastStatus: null,
         };
     }
     if (!state.tokenHistory) state.tokenHistory = [];
@@ -421,6 +634,105 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
         return Number(n || 0).toLocaleString("en-US");
     }
 
+    // ---- process flow rendering ----
+    function buildSteps() {
+        const wrap = $("steps");
+        wrap.innerHTML = '<div class="track" id="flowTrack"></div>';
+        STEPS.forEach((s, i) => {
+            const el = document.createElement("div");
+            el.className = "step";
+            el.id = "step-" + i;
+            el.innerHTML =
+                '<div class="ico">' + s.icon + '</div>' +
+                '<div class="lbl">' + s.label + '</div>' +
+                '<div class="desc">' + s.desc + '</div>';
+            wrap.appendChild(el);
+        });
+    }
+
+    function stageIndex(stage) {
+        const s = (stage || "").toLowerCase();
+        if (STAGE_INDEX[s] !== undefined) return STAGE_INDEX[s];
+        return 0;
+    }
+
+    function deriveStage(s) {
+        const st = (s.stage || "").toLowerCase();
+        if (st && st !== "idle") return st;
+        if (s.status === "completed" || s.status === "success") return "completed";
+        if (s.status === "failed" || s.status === "cancelled" || s.status === "cancelling") return s.status;
+        if (Number(s.fetched || 0) > 0) return "downloading";
+        if (Number(s.discovered || 0) > 0) return "discovering";
+        if (Number(s.processed || 0) > 0) return "converting";
+        if (s.status === "queued" || s.status === "running") return "starting";
+        return "idle";
+    }
+
+    function renderSteps() {
+        const stage = deriveStage(state);
+        const status = state.lastStatus;
+        const isError = ["failed", "cancelled", "cancelling"].includes(status);
+        const isDone = ["completed", "success"].includes(status);
+        let idx = stageIndex(stage);
+        if (isError) idx = Math.max(0, idx);
+        const N = STEPS.length;
+
+        for (let i = 0; i < N; i++) {
+            const el = $("step-" + i);
+            if (!el) continue;
+            el.className = "step";
+            if (i < idx && !isError) el.classList.add("done");
+            else if (i === idx) {
+                if (isError) el.classList.add("error");
+                else el.classList.add("active");
+            }
+        }
+        if (isError) {
+            // mark the failing step red
+            const el = $("step-" + idx);
+            if (el) el.classList.add("error");
+        }
+        if (isDone && !isError) {
+            for (let i = 0; i < N; i++) {
+                const el = $("step-" + i);
+                if (el) { el.className = "step done"; }
+            }
+        }
+
+        // progress line fill
+        let fraction;
+        if (isError) fraction = Math.max(0.1, (idx + 0.5) / N);
+        else if (isDone) fraction = 1;
+        else fraction = Math.max(0.08, (idx + 0.5) / N);
+        const track = $("flowTrack");
+        if (track) track.style.width = (fraction * 86) + "%";
+
+        // live note
+        const note = $("liveNoteText");
+        if (note) {
+            if (isError) { $("liveNote").style.opacity = "0.6"; note.textContent = status.charAt(0).toUpperCase() + status.slice(1); }
+            else if (isDone) note.textContent = "Done";
+            else note.textContent = "Live";
+        }
+    }
+
+    function renderActivity() {
+        const stage = deriveStage(state);
+        const copy = STAGE_COPY[stage] || STAGE_COPY.starting;
+        const ico = $("actIco");
+        const title = $("actTitle");
+        const sub = $("actSub");
+        if (ico) ico.textContent = state.currentStageIco || copy[0];
+        const msg = state.stageMessage || state.message;
+        if (title) title.textContent = msg || copy[1];
+        let subText = copy[2];
+        if (state.currentSource) subText = copy[2] + " \u2014 " + state.currentSource;
+        if (state.lastStatus === "completed") subText = "Knowledge stored in OKF format and indexed into Qdrant";
+        if (state.lastStatus === "failed") subText = state.message || "Check the sidebar for details";
+        if (sub) sub.textContent = subText;
+    }
+
+    // ---- counters ----
     function renderNumbers() {
         for (const k of numbers) {
             const el = $(k);
@@ -502,13 +814,13 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
             tooltipText: "#e2e8f0",
         },
         light: {
-            axisLabel: "#94a3b8",
+            axisLabel: "#9aa0a6",
             axisLine: "rgba(15,23,42,0.15)",
             splitLine: "rgba(15,23,42,0.07)",
             donutBorder: "#ffffff",
             tooltipBg: "rgba(255,255,255,0.98)",
             tooltipBorder: "rgba(15,23,42,0.12)",
-            tooltipText: "#1e293b",
+            tooltipText: "#1f2937",
         },
     };
 
@@ -526,9 +838,8 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
 
     function renderCharts() {
         if (!echartsReady) return;
-        const T = chartTheme[THEME] || chartTheme.dark;
+        const T = chartTheme[THEME] || chartTheme.light;
 
-        // Token history area chart
         const hist = state.tokenHistory;
         if (tokenChart && hist.length) {
             const labels = hist.map((h) => h.label);
@@ -560,8 +871,8 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
                         type: "line",
                         smooth: true,
                         showSymbol: false,
-                        lineStyle: { width: 3, color: "#6366f1" },
-                        areaStyle: { color: "rgba(99,102,241,0.25)" },
+                        lineStyle: { width: 3, color: "#4285f4" },
+                        areaStyle: { color: "rgba(66,133,244,0.22)" },
                         data: hist.map((h) => h.prompt),
                     },
                     {
@@ -569,18 +880,17 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
                         type: "line",
                         smooth: true,
                         showSymbol: false,
-                        lineStyle: { width: 3, color: "#ec4899" },
-                        areaStyle: { color: "rgba(236,72,153,0.22)" },
+                        lineStyle: { width: 3, color: "#34a853" },
+                        areaStyle: { color: "rgba(52,168,83,0.20)" },
                         data: hist.map((h) => h.completion),
                     },
                 ],
             });
         }
 
-        // Pipeline mix donut
         const mix = [
             { name: "Processed", value: state.tgt.processed || 0, itemStyle: { color: "#10b981" } },
-            { name: "Indexed", value: state.tgt.indexed || 0, itemStyle: { color: "#6366f1" } },
+            { name: "Indexed", value: state.tgt.indexed || 0, itemStyle: { color: "#4285f4" } },
             { name: "Failed", value: state.tgt.failed || 0, itemStyle: { color: "#ef4444" } },
         ];
         donut.setOption({
@@ -641,6 +951,12 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
 
         state.running = isActive || isDone;
         state.lastStatus = status;
+        state.stage = s.stage || state.stage || "";
+        state.currentSource = s.current_source || "";
+        state.message = s.message || "";
+        state.stageMessage = s.stage_message || "";
+        const copy = STAGE_COPY[deriveStage(s)] || STAGE_COPY.starting;
+        state.currentStageIco = copy[0];
 
         state.tgt.discovered = Number(s.discovered || 0);
         state.tgt.fetched = Number(s.fetched || 0);
@@ -670,6 +986,8 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
             setBadge(status);
             save();
             nudge();
+            renderSteps();
+            renderActivity();
             renderCharts();
             renderFallbackTokens();
         }
@@ -696,6 +1014,7 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
         }
     }
 
+    buildSteps();
     if (typeof echarts !== "undefined") {
         initCharts();
     } else {
@@ -705,6 +1024,8 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
     }
 
     renderNumbers();
+    renderSteps();
+    renderActivity();
     if (EMBEDDED) {
         applyStatus(INITIAL, { notify: true });
     }
@@ -727,7 +1048,7 @@ def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dic
 def render_live_dashboard(
     api_host: str,
     status: Optional[dict] = None,
-    theme: str = "dark",
+    theme: str = "light",
 ) -> None:
     """Render the live glassmorphism ingestion dashboard.
 
@@ -737,4 +1058,4 @@ def render_live_dashboard(
     """
     base = browser_api_base(api_host)
     html = _build_html(base, theme=theme, initial_status=status)
-    st.components.v1.html(html, height=560, scrolling=False)
+    st.components.v1.html(html, height=760, scrolling=False)

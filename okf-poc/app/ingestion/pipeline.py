@@ -288,6 +288,8 @@ def _process_crawled_html(
     # the crawler discovered a list of candidate source URLs, and the conversion
     # step can immediately report a progress denominator to the shared status object.
     update_status(
+        stage="converting",
+        stage_message="Starting the ingestion pipeline from the cache folder",
         message="Processing crawled documentation",
         discovered=len(pages_to_process) if pages_to_process else 0,
         total_documents=max(0, len(pages_to_process)),
@@ -353,13 +355,11 @@ def _process_crawled_html(
 
             processed += 1
             update_status(
+                stage="converting",
+                stage_message="Converting cached raw data into OKF knowledge files",
                 message="Formatting crawled HTML into OKF knowledge",
                 processed=processed,
                 total_documents=max(0, len(pages_to_process)),
-                progress_percent=min(
-                    100,
-                    int(round((processed / max(1, len(pages_to_process))) * 100)),
-                ),
             )
 
         except Exception as exc:
@@ -415,6 +415,8 @@ def run_ingestion_pipeline(
     print("🚀 Starting OKF Ingestion Pipeline...")
     update_status(
         status="running",
+        stage="starting",
+        stage_message="Initializing the ingestion pipeline",
         message="Ingestion started",
         discovered=0,
         fetched=0,
@@ -422,6 +424,7 @@ def run_ingestion_pipeline(
         failed=0,
         indexed=0,
         indexed_documents=0,
+        current_source="",
     )
 
     # 0. Crawl the selected official documentation sources (skipped in
@@ -451,10 +454,13 @@ def run_ingestion_pipeline(
     _check_cancelled(cancel_event)
 
     update_status(
+        stage="cached",
+        stage_message="Raw data downloaded and stored in the cache folder",
         message="Documentation crawl completed",
         discovered=crawl_result["discovered"],
         fetched=crawl_result["fetched"],
         failed=crawl_result["failed"],
+        current_source="",
     )
 
     print(
@@ -559,6 +565,8 @@ def run_ingestion_pipeline(
 
     update_status(
         status="running",
+        stage="formatting",
+        stage_message="Extracting metadata and writing OKF knowledge files",
         message="Preparing local document conversion",
         total_documents=len(raw_docs),
         processed=crawled_count,
@@ -619,6 +627,8 @@ def run_ingestion_pipeline(
             saved_count += 1
             update_status(
                 status="running",
+                stage="formatting",
+                stage_message="Extracting metadata and writing OKF knowledge files",
                 message=f"Saving OKF file {saved_count}/{len(raw_docs)}",
                 processed=crawled_count + saved_count,
                 total_documents=len(raw_docs) + max(0, crawled_count),
@@ -656,6 +666,12 @@ def run_ingestion_pipeline(
     _check_cancelled(cancel_event)
 
     print("📦 Re-reading OKF files and connecting to Qdrant for vector indexing...")
+    update_status(
+        stage="indexing",
+        stage_message="Indexing OKF knowledge into Qdrant",
+        message="Indexing concepts into the vector database",
+        current_source="",
+    )
     concepts = load_all_concepts(knowledge_dir, use_cache=False)
     docs = concepts_to_documents(concepts)
     if not docs:
@@ -678,10 +694,13 @@ def run_ingestion_pipeline(
 
     update_status(
         status="completed",
+        stage="completed",
+        stage_message="Ingestion completed — knowledge is stored in OKF format and indexed",
         message="Ingestion completed",
         processed=crawled_count + saved_count,
         indexed=len(docs) - len(failed_ids),
         failed=crawl_result["failed"] + len(failed_ids),
+        current_source="",
     )
 
     print("✅ Ingestion Pipeline Complete!")
