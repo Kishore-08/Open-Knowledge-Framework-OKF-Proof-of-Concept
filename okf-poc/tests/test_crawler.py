@@ -194,11 +194,6 @@ async def test_crawl_configured_sources_with_none_crawls_enabled_only(monkeypatc
 @pytest.mark.asyncio
 async def test_crawl_configured_sources_with_named_selection_filters(monkeypatch):
     config = _fake_sources_config()
-    # The named-selection test needs its target source enabled (disabled sources
-    # are still skipped even when explicitly selected).
-    for s in config["sources"]:
-        if s["name"] == "langchain":
-            s["enabled"] = True
 
     _patch_crawler(
         monkeypatch,
@@ -216,6 +211,45 @@ async def test_crawl_configured_sources_with_named_selection_filters(monkeypatch
     assert result["discovered"] == 1
     # Only the langchain URL should be crawled.
     assert result["changed_urls"] == ["https://langchain/page"]
+
+
+@pytest.mark.asyncio
+async def test_crawl_configured_sources_named_selection_overrides_enabled(monkeypatch):
+    """An explicitly selected source is crawled even when it is enabled: false."""
+    crawled = []
+
+    monkeypatch.setattr(
+        "app.ingestion.crawler.load_sources",
+        lambda: _fake_sources_config(),  # langchain is disabled here
+    )
+
+    async def fake_crawl(self, source_name, base_url, **kwargs):
+        crawled.append(source_name)
+        result = _fake_crawl_result(source_name)
+        return type(
+            "FakeResult",
+            (),
+            {
+                "urls": result["urls"],
+                "fetched": result["fetched"],
+                "changed": result["changed"],
+                "unchanged": result["unchanged"],
+                "deleted": result["deleted"],
+                "failed": result["failed"],
+                "changed_urls": result["changed_urls"],
+                "changed_pages": result["changed_pages"],
+                "deleted_urls": result["deleted_urls"],
+                "errors": result["errors"],
+            },
+        )()
+
+    monkeypatch.setattr(DocsCrawler, "crawl", fake_crawl)
+
+    result = await crawl_configured_sources(source_names=["langchain"])
+
+    assert crawled == ["langchain"]
+    assert result["sources"] == 1
+    assert result["discovered"] == 1
 
 
 @pytest.mark.asyncio
@@ -252,3 +286,43 @@ async def test_list_available_sources_endpoint_returns_config(monkeypatch):
         {"name": "langchain", "base_url": "https://python.langchain.com", "category": None, "enabled": False},
         {"name": "linux-man-pages", "base_url": "https://kernel.org", "category": None, "enabled": True},
     ]
+
+
+def test_update_sources_config_persists_selection(tmp_path, monkeypatch):
+    """Selecting a source marks it enabled (and disables others) in sources.yaml."""
+    from app.ingestion.crawler import update_sources_config
+
+    import yaml
+
+    config_path = tmp_path / "sources.yaml"
+    config_path.write_text(yaml.safe_dump(_fake_sources_config(), sort_keys=False), encoding="utf-8")
+
+    monkeypatch.setattr("app.ingestion.crawler.settings.SOURCES_CONFIG", str(config_path))
+
+    update_sources_config(["langchain"])
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    enabled = {s["name"] for s in data["sources"] if s.get("enabled")}
+    assert enabled == {"langchain"}
+
+
+def test_update_sources_config_empty_selection_disables_all(tmp_path, monkeypatch):
+    """An empty selection (upload-only) disables every source for crawling."""
+    from app.ingestion.crawler import update_sources_config
+
+    import yaml
+
+    config_path = tmp_path / "sources.yaml"
+    config_path.write_text(yaml.safe_dump(_fake_sources_config(), sort_keys=False), encoding="utf-8")
+
+    monkeypatch.setattr("app.ingestion.crawler.settings.SOURCES_CONFIG", str(config_path))
+
+    update_sources_config([])
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    enabled = {s["name"] for s in data["sources"] if s.get("enabled")}
+    assert enabled == set()

@@ -26,233 +26,349 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
-# Global glassmorphism theme
+# Global glassmorphism theme (dual-mode: dark / light)
 # ---------------------------------------------------------------------------
-st.markdown("""
+
+def _theme_palette(theme: str) -> dict:
+    """Return the CSS variable values for the requested theme."""
+    dark = {
+        "okf-bg": "#0b1020",
+        "okf-glow-1": "rgba(99, 102, 241, 0.22)",
+        "okf-glow-2": "rgba(236, 72, 153, 0.16)",
+        "okf-glow-3": "rgba(139, 92, 246, 0.14)",
+        "okf-glass-bg": "rgba(255, 255, 255, 0.05)",
+        "okf-glass-border": "rgba(255, 255, 255, 0.12)",
+        "okf-glass-shadow": "rgba(0, 0, 0, 0.35)",
+        "okf-text": "#e2e8f0",
+        "okf-text-dim": "#94a3b8",
+        "okf-text-faint": "#64748b",
+        "okf-heading": "#f1f5f9",
+        "okf-sidebar-bg": "rgba(15, 18, 40, 0.55)",
+        "okf-border": "rgba(255, 255, 255, 0.14)",
+        "okf-border-soft": "rgba(255, 255, 255, 0.10)",
+        "okf-hover-bg": "rgba(99, 102, 241, 0.18)",
+        "okf-hover-border": "rgba(99, 102, 241, 0.6)",
+        "okf-primary-grad": "linear-gradient(135deg, #6366f1, #8b5cf6)",
+        "okf-input-bg": "rgba(255, 255, 255, 0.06)",
+        "okf-chat-bg": "rgba(255, 255, 255, 0.045)",
+        "okf-chat-border": "rgba(255, 255, 255, 0.10)",
+        "okf-metric-bg": "rgba(255, 255, 255, 0.04)",
+        "okf-alert-bg": "rgba(255, 255, 255, 0.05)",
+        "okf-chip-bg": "rgba(99, 102, 241, 0.22)",
+        "okf-chip-text": "#c7d2fe",
+        "okf-hero-grad": "linear-gradient(90deg, #fff 0%, #c7d2fe 45%, #f0abfc 100%)",
+        "okf-scrollbar": "rgba(255, 255, 255, 0.15)",
+        "okf-citation-bg": "rgba(255, 255, 255, 0.05)",
+        "okf-citation-border": "rgba(255, 255, 255, 0.1)",
+        "okf-citation-title": "#a5b4fc",
+        "okf-citation-score-bg": "rgba(99, 102, 241, 0.25)",
+        "okf-citation-content": "#cbd5e1",
+        "okf-src-chip-text": "#cbd5e1",
+        "okf-src-chip-bold": "#f1f5f9",
+        "okf-placeholder": "#64748b",
+    }
+    if theme == "light":
+        return {
+            "okf-bg": "#eef2f9",
+            "okf-glow-1": "rgba(99, 102, 241, 0.12)",
+            "okf-glow-2": "rgba(236, 72, 153, 0.07)",
+            "okf-glow-3": "rgba(139, 92, 246, 0.10)",
+            "okf-glass-bg": "rgba(255, 255, 255, 0.68)",
+            "okf-glass-border": "rgba(15, 23, 42, 0.10)",
+            "okf-glass-shadow": "rgba(15, 23, 42, 0.12)",
+            "okf-text": "#1e293b",
+            "okf-text-dim": "#475569",
+            "okf-text-faint": "#94a3b8",
+            "okf-heading": "#0f172a",
+            "okf-sidebar-bg": "rgba(255, 255, 255, 0.74)",
+            "okf-border": "rgba(15, 23, 42, 0.12)",
+            "okf-border-soft": "rgba(15, 23, 42, 0.08)",
+            "okf-hover-bg": "rgba(99, 102, 241, 0.12)",
+            "okf-hover-border": "rgba(99, 102, 241, 0.6)",
+            "okf-primary-grad": "linear-gradient(135deg, #6366f1, #8b5cf6)",
+            "okf-input-bg": "rgba(255, 255, 255, 0.9)",
+            "okf-chat-bg": "rgba(255, 255, 255, 0.82)",
+            "okf-chat-border": "rgba(15, 23, 42, 0.08)",
+            "okf-metric-bg": "rgba(255, 255, 255, 0.7)",
+            "okf-alert-bg": "rgba(255, 255, 255, 0.82)",
+            "okf-chip-bg": "rgba(99, 102, 241, 0.15)",
+            "okf-chip-text": "#4338ca",
+            "okf-hero-grad": "linear-gradient(90deg, #1e293b 0%, #4f46e5 45%, #7c3aed 100%)",
+            "okf-scrollbar": "rgba(15, 23, 42, 0.2)",
+            "okf-citation-bg": "rgba(255, 255, 255, 0.7)",
+            "okf-citation-border": "rgba(15, 23, 42, 0.08)",
+            "okf-citation-title": "#4f46e5",
+            "okf-citation-score-bg": "rgba(99, 102, 241, 0.15)",
+            "okf-citation-content": "#475569",
+            "okf-src-chip-text": "#475569",
+            "okf-src-chip-bold": "#0f172a",
+            "okf-placeholder": "#94a3b8",
+        }
+    return dark
+
+
+def _build_theme_css(theme: str) -> str:
+    """Render the glassmorphism stylesheet for the requested theme (dark/light)."""
+    p = _theme_palette(theme)
+    return f"""
 <style>
-    /* Dark aurora backdrop */
+    /* Auroral backdrop */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-    .stApp {
+    .stApp {{
         background:
-            radial-gradient(1000px 500px at 15% -10%, rgba(99, 102, 241, 0.22), transparent 60%),
-            radial-gradient(800px 500px at 110% 10%, rgba(236, 72, 153, 0.16), transparent 55%),
-            radial-gradient(700px 600px at 50% 120%, rgba(139, 92, 246, 0.14), transparent 60%),
-            #0b1020;
+            radial-gradient(1000px 500px at 15% -10%, {p['okf-glow-1']}, transparent 60%),
+            radial-gradient(800px 500px at 110% 10%, {p['okf-glow-2']}, transparent 55%),
+            radial-gradient(700px 600px at 50% 120%, {p['okf-glow-3']}, transparent 60%),
+            {p['okf-bg']};
         font-family: 'Inter', sans-serif;
-    }
+    }}
 
     /* Hide Streamlit chrome */
-    #MainMenu, footer { visibility: hidden; }
-    .block-container { padding-top: 1.5rem; max-width: 1200px; }
-    [data-testid="stHeader"] { background: transparent; }
+    #MainMenu, footer {{ visibility: hidden; }}
+    .block-container {{ padding-top: 1.5rem; max-width: 1400px; }}
+    [data-testid="stHeader"] {{ background: transparent; }}
 
     /* Scrollbar */
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 999px; }
+    ::-webkit-scrollbar {{ width: 8px; height: 8px; }}
+    ::-webkit-scrollbar-thumb {{ background: {p['okf-scrollbar']}; border-radius: 999px; }}
 
     /* ---- Glassmorphism shared card ---- */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.05);
+    .glass-card {{
+        background: {p['okf-glass-bg']};
         backdrop-filter: blur(18px) saturate(140%);
         -webkit-backdrop-filter: blur(18px) saturate(140%);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        border: 1px solid {p['okf-glass-border']};
         border-radius: 20px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+        box-shadow: 0 8px 32px {p['okf-glass-shadow']};
         padding: 1.1rem 1.3rem;
         margin-bottom: 0.75rem;
-    }
+    }}
 
     /* ---- Sidebar ---- */
-    [data-testid="stSidebar"] {
-        background: rgba(15, 18, 40, 0.55);
+    [data-testid="stSidebar"] {{
+        background: {p['okf-sidebar-bg']};
         backdrop-filter: blur(24px) saturate(140%);
         -webkit-backdrop-filter: blur(24px) saturate(140%);
-        border-right: 1px solid rgba(255, 255, 255, 0.10);
-    }
-    [data-testid="stSidebar"] * { color: #e2e8f0; }
-    [data-testid="stSidebar"] .stTitle h1 { font-size: 1.35rem; font-weight: 700; }
-    [data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.12); }
+        border-right: 1px solid {p['okf-border-soft']};
+    }}
+    [data-testid="stSidebar"] * {{ color: {p['okf-text']}; }}
+    [data-testid="stSidebar"] .stTitle h1 {{ font-size: 1.35rem; font-weight: 700; }}
+    [data-testid="stSidebar"] hr {{ border-color: {p['okf-border-soft']}; }}
 
     /* ---- Headers ---- */
-    h1, h2, h3 {
-        color: #f1f5f9 !important;
+    h1, h2, h3 {{
+        color: {p['okf-heading']} !important;
         font-weight: 650 !important;
         letter-spacing: -0.01em;
-    }
-    .hero-title {
+    }}
+    .hero-title {{
         font-size: 2.2rem;
         font-weight: 750;
-        background: linear-gradient(90deg, #fff 0%, #c7d2fe 45%, #f0abfc 100%);
+        background: {p['okf-hero-grad']};
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
         line-height: 1.2;
-    }
-    .hero-sub { color: #94a3b8; font-size: 0.98rem; margin-top: 0.2rem; }
+    }}
+    .hero-sub {{ color: {p['okf-text-dim']}; font-size: 0.98rem; margin-top: 0.2rem; }}
 
     /* ---- Buttons ---- */
-    .stButton > button, .stDownloadButton > button {
+    .stButton > button, .stDownloadButton > button {{
         border-radius: 14px !important;
         font-weight: 600 !important;
-        border: 1px solid rgba(255,255,255,0.14) !important;
-        background: rgba(255,255,255,0.06) !important;
-        color: #e2e8f0 !important;
+        border: 1px solid {p['okf-border']} !important;
+        background: {p['okf-glass-bg']} !important;
+        color: {p['okf-text']} !important;
         backdrop-filter: blur(10px);
         transition: all 0.2s ease !important;
-    }
-    .stButton > button:hover, .stDownloadButton > button:hover {
-        border-color: rgba(99, 102, 241, 0.6) !important;
-        background: rgba(99, 102, 241, 0.18) !important;
+    }}
+    .stButton > button:hover, .stDownloadButton > button:hover {{
+        border-color: {p['okf-hover-border']} !important;
+        background: {p['okf-hover-bg']} !important;
         transform: translateY(-1px);
         box-shadow: 0 6px 20px rgba(99, 102, 241, 0.25);
-    }
-    .stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+    }}
+    .stButton > button[kind="primary"] {{
+        background: {p['okf-primary-grad']} !important;
         color: #fff !important;
         border: none !important;
         box-shadow: 0 6px 24px rgba(99, 102, 241, 0.35);
-    }
-    .stButton > button[kind="primary"]:hover {
+    }}
+    .stButton > button[kind="primary"]:hover {{
         filter: brightness(1.1);
         box-shadow: 0 8px 28px rgba(99, 102, 241, 0.5);
-    }
+    }}
 
     /* ---- Upload dropzone ---- */
-    [data-testid="stFileUploaderDropzone"] {
-        background: rgba(255,255,255,0.03) !important;
+    [data-testid="stFileUploaderDropzone"] {{
+        background: {p['okf-input-bg']} !important;
         border: 2px dashed rgba(96, 165, 250, 0.35) !important;
         border-radius: 18px !important;
         backdrop-filter: blur(12px);
         transition: all 0.25s ease;
-    }
-    [data-testid="stFileUploaderDropzone"]:hover {
+    }}
+    [data-testid="stFileUploaderDropzone"]:hover {{
         border-color: rgba(96, 165, 250, 0.7) !important;
         background: rgba(96, 165, 250, 0.06) !important;
-    }
-    [data-testid="stFileUploaderDropzone"] small, 
-    [data-testid="stFileUploaderDropzone"] div { color: #94a3b8 !important; }
+    }}
+    [data-testid="stFileUploaderDropzone"] small,
+    [data-testid="stFileUploaderDropzone"] div {{ color: {p['okf-text-dim']} !important; }}
 
     /* ---- Inputs ---- */
-    .stTextInput input, .stTextArea textarea, .stSelectbox [data-baseweb="select"] > div {
-        background: rgba(255,255,255,0.06) !important;
-        border: 1px solid rgba(255,255,255,0.14) !important;
+    .stTextInput input, .stTextArea textarea, .stSelectbox [data-baseweb="select"] > div {{
+        background: {p['okf-input-bg']} !important;
+        border: 1px solid {p['okf-border']} !important;
         border-radius: 12px !important;
-        color: #e2e8f0 !important;
-    }
-    .stTextInput input::placeholder, .stTextArea textarea::placeholder { color: #64748b !important; }
+        color: {p['okf-text']} !important;
+    }}
+    .stTextInput input::placeholder, .stTextArea textarea::placeholder {{ color: {p['okf-placeholder']} !important; }}
 
     /* ---- Chat ---- */
-    [data-testid="stChatMessage"] {
-        background: rgba(255,255,255,0.045);
+    [data-testid="stChatMessage"] {{
+        background: {p['okf-chat-bg']};
         backdrop-filter: blur(14px);
-        border: 1px solid rgba(255,255,255,0.10);
+        border: 1px solid {p['okf-chat-border']};
         border-radius: 18px;
         padding: 0.9rem 1rem;
         margin-bottom: 0.6rem;
-    }
-    [data-testid="stChatInput"] textarea {
-        background: rgba(255,255,255,0.06) !important;
-        border: 1px solid rgba(255,255,255,0.14) !important;
-        border-radius: 16px !important;
-        color: #e2e8f0 !important;
-    }
+    }}
+    [data-testid="stChatMessage"] p {{ color: {p['okf-text']}; }}
+
+    /* Search bar (chat input) — full-width, comfortably tall */
+    [data-testid="stChatInput"] {{
+        max-width: 100%;
+    }}
+    [data-testid="stChatInput"] textarea {{
+        background: {p['okf-input-bg']} !important;
+        border: 1px solid {p['okf-border']} !important;
+        border-radius: 18px !important;
+        color: {p['okf-text']} !important;
+        font-size: 1.02rem !important;
+        line-height: 1.5 !important;
+        min-height: 56px !important;
+    }}
 
     /* ---- Multiselect chips ---- */
-    [data-baseweb="tag"] {
-        background: rgba(99, 102, 241, 0.22) !important;
+    [data-baseweb="tag"] {{
+        background: {p['okf-chip-bg']} !important;
         border-radius: 999px !important;
-        color: #c7d2fe !important;
-    }
+        color: {p['okf-chip-text']} !important;
+    }}
 
     /* ---- Metrics ---- */
-    [data-testid="stMetric"] {
-        background: rgba(255,255,255,0.04);
+    [data-testid="stMetric"] {{
+        background: {p['okf-metric-bg']};
         backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.10);
+        border: 1px solid {p['okf-border-soft']};
         border-radius: 16px;
         padding: 0.8rem 1rem;
-    }
-    [data-testid="stMetric"] label { color: #94a3b8 !important; }
-    [data-testid="stMetricValue"] { color: #f1f5f9 !important; }
+    }}
+    [data-testid="stMetric"] label {{ color: {p['okf-text-dim']} !important; }}
+    [data-testid="stMetricValue"] {{ color: {p['okf-heading']} !important; }}
 
     /* ---- Info/warning/error boxes ---- */
-    .stAlert {
+    .stAlert {{
         border-radius: 16px !important;
-        border: 1px solid rgba(255,255,255,0.12) !important;
-        background: rgba(255,255,255,0.05) !important;
+        border: 1px solid {p['okf-border-soft']} !important;
+        background: {p['okf-alert-bg']} !important;
         backdrop-filter: blur(12px);
-    }
+    }}
+    .stAlert p {{ color: {p['okf-text']} !important; }}
 
     /* ---- Status pill for sidebar ---- */
-    .health-pill {
+    .health-pill {{
         display: inline-flex; align-items: center; gap: 8px;
         padding: 6px 14px; border-radius: 999px;
         font-size: 0.78rem; font-weight: 600;
-        border: 1px solid rgba(255,255,255,0.14);
-        background: rgba(255,255,255,0.06);
+        border: 1px solid {p['okf-border']};
+        background: {p['okf-glass-bg']};
+        color: {p['okf-text']};
         margin: 2px 0;
-    }
-    .health-pill .dot { width: 8px; height: 8px; border-radius: 50%; }
-    .ok .dot { background: #10b981; box-shadow: 0 0 8px #10b981; }
-    .bad .dot { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
-    .warn .dot { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+    }}
+    .health-pill .dot {{ width: 8px; height: 8px; border-radius: 50%; }}
+    .ok .dot {{ background: #10b981; box-shadow: 0 0 8px #10b981; }}
+    .bad .dot {{ background: #ef4444; box-shadow: 0 0 8px #ef4444; }}
+    .warn .dot {{ background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }}
 
     /* Source chip row */
-    .src-chip {
+    .src-chip {{
         display: inline-flex; align-items: center; gap: 6px;
         padding: 4px 12px; margin: 2px 4px 2px 0;
         border-radius: 999px; font-size: 0.78rem;
-        border: 1px solid rgba(255,255,255,0.14);
-        background: rgba(255,255,255,0.06);
-        color: #cbd5e1;
-    }
-    .src-chip b { color: #f1f5f9; }
+        border: 1px solid {p['okf-border']};
+        background: {p['okf-glass-bg']};
+        color: {p['okf-src-chip-text']};
+    }}
+    .src-chip b {{ color: {p['okf-src-chip-bold']}; }}
 
     /* Citation cards (used by the chat) */
-    .citation-card {
-        background: rgba(255, 255, 255, 0.05);
+    .citation-card {{
+        background: {p['okf-citation-bg']};
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 1px solid {p['okf-citation-border']};
         border-radius: 0.75rem;
         padding: 1rem;
         margin-top: 0.5rem;
         margin-bottom: 0.5rem;
         transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         border-left: 4px solid #6366f1;
-    }
-    .citation-card:hover {
+    }}
+    .citation-card:hover {{
         transform: translateY(-2px);
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         border-color: rgba(99, 102, 241, 0.6);
-    }
-    .citation-title {
+    }}
+    .citation-title {{
         font-weight: 600;
         font-size: 0.95rem;
-        color: #a5b4fc;
+        color: {p['okf-citation-title']};
         margin-bottom: 0.25rem;
         display: flex;
         justify-content: space-between;
-    }
-    .citation-score {
+    }}
+    .citation-score {{
         font-size: 0.75rem;
-        background: rgba(99, 102, 241, 0.25);
-        color: #c7d2fe;
+        background: {p['okf-citation-score-bg']};
+        color: {p['okf-citation-title']};
         padding: 0.1rem 0.5rem;
         border-radius: 9999px;
-    }
-    .citation-content {
+    }}
+    .citation-content {{
         font-size: 0.85rem;
-        color: #cbd5e1;
+        color: {p['okf-citation-content']};
         line-height: 1.5;
         display: -webkit-box;
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
         overflow: hidden;
-    }
+    }}
+
+    /* ---- Ingestion overlay dialog (curved edges popup) ---- */
+    [data-testid="stDialog"] {{
+        border-radius: 28px !important;
+        overflow: hidden;
+    }}
+    [data-testid="stDialog"] [role="dialog"] {{
+        background: {p['okf-glass-bg']};
+        backdrop-filter: blur(28px) saturate(150%);
+        -webkit-backdrop-filter: blur(28px) saturate(150%);
+        border: 1px solid {p['okf-glass-border']};
+        border-radius: 28px !important;
+        box-shadow: 0 24px 80px {p['okf-glass-shadow']};
+    }}
+    [data-testid="stDialog"] h1, [data-testid="stDialog"] h2 {{
+        color: {p['okf-heading']} !important;
+    }}
 </style>
-""", unsafe_allow_html=True)
+"""
+
+# Theme state (default dark)
+if "theme" not in st.session_state:
+    st.session_state.theme = "dark"
+
+st.markdown(_build_theme_css(st.session_state.theme), unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
 # API helpers
@@ -316,12 +432,17 @@ def get_ingestion_status():
         return None
 
 def upload_files(files, sources=None):
-    """Upload files to the backend and start processing for selected sources."""
+    """Upload files to the backend and start processing for selected sources.
+
+    Uploads run in upload-only mode server-side: ONLY the uploaded files are
+    converted + indexed, and the documentation crawl is skipped entirely, so an
+    uploaded document is never mixed with cached crawl pages.
+    """
     files_data = []
     for f in files:
         f.seek(0)
         files_data.append(('files', (f.name, f.getvalue(), f.type or "application/octet-stream")))
-    data = {"sources": ",".join(sources or [])}
+    data = {"sources": ""}  # upload-only: sources ignored / no crawl
     response = requests.post(
         f"{API_HOST}/api/v1/ingest/upload",
         files=files_data,
@@ -455,6 +576,17 @@ def render_knowledge_base(is_healthy: bool):
 with st.sidebar:
     st.title("⚙️ OKF Control Panel")
     st.markdown("Manage your Open Knowledge Framework pipeline.")
+
+    # Dual-mode theme toggle
+    theme = st.toggle(
+        "🌙 Dark mode",
+        value=st.session_state.theme == "dark",
+        help="Switch between the dark and light glassmorphism themes.",
+    )
+    new_theme = "dark" if theme else "light"
+    if new_theme != st.session_state.theme:
+        st.session_state.theme = new_theme
+        st.rerun()
 
     st.divider()
 
@@ -598,21 +730,34 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Live ingestion dashboard — a self-contained HTML component that polls the API
-# itself so counters and charts animate smoothly in the browser.
+# Live ingestion progress — rendered as a popup/overlay on the main page with
+# curved edges (st.dialog). The dashboard component embeds the server-side
+# status on every rerun so the counters move even if the browser cannot reach
+# the API directly.
+@st.dialog("⏳ Ingestion Progress", width="large")
+def ingestion_overlay() -> None:
+    status = get_ingestion_status()
+    render_live_dashboard(API_HOST, status=status, theme=st.session_state.theme)
+    if st.button("✕ Close", key="close_ingestion_overlay", use_container_width=True):
+        st.session_state.ingestion_running = False
+        st.rerun()
+
+
 if st.session_state.ingestion_running:
-    render_live_dashboard(API_HOST)
+    ingestion_overlay()
 
     status = get_ingestion_status()
-    if status:
-        current_status = status.get("status", "running")
-        if current_status in ("completed", "success", "failed", "cancelled"):
-            st.session_state.ingestion_running = False
-            st.rerun()
-    else:
-        # Backend unreachable while we think we're running: keep trying briefly
-        time.sleep(2)
+    if status and status.get("status", "running") in ("completed", "success", "failed", "cancelled"):
+        st.session_state.ingestion_running = False
         st.rerun()
+
+    # Rerun every ~2s while the pipeline is active so the overlay re-embeds the
+    # latest server-side status. The embedded status is what drives the counters
+    # when the browser cannot reach the API directly (preview domain + docker
+    # host); the component's own polling adds smoother sub-2s updates when the
+    # API is reachable from the browser (e.g. localhost).
+    time.sleep(2)
+    st.rerun()
 
 # Display Chat History
 for message in st.session_state.messages:

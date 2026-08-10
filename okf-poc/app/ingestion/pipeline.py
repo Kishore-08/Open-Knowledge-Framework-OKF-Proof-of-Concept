@@ -265,18 +265,23 @@ def _process_crawled_html(
     crawl didn't actually change any pages.
     """
     state_manager = StateManager(cache_dir)
-    pages_to_process = changed_pages or state_manager.get_all_crawler_states()
 
-    # When the user selected specific documentation sources, only process pages
-    # that belong to those sources (ignore cached pages from other sources).
-    if source_names is not None:
+    if source_names is None:
+        # Default behaviour: crawl the enabled sources. When the crawl only
+        # produced 304 cache hits, recover the cached pages from the on-disk
+        # state so the knowledge repo is not left empty.
+        pages_to_process = changed_pages or state_manager.get_all_crawler_states()
+    else:
+        # Explicit source selection: process ONLY what was freshly downloaded for
+        # the selected sources. Never fall back to cached pages from earlier
+        # runs — the user asked for a fresh crawl of the official documentation.
         if not source_names:
             pages_to_process = []
         else:
-            source_names = {s.lower() for s in source_names}
+            selected = {s.lower() for s in source_names}
             pages_to_process = [
-                p for p in pages_to_process
-                if (p.get("source_name") or "").lower() in source_names
+                p for p in (changed_pages or [])
+                if (p.get("source_name") or "").lower() in selected
             ]
 
     # Keep the live UI honest while the HTML->Markdown conversion is happening:
@@ -374,6 +379,7 @@ def run_ingestion_pipeline(
     knowledge_dir: str = None,
     cancel_event: Optional[threading.Event] = None,
     source_names: Optional[list] = None,
+    only_files: Optional[list] = None,
 ):
     """
     The master orchestration function.
@@ -393,11 +399,18 @@ def run_ingestion_pipeline(
             to crawl. None = crawl the enabled sources; an empty list = skip
             crawling entirely (process only cached/uploaded files); a non-empty
             list = crawl only those sources.
+        only_files: Optional list of filenames (relative to cache_dir) to process.
+            When provided the pipeline enters "upload-only" mode: crawling is
+            skipped entirely and ONLY these files are converted + indexed, so an
+            uploaded document is never mixed with cached crawl pages or other
+            previously cached files.
     """
     if cache_dir is None:
         cache_dir = settings.CACHE_DIR
     if knowledge_dir is None:
         knowledge_dir = settings.KNOWLEDGE_DIR
+
+    upload_only = bool(only_files)
 
     print("🚀 Starting OKF Ingestion Pipeline...")
     update_status(
@@ -411,13 +424,29 @@ def run_ingestion_pipeline(
         indexed_documents=0,
     )
 
-    # 0. Crawl the selected official documentation sources.
-    crawl_result = asyncio.run(
-        crawl_configured_sources(
-            cache_dir=cache_dir,
-            source_names=source_names,
+    # 0. Crawl the selected official documentation sources (skipped in
+    # upload-only mode: an uploaded document must not be mixed with crawls).
+    if upload_only:
+        print("ℹ️ Upload-only mode: skipping documentation crawl.")
+        crawl_result = {
+            "sources": 0,
+            "discovered": 0,
+            "fetched": 0,
+            "changed": 0,
+            "unchanged": 0,
+            "deleted": 0,
+            "failed": 0,
+            "changed_urls": [],
+            "changed_pages": [],
+            "deleted_urls": [],
+        }
+    else:
+        crawl_result = asyncio.run(
+            crawl_configured_sources(
+                cache_dir=cache_dir,
+                source_names=source_names,
+            )
         )
-    )
 
     _check_cancelled(cancel_event)
 
@@ -460,7 +489,7 @@ def run_ingestion_pipeline(
         knowledge_dir=knowledge_dir,
         changed_pages=crawl_result.get("changed_pages", []),
         cancel_event=cancel_event,
-        source_names=source_names,
+        source_names=[] if upload_only else source_names,
     )
 
     update_status(
@@ -480,22 +509,36 @@ def run_ingestion_pipeline(
     state_manager = StateManager(cache_dir)
     processing_state = state_manager.load_processing_state()
 
-    changed_local_files, processing_state = state_manager.get_changed_files(processing_state)
-
-    print(
-        f"📂 Local cached files: changed/new={len(changed_local_files)}"
-    )
-
-    # Re-run the local raw conversion whenever the pipeline is invoked from the
-    # API even for a cache hit crawl. The incremental state only tells us which
-    # inputs changed. However a fresh call into the API should still have the
-    # filesystem authoritative input count at its disposal. When the state
-    # indicates 'no changed files' we can fall back to the full cache tree rather
-    # than silently treating the repository as empty.
-    if changed_local_files:
-        local_files = changed_local_files
+    if upload_only:
+        # Only the files that were just uploaded are eligible. Never fall back to
+        # the whole cache tree or to changed-file detection, otherwise other
+        # cached documents would be (re)processed alongside the upload.
+        local_files = []
+        for filename in only_files or []:
+            path = filename if os.path.isabs(filename) else os.path.join(cache_dir, filename)
+            if os.path.isfile(path):
+                local_files.append(path)
+            else:
+                print(f"⚠️ Uploaded file not found in cache: {path}")
+        changed_local_files = list(local_files)
+        print(f"📂 Upload-only files: {len(local_files)}")
     else:
-        local_files = state_manager.discover_local_files()
+        changed_local_files, processing_state = state_manager.get_changed_files(processing_state)
+
+        print(
+            f"📂 Local cached files: changed/new={len(changed_local_files)}"
+        )
+
+        # Re-run the local raw conversion whenever the pipeline is invoked from the
+        # API even for a cache hit crawl. The incremental state only tells us which
+        # inputs changed. However a fresh call into the API should still have the
+        # filesystem authoritative input count at its disposal. When the state
+        # indicates 'no changed files' we can fall back to the full cache tree rather
+        # than silently treating the repository as empty.
+        if changed_local_files:
+            local_files = changed_local_files
+        else:
+            local_files = state_manager.discover_local_files()
 
     raw_docs = []
     for file_path in local_files:

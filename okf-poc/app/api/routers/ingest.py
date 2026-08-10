@@ -24,6 +24,7 @@ def _run_ingest_job(job):
             knowledge_dir=params.get("knowledge_dir") or settings.KNOWLEDGE_DIR,
             cancel_event=job.cancel_event,
             source_names=params.get("sources"),
+            only_files=params.get("only_files"),
         )
         return result
     except JobCancelledError:
@@ -97,6 +98,13 @@ async def ingest_documents(request: IngestRequest):
                 message="Ingestion is already running; your request was queued.",
                 indexed_documents=active.indexed_documents if active else 0,
             )
+
+        # Persist the user's selection into sources.yaml so the config file (and
+        # the /ingest/sources endpoint + UI defaults) reflect it. Empty selection
+        # means "upload/cached files only" -> every source is disabled for crawl.
+        from app.ingestion.crawler import update_sources_config
+
+        update_sources_config(request.sources)
 
         job = job_manager.submit(
             "ingest",
@@ -175,19 +183,15 @@ async def upload_documents(
     Files are saved to the configured cache directory and then processed
     through the existing ingestion pipeline.
 
-    Optional `sources` is a comma-separated list of documentation source
-    names to crawl alongside the uploaded files.
+    Uploads run in upload-only mode: the documentation crawl is skipped and
+    ONLY the uploaded files are converted + indexed, so an uploaded document is
+    never mixed with cached crawl pages or previously uploaded files.
+
+    Optional `sources` is accepted for backwards compatibility but ignored
+    (uploading documents is a self-contained operation).
 
     Supported formats: PDF (.pdf), Markdown (.md), Text (.txt), JSON (.json)
     """
-    # Parse the comma-separated source list.
-    source_names = []
-    if sources:
-        source_names = [
-            s.strip()
-            for s in sources.split(",")
-            if s.strip()
-        ]
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
     
@@ -266,14 +270,17 @@ async def upload_documents(
             errors=errors
         )
     
-    # Trigger ingestion pipeline
+    # Trigger ingestion pipeline. Uploaded files are processed as upload-only:
+    # the pipeline skips crawling and processes ONLY these files, never mixing in
+    # cached crawl pages or previously uploaded documents.
     try:
         job = job_manager.submit(
             "ingest",
             params={
                 "cache_dir": cache_dir,
                 "knowledge_dir": knowledge_dir,
-                "sources": source_names,
+                "sources": [],
+                "only_files": uploaded_files,
             },
         )
         

@@ -3,13 +3,22 @@ Self-contained live ingestion dashboard.
 
 Rendered as a Streamlit HTML component so the counters, progress bar and
 token graphs animate smoothly in the browser instead of re-rendering on every
-Streamlit rerun. The component polls the FastAPI status endpoint directly and
-eases every number toward its target one step at a time (+1 increments), which
-is what makes the "live progress" feel smooth.
+Streamlit rerun. The component eases every number toward its target one step at
+a time (+1 increments), which is what makes the "live progress" feel smooth.
+
+Data flow
+---------
+The Streamlit server fetches ``/api/v1/ingest/status`` itself and embeds the
+result into the component on every rerun (see ``render_live_dashboard``). This
+means the counters update even when the browser cannot reach the API directly
+(e.g. when the app is served through a preview domain and ``API_HOST`` is a
+docker-internal host). The component additionally tries to poll the API from
+the browser as an enhancement, but never relies on it.
 """
 
 import html as _html
-from typing import Dict, List
+import json as _json
+from typing import Dict, Optional
 
 import streamlit as st
 
@@ -34,11 +43,22 @@ def browser_api_base(configured: str) -> str:
         return "http://localhost:8000"
 
 
-def _build_html(api_base: str) -> str:
-    """Build the full self-contained HTML+JS dashboard."""
+def _build_html(api_base: str, theme: str = "dark", initial_status: Optional[dict] = None) -> str:
+    """Build the full self-contained HTML+JS dashboard.
+
+    ``initial_status`` is embedded as ``window.__OKF_STATUS__`` and applied
+    immediately, so the counters reflect the server-side status on every
+    Streamlit rerun even if the browser cannot reach the API.
+    """
 
     # Escape for embedding in a <script> string safely.
     api_base_js = _html.escape(api_base, quote=True)
+
+    # Embed the server-side status as a raw JS object literal. HTML-entity
+    # escaping would corrupt the JSON (quotes become &quot;), so we only guard
+    # against breaking out of the <script> block via "</script>".
+    status_json = _json.dumps(initial_status or {})
+    status_js = status_json.replace("</", "<\\/")
 
     return """
 <!DOCTYPE html>
@@ -55,28 +75,64 @@ def _build_html(api_base: str) -> str:
         --success: #10b981;
         --warn: #f59e0b;
         --danger: #ef4444;
+    }
+
+    body[data-theme="dark"] {
         --text: #e2e8f0;
         --text-dim: #94a3b8;
+        --glass-bg: rgba(255, 255, 255, 0.05);
+        --glass-border: rgba(255, 255, 255, 0.12);
+        --glass-shadow: rgba(0, 0, 0, 0.35);
+        --axis-line: rgba(255,255,255,0.15);
+        --axis-label: #64748b;
+        --split-line: rgba(255,255,255,0.07);
+        --bar-track: rgba(255,255,255,0.08);
+        --donut-center: rgba(11,16,32,0.9);
+        --donut-border: #0b1020;
+        --badge-bg: rgba(255,255,255,0.06);
+        --badge-border: rgba(255,255,255,0.14);
+        --body-bg:
+            radial-gradient(900px 400px at 10% -10%, rgba(99, 102, 241, 0.28), transparent 60%),
+            radial-gradient(700px 400px at 110% 0%, rgba(236, 72, 153, 0.18), transparent 55%),
+            radial-gradient(600px 500px at 50% 120%, rgba(139, 92, 246, 0.16), transparent 60%),
+            #0b1020;
+    }
+
+    body[data-theme="light"] {
+        --text: #1e293b;
+        --text-dim: #64748b;
+        --glass-bg: rgba(255, 255, 255, 0.72);
+        --glass-border: rgba(15,23,42,0.10);
+        --glass-shadow: rgba(15, 23, 42, 0.10);
+        --axis-line: rgba(15,23,42,0.15);
+        --axis-label: #94a3b8;
+        --split-line: rgba(15,23,42,0.07);
+        --bar-track: rgba(15,23,42,0.08);
+        --donut-center: rgba(255,255,255,0.92);
+        --donut-border: #ffffff;
+        --badge-bg: rgba(255,255,255,0.85);
+        --badge-border: rgba(15,23,42,0.12);
+        --body-bg:
+            radial-gradient(900px 400px at 10% -10%, rgba(99,102,241,0.14), transparent 60%),
+            radial-gradient(700px 400px at 110% 0%, rgba(236,72,153,0.08), transparent 55%),
+            radial-gradient(600px 500px at 50% 120%, rgba(139,92,246,0.10), transparent 60%),
+            #f2f5fc;
     }
 
     body {
         min-height: 100%;
         padding: 18px;
-        background:
-            radial-gradient(900px 400px at 10% -10%, rgba(99, 102, 241, 0.28), transparent 60%),
-            radial-gradient(700px 400px at 110% 0%, rgba(236, 72, 153, 0.18), transparent 55%),
-            radial-gradient(600px 500px at 50% 120%, rgba(139, 92, 246, 0.16), transparent 60%),
-            #0b1020;
+        background: var(--body-bg);
         color: var(--text);
     }
 
     .glass {
-        background: rgba(255, 255, 255, 0.05);
+        background: var(--glass-bg);
         backdrop-filter: blur(18px) saturate(140%);
         -webkit-backdrop-filter: blur(18px) saturate(140%);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        border: 1px solid var(--glass-border);
         border-radius: 20px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+        box-shadow: 0 8px 32px var(--glass-shadow);
     }
 
     .dash {
@@ -96,7 +152,7 @@ def _build_html(api_base: str) -> str:
         font-size: 1.15rem;
         font-weight: 650;
         letter-spacing: 0.01em;
-        background: linear-gradient(90deg, #fff, #c7d2fe);
+        background: linear-gradient(90deg, var(--text), var(--accent-2));
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -112,8 +168,9 @@ def _build_html(api_base: str) -> str:
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        border: 1px solid rgba(255,255,255,0.14);
-        background: rgba(255,255,255,0.06);
+        border: 1px solid var(--badge-border);
+        background: var(--badge-bg);
+        color: var(--text);
     }
     .badge .dot {
         width: 8px; height: 8px; border-radius: 50%;
@@ -165,6 +222,7 @@ def _build_html(api_base: str) -> str:
         font-weight: 750;
         font-variant-numeric: tabular-nums;
         line-height: 1;
+        color: var(--text);
     }
     .stat .lbl {
         font-size: 0.72rem;
@@ -187,7 +245,7 @@ def _build_html(api_base: str) -> str:
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent;
     }
-    .bar { height: 12px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; position: relative; }
+    .bar { height: 12px; border-radius: 999px; background: var(--bar-track); overflow: hidden; position: relative; }
     .bar .fill {
         height: 100%; width: 0%;
         border-radius: 999px;
@@ -248,14 +306,15 @@ def _build_html(api_base: str) -> str:
         position: absolute; inset: 16px; border-radius: 50%;
         display: grid; place-items: center;
         font-size: 1.2rem; font-weight: 700;
-        background: rgba(11,16,32,0.9);
+        background: var(--donut-center);
+        color: var(--text);
     }
     .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.72rem; color: var(--text-dim); }
     .legend span { display: inline-flex; align-items: center; gap: 6px; }
     .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 </style>
 </head>
-<body>
+<body data-theme="__THEME__">
 <div class="dash">
 
     <div class="glass head">
@@ -325,6 +384,12 @@ def _build_html(api_base: str) -> str:
 <script>
 (function () {
     const API_BASE = "__API_BASE_JS__";
+    const THEME = document.body.dataset.theme || "dark";
+    // Server-side status embedded on every Streamlit rerun. This is the primary
+    // source of truth so the counters move even when the browser cannot reach
+    // the API directly.
+    const INITIAL = window.__OKF_STATUS__ || null;
+    const EMBEDDED = !!(INITIAL && Object.keys(INITIAL).length);
     let echartsReady = false;
 
     // ---- state (persist across iframe remounts so counts never reset) ----
@@ -426,6 +491,27 @@ def _build_html(api_base: str) -> str:
     // ---- charts ----
     let tokenChart = null, donut = null;
 
+    const chartTheme = {
+        dark: {
+            axisLabel: "#64748b",
+            axisLine: "rgba(255,255,255,0.15)",
+            splitLine: "rgba(255,255,255,0.07)",
+            donutBorder: "#0b1020",
+            tooltipBg: "rgba(15,18,40,0.95)",
+            tooltipBorder: "rgba(255,255,255,0.15)",
+            tooltipText: "#e2e8f0",
+        },
+        light: {
+            axisLabel: "#94a3b8",
+            axisLine: "rgba(15,23,42,0.15)",
+            splitLine: "rgba(15,23,42,0.07)",
+            donutBorder: "#ffffff",
+            tooltipBg: "rgba(255,255,255,0.98)",
+            tooltipBorder: "rgba(15,23,42,0.12)",
+            tooltipText: "#1e293b",
+        },
+    };
+
     function initCharts() {
         if (typeof echarts === "undefined") return;
         const box = $("tokenBox");
@@ -440,6 +526,7 @@ def _build_html(api_base: str) -> str:
 
     function renderCharts() {
         if (!echartsReady) return;
+        const T = chartTheme[THEME] || chartTheme.dark;
 
         // Token history area chart
         const hist = state.tokenHistory;
@@ -448,19 +535,24 @@ def _build_html(api_base: str) -> str:
             tokenChart.setOption({
                 animation: true,
                 animationDurationUpdate: 400,
-                tooltip: { trigger: "axis" },
+                tooltip: {
+                    trigger: "axis",
+                    backgroundColor: T.tooltipBg,
+                    borderColor: T.tooltipBorder,
+                    textStyle: { color: T.tooltipText },
+                },
                 grid: { left: 44, right: 12, top: 18, bottom: 24 },
-                legend: { data: ["Prompt", "Completion"], textStyle: { color: "#94a3b8" }, top: 0 },
+                legend: { data: ["Prompt", "Completion"], textStyle: { color: T.axisLabel }, top: 0 },
                 xAxis: {
                     type: "category",
                     data: labels,
-                    axisLine: { lineStyle: { color: "rgba(255,255,255,0.15)" } },
-                    axisLabel: { color: "#64748b", fontSize: 10 },
+                    axisLine: { lineStyle: { color: T.axisLine } },
+                    axisLabel: { color: T.axisLabel, fontSize: 10 },
                 },
                 yAxis: {
                     type: "value",
-                    splitLine: { lineStyle: { color: "rgba(255,255,255,0.07)" } },
-                    axisLabel: { color: "#64748b", fontSize: 10 },
+                    splitLine: { lineStyle: { color: T.splitLine } },
+                    axisLabel: { color: T.axisLabel, fontSize: 10 },
                 },
                 series: [
                     {
@@ -494,14 +586,19 @@ def _build_html(api_base: str) -> str:
         donut.setOption({
             animation: true,
             animationDurationUpdate: 400,
-            tooltip: { trigger: "item" },
+            tooltip: {
+                trigger: "item",
+                backgroundColor: T.tooltipBg,
+                borderColor: T.tooltipBorder,
+                textStyle: { color: T.tooltipText },
+            },
             series: [{
                 type: "pie",
                 radius: ["62%", "88%"],
                 avoidLabelOverlap: true,
-                itemStyle: { borderColor: "#0b1020", borderWidth: 3 },
+                itemStyle: { borderColor: T.donutBorder, borderWidth: 3 },
                 label: { show: false },
-                emphasis: { label: { show: true, color: "#e2e8f0" } },
+                emphasis: { label: { show: true, color: T.tooltipText } },
                 data: mix.filter((d) => d.value > 0),
             }],
         });
@@ -536,47 +633,65 @@ def _build_html(api_base: str) -> str:
         box.appendChild(line);
     }
 
-    // ---- polling ----
-    async function poll() {
-        try {
-            const res = await fetch(API_BASE + "/api/v1/ingest/status", { cache: "no-store" });
-            if (!res.ok) throw new Error("status " + res.status);
-            const s = await res.json();
+    // ---- apply a status payload to the shared state ----
+    function applyStatus(s, opts) {
+        const status = s.status || "idle";
+        const isActive = ["running", "queued", "cancelling"].includes(status);
+        const isDone = ["completed", "success"].includes(status);
 
-            const status = s.status || "idle";
-            const isActive = ["running", "queued", "cancelling"].includes(status);
-            const isDone = ["completed", "success"].includes(status);
+        state.running = isActive || isDone;
+        state.lastStatus = status;
 
-            state.running = isActive || isDone;
-            state.lastStatus = status;
+        state.tgt.discovered = Number(s.discovered || 0);
+        state.tgt.fetched = Number(s.fetched || 0);
+        state.tgt.processed = Number(s.processed || 0);
+        state.tgt.indexed = Number(s.indexed_documents ?? s.indexed ?? 0);
+        state.tgt.failed = Number(s.failed || 0);
+        state.tgt.progress = Number(s.progress_percent || (isDone ? 100 : 0));
+        state.total = Number(s.total_documents || 0);
 
-            state.tgt.discovered = Number(s.discovered || 0);
-            state.tgt.fetched = Number(s.fetched || 0);
-            state.tgt.processed = Number(s.processed || 0);
-            state.tgt.indexed = Number(s.indexed_documents ?? s.indexed ?? 0);
-            state.tgt.failed = Number(s.failed || 0);
-            state.tgt.progress = Number(s.progress_percent || (isDone ? 100 : 0));
-            state.total = Number(s.total_documents || 0);
+        const prompt = Number(s.prompt_tokens_estimate || 0);
+        const completion = Number(s.completion_tokens_estimate || 0);
+        const label = new Date().toLocaleTimeString("en-US", { hour12: false });
 
-            const label = new Date().toLocaleTimeString("en-US", { hour12: false });
-            state.tokenHistory.push({
-                label,
-                prompt: Number(s.prompt_tokens_estimate || 0),
-                completion: Number(s.completion_tokens_estimate || 0),
-            });
+        // Avoid duplicating an identical point when the iframe remounts on each
+        // Streamlit rerun with the same embedded status.
+        const key = label + "|" + prompt + "|" + completion;
+        const last = state.tokenHistory.length
+            ? state.tokenHistory[state.tokenHistory.length - 1]
+            : null;
+        const lastKey = last ? last.label + "|" + last.prompt + "|" + last.completion : null;
+        if (key !== lastKey) {
+            state.tokenHistory.push({ label, prompt, completion });
             if (state.tokenHistory.length > 30) state.tokenHistory.shift();
+        }
 
+        if (opts && opts.notify) {
             setBadge(status);
             save();
             nudge();
             renderCharts();
             renderFallbackTokens();
+        }
+    }
+
+    // ---- polling (enhancement only; embedded status is the source of truth) ----
+    async function poll() {
+        try {
+            const res = await fetch(API_BASE + "/api/v1/ingest/status", { cache: "no-store" });
+            if (!res.ok) throw new Error("status " + res.status);
+            const s = await res.json();
+            applyStatus(s, { notify: true });
         } catch (e) {
-            const badge = $("statusBadge");
-            const text = $("statusText");
-            if (badge) {
-                badge.className = "badge";
-                if (text) text.textContent = "API offline";
+            // Browser cannot reach the API directly (e.g. preview domain + docker
+            // host). The embedded status updated on the next Streamlit rerun.
+            if (!EMBEDDED) {
+                const badge = $("statusBadge");
+                const text = $("statusText");
+                if (badge) {
+                    badge.className = "badge";
+                    if (text) text.textContent = "API offline";
+                }
             }
         }
     }
@@ -590,6 +705,9 @@ def _build_html(api_base: str) -> str:
     }
 
     renderNumbers();
+    if (EMBEDDED) {
+        applyStatus(INITIAL, { notify: true });
+    }
     setBadge(state.lastStatus || "idle");
     poll();
     window.setInterval(poll, 800);
@@ -598,9 +716,25 @@ def _build_html(api_base: str) -> str:
 </script>
 </body>
 </html>
-""".replace("__API_BASE_JS__", api_base_js)
+""".replace("__API_BASE_JS__", api_base_js).replace(
+        "__THEME__", _html.escape(theme, quote=True)
+    ).replace(
+        "window.__OKF_STATUS__ || null",
+        "(%s) || null" % status_js,
+    )
 
-def render_live_dashboard(api_host: str) -> None:
-    """Render the live glassmorphism ingestion dashboard."""
+
+def render_live_dashboard(
+    api_host: str,
+    status: Optional[dict] = None,
+    theme: str = "dark",
+) -> None:
+    """Render the live glassmorphism ingestion dashboard.
+
+    ``status`` is the server-side status fetched by Streamlit and embedded into
+    the component, so the counters reflect real backend progress even when the
+    browser cannot reach the API directly. ``theme`` picks the light/dark palette.
+    """
     base = browser_api_base(api_host)
-    st.components.v1.html(_build_html(base), height=560, scrolling=False)
+    html = _build_html(base, theme=theme, initial_status=status)
+    st.components.v1.html(html, height=560, scrolling=False)

@@ -152,3 +152,70 @@ def test_process_crawled_html_empty_source_names_skips_all(tmp_path, monkeypatch
 
     assert processed == 0
     assert processed_urls == []
+
+
+def test_process_crawled_html_explicit_source_ignores_cached_pages(tmp_path, monkeypatch):
+    """Explicit source selection must NOT fall back to cached pages from earlier runs."""
+    # The cache dir has a crawler state file for kubernetes pages that are NOT
+    # part of changed_pages. They must be ignored because the user asked for a
+    # fresh crawl of a specific source.
+    import json
+    import os
+
+    state_dir = tmp_path / "cache" / ".state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    cached_page = _make_page(
+        "kubernetes", "https://kubernetes.io/docs/concepts/cached",
+        _write_raw_html(tmp_path, "kubernetes", "cached", "Old cached page"),
+    )
+    (state_dir / "kubernetes.json").write_text(
+        json.dumps(
+            {
+                "source": "kubernetes",
+                "pages": {
+                    cached_page["url"]: {"raw_file": os.path.relpath(cached_page["raw_path"], str(tmp_path / "cache"))},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    fresh_page = _make_page(
+        "kubernetes", "https://kubernetes.io/docs/concepts/fresh",
+        _write_raw_html(tmp_path, "kubernetes", "fresh", "Fresh page"),
+    )
+
+    processed_urls = []
+
+    monkeypatch.setattr("app.ingestion.pipeline.clean_html", lambda html, base_url=None: html)
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.html_to_markdown",
+        lambda cleaned: "# Converted Markdown",
+    )
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.split_into_concepts",
+        lambda markdown, category, source_name, source_url: [
+            (f"concept-{source_name}", "Concept", markdown)
+        ],
+    )
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.write_concept_file",
+        lambda knowledge_dir, category, concept_id, content: processed_urls.append(
+            (category, concept_id)
+        ),
+    )
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.delete_concepts_by_source_urls",
+        lambda urls, knowledge_dir: None,
+    )
+
+    processed = _process_crawled_html(
+        cache_dir=str(tmp_path / "cache"),
+        knowledge_dir=str(tmp_path / "knowledge"),
+        changed_pages=[fresh_page],
+        source_names=["kubernetes"],
+    )
+
+    # Only the freshly downloaded page is processed; the cached page is ignored.
+    assert processed == 1
+    assert processed_urls == [("kubernetes", "concept-kubernetes")]

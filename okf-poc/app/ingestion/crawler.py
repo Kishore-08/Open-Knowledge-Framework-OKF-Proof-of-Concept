@@ -63,6 +63,43 @@ def load_sources() -> dict:
 
     return data
 
+def update_sources_config(selected_names: Optional[List[str]]) -> None:
+    """
+    Persist the user's source selection back into sources.yaml.
+
+    A selected source is marked ``enabled: true``; every other configured source
+    is marked ``enabled: false``. This keeps the config file the single source
+    of truth so the next ``/ingest/sources`` response (and the UI defaults)
+    reflect the selection the user last made.
+
+    Args:
+        selected_names: The names the user selected (None/empty means "only
+            uploaded files" -> every source is disabled for crawling).
+    """
+    import yaml
+
+    if not os.path.exists(settings.SOURCES_CONFIG):
+        return
+
+    with open(settings.SOURCES_CONFIG, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+
+    selected = {s.lower() for s in (selected_names or [])}
+
+    changed = False
+    for source in data.get("sources", []):
+        name = (source.get("name") or "").lower()
+        new_state = bool(selected and name in selected)
+        if bool(source.get("enabled", False)) != new_state:
+            source["enabled"] = new_state
+            changed = True
+
+    if changed:
+        with open(settings.SOURCES_CONFIG, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, sort_keys=False)
+        print(f"✅ Updated {settings.SOURCES_CONFIG}: enabled={sorted(selected)}")
+
+
 def _content_hash(content: bytes) -> str:
     """Return the SHA-256 hash of downloaded document content."""
     return hashlib.sha256(content).hexdigest()
@@ -409,9 +446,10 @@ async def crawl_configured_sources(
     }
 
     for source in sources:
-        if not source.get("enabled", True):
-            continue
-
+        # Sources are pre-filtered above: either by `enabled: true` (no explicit
+        # selection) or by the user's explicit name list. An explicitly selected
+        # source must be crawled even when it is `enabled: false` in sources.yaml,
+        # so the user can ingest a source that is not yet enabled by default.
         name = source["name"]
 
         print(
