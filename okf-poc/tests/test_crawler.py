@@ -12,7 +12,7 @@ offline and deterministically.
 
 import pytest
 
-from app.ingestion.crawler import DocsCrawler
+from app.ingestion.crawler import DocsCrawler, crawl_configured_sources
 
 
 SOURCE = "example-docs"
@@ -115,3 +115,140 @@ async def test_fetch_failure_is_recorded_without_crashing(tmp_path, monkeypatch)
     assert result.failed == 1
     assert result.changed == 0
     assert any(URL in err for err in result.errors)
+
+
+# ---------------------------------------------------------------------------
+# crawl_configured_sources source-name filtering
+# ---------------------------------------------------------------------------
+
+def _fake_sources_config():
+    return {
+        "sources": [
+            {"name": "kubernetes", "base_url": "https://kubernetes.io", "enabled": True},
+            {"name": "langchain", "base_url": "https://python.langchain.com", "enabled": False},
+            {"name": "linux-man-pages", "base_url": "https://kernel.org", "enabled": True},
+        ],
+    }
+
+
+def _fake_crawl_result(source_name):
+    return {
+        "source_name": source_name,
+        "fetched": 1,
+        "changed": 1,
+        "unchanged": 0,
+        "deleted": 0,
+        "failed": 0,
+        "urls": [f"https://{source_name}/page"],
+        "changed_urls": [f"https://{source_name}/page"],
+        "changed_pages": [],
+        "deleted_urls": [],
+        "errors": [],
+    }
+
+
+def _patch_crawler(monkeypatch, fake_config, crawl_results):
+    """Stub load_sources and DocsCrawler.crawl so no network is involved."""
+    monkeypatch.setattr("app.ingestion.crawler.load_sources", lambda: fake_config)
+
+    async def fake_crawl(self, source_name, base_url, **kwargs):
+        result = crawl_results[source_name]
+        return type(
+            "FakeResult",
+            (),
+            {
+                "urls": result["urls"],
+                "fetched": result["fetched"],
+                "changed": result["changed"],
+                "unchanged": result["unchanged"],
+                "deleted": result["deleted"],
+                "failed": result["failed"],
+                "changed_urls": result["changed_urls"],
+                "changed_pages": result["changed_pages"],
+                "deleted_urls": result["deleted_urls"],
+                "errors": result["errors"],
+            },
+        )()
+
+    monkeypatch.setattr(DocsCrawler, "crawl", fake_crawl)
+
+
+@pytest.mark.asyncio
+async def test_crawl_configured_sources_with_none_crawls_enabled_only(monkeypatch):
+    _patch_crawler(
+        monkeypatch,
+        _fake_sources_config(),
+        {
+            "kubernetes": _fake_crawl_result("kubernetes"),
+            "langchain": _fake_crawl_result("langchain"),
+            "linux-man-pages": _fake_crawl_result("linux-man-pages"),
+        },
+    )
+
+    result = await crawl_configured_sources(source_names=None)
+
+    assert result["sources"] == 2
+    assert result["discovered"] == 2
+
+
+@pytest.mark.asyncio
+async def test_crawl_configured_sources_with_named_selection_filters(monkeypatch):
+    config = _fake_sources_config()
+    # The named-selection test needs its target source enabled (disabled sources
+    # are still skipped even when explicitly selected).
+    for s in config["sources"]:
+        if s["name"] == "langchain":
+            s["enabled"] = True
+
+    _patch_crawler(
+        monkeypatch,
+        config,
+        {
+            "kubernetes": _fake_crawl_result("kubernetes"),
+            "langchain": _fake_crawl_result("langchain"),
+            "linux-man-pages": _fake_crawl_result("linux-man-pages"),
+        },
+    )
+
+    result = await crawl_configured_sources(source_names=["langchain"])
+
+    assert result["sources"] == 1
+    assert result["discovered"] == 1
+    # Only the langchain URL should be crawled.
+    assert result["changed_urls"] == ["https://langchain/page"]
+
+
+@pytest.mark.asyncio
+async def test_crawl_configured_sources_with_empty_list_skips_crawl(monkeypatch):
+    crawled = []
+
+    monkeypatch.setattr("app.ingestion.crawler.load_sources", lambda: _fake_sources_config())
+
+    async def fake_crawl(self, source_name, base_url, **kwargs):
+        crawled.append(source_name)
+        return _fake_crawl_result(source_name)
+
+    monkeypatch.setattr(DocsCrawler, "crawl", fake_crawl)
+
+    result = await crawl_configured_sources(source_names=[])
+
+    assert crawled == []
+    assert result["sources"] == 0
+    assert result["discovered"] == 0
+    assert result["changed_pages"] == []
+
+
+@pytest.mark.asyncio
+async def test_list_available_sources_endpoint_returns_config(monkeypatch):
+    """The /ingest/sources endpoint surfaces name/category/enabled for each source."""
+    from app.api.routers.ingest import list_available_sources
+
+    monkeypatch.setattr("app.ingestion.crawler.load_sources", lambda: _fake_sources_config())
+
+    response = await list_available_sources()
+
+    assert response["sources"] == [
+        {"name": "kubernetes", "base_url": "https://kubernetes.io", "category": None, "enabled": True},
+        {"name": "langchain", "base_url": "https://python.langchain.com", "category": None, "enabled": False},
+        {"name": "linux-man-pages", "base_url": "https://kernel.org", "category": None, "enabled": True},
+    ]

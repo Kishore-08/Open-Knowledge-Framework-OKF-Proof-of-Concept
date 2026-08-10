@@ -254,6 +254,7 @@ def _process_crawled_html(
     knowledge_dir: str,
     changed_pages: list[dict],
     cancel_event: Optional[threading.Event] = None,
+    source_names: Optional[list] = None,
 ) -> int:
     """
     Process the crawler output into OKF concept files. The legacy code only read
@@ -265,6 +266,18 @@ def _process_crawled_html(
     """
     state_manager = StateManager(cache_dir)
     pages_to_process = changed_pages or state_manager.get_all_crawler_states()
+
+    # When the user selected specific documentation sources, only process pages
+    # that belong to those sources (ignore cached pages from other sources).
+    if source_names is not None:
+        if not source_names:
+            pages_to_process = []
+        else:
+            source_names = {s.lower() for s in source_names}
+            pages_to_process = [
+                p for p in pages_to_process
+                if (p.get("source_name") or "").lower() in source_names
+            ]
 
     # Keep the live UI honest while the HTML->Markdown conversion is happening:
     # the crawler discovered a list of candidate source URLs, and the conversion
@@ -356,10 +369,15 @@ def _process_crawled_html(
 
     return processed
 
-def run_ingestion_pipeline(cache_dir: str = None, knowledge_dir: str = None, cancel_event: Optional[threading.Event] = None):
+def run_ingestion_pipeline(
+    cache_dir: str = None,
+    knowledge_dir: str = None,
+    cancel_event: Optional[threading.Event] = None,
+    source_names: Optional[list] = None,
+):
     """
     The master orchestration function.
-    1. Crawls official documentation (stored in cache).
+    1. Crawls official documentation (stored in cache) for the selected sources.
     2. Loads local raw documents from cache.
     3. Extracts OKF Metadata via LLM.
     4. Converts to OKF-compliant frontmatter.
@@ -371,6 +389,10 @@ def run_ingestion_pipeline(cache_dir: str = None, knowledge_dir: str = None, can
         knowledge_dir: Source of truth for OKF Markdown (default: settings.KNOWLEDGE_DIR)
         cancel_event: Optional threading.Event; when set, the pipeline aborts at the
             next stage boundary (cooperative cancellation).
+        source_names: Optional list of documentation source names (from sources.yaml)
+            to crawl. None = crawl the enabled sources; an empty list = skip
+            crawling entirely (process only cached/uploaded files); a non-empty
+            list = crawl only those sources.
     """
     if cache_dir is None:
         cache_dir = settings.CACHE_DIR
@@ -389,8 +411,13 @@ def run_ingestion_pipeline(cache_dir: str = None, knowledge_dir: str = None, can
         indexed_documents=0,
     )
 
-    # 0. Crawl configured official documentation sources.
-    crawl_result = asyncio.run(crawl_configured_sources(cache_dir=cache_dir))
+    # 0. Crawl the selected official documentation sources.
+    crawl_result = asyncio.run(
+        crawl_configured_sources(
+            cache_dir=cache_dir,
+            source_names=source_names,
+        )
+    )
 
     _check_cancelled(cancel_event)
 
@@ -433,6 +460,7 @@ def run_ingestion_pipeline(cache_dir: str = None, knowledge_dir: str = None, can
         knowledge_dir=knowledge_dir,
         changed_pages=crawl_result.get("changed_pages", []),
         cancel_event=cancel_event,
+        source_names=source_names,
     )
 
     update_status(

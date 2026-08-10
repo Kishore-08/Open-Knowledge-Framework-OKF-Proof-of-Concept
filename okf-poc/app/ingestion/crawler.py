@@ -265,6 +265,16 @@ class DocsCrawler:
                 if previous:
                     current_state[url] = previous
 
+            # Report incremental progress so the UI counters count up smoothly
+            # instead of jumping straight to the final values.
+            update_status(
+                status="running",
+                message=f"Crawling source {source_name}",
+                discovered=len(urls),
+                fetched=result.fetched,
+                failed=result.failed,
+            )
+
         # Anything present in the previous state but absent from the current
         # sitemap is considered deleted from the official documentation.
         for url, previous in previous_state.items():
@@ -323,15 +333,50 @@ class DocsCrawler:
             cache_dir,
         )
 
-async def crawl_configured_sources(cache_dir: Optional[str] = None) -> dict:
+async def crawl_configured_sources(
+    cache_dir: Optional[str] = None,
+    source_names: Optional[List[str]] = None,
+) -> dict:
     """
-    Crawl all enabled documentation sources configured in sources.yaml.
+    Crawl documentation sources configured in sources.yaml.
+
+    When ``source_names`` is None, every source with ``enabled: true`` is
+    crawled. When it is an empty list, crawling is skipped entirely (returns
+    zeroed totals). When it is a non-empty list, only those named sources
+    are crawled.
 
     Downloaded HTML is cached under settings.CACHE_DIR (disposable cache).
     """
     config = load_sources()
 
     sources = config.get("sources", [])
+
+    if source_names is None:
+        # No explicit selection: crawl every source marked enabled.
+        sources = [s for s in sources if s.get("enabled", True)]
+    elif not source_names:
+        # Empty selection: the user explicitly wants NO documentation crawling
+        # (e.g. they only uploaded files), so return zeroed totals.
+        print("ℹ️ No documentation sources selected; skipping crawl.")
+        return {
+            "sources": 0,
+            "discovered": 0,
+            "fetched": 0,
+            "changed": 0,
+            "unchanged": 0,
+            "deleted": 0,
+            "failed": 0,
+            "changed_urls": [],
+            "changed_pages": [],
+            "deleted_urls": [],
+        }
+    else:
+        source_names = {s.lower() for s in source_names}
+        sources = [
+            s for s in sources
+            if s.get("name", "").lower() in source_names
+        ]
+
     crawler_config = config.get("crawler", {})
 
     crawler = DocsCrawler(

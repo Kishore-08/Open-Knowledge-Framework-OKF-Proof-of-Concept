@@ -1,6 +1,7 @@
 import pytest
 from app.okf.formatter import format_okf_string
 from app.okf.parser import parse_okf_string
+from app.ingestion.pipeline import _process_crawled_html
 
 # --- Test OKF Core Logic ---
 # These tests ensure that our custom OKF formatting never corrupts data 
@@ -51,3 +52,103 @@ def test_okf_parser_handles_missing_frontmatter():
     # Should safely return empty dict and unmodified text
     assert metadata == {}
     assert body == invalid_okf_string
+
+
+# ---------------------------------------------------------------------------
+# _process_crawled_html source-name filtering
+# ---------------------------------------------------------------------------
+
+def _make_page(source_name, url, raw_path):
+    return {"source_name": source_name, "url": url, "raw_path": raw_path}
+
+
+def _write_raw_html(tmp_path, source_name, page_id, body):
+    import os
+
+    source_dir = tmp_path / "cache" / source_name
+    source_dir.mkdir(parents=True, exist_ok=True)
+    html_path = source_dir / f"{page_id}.html"
+    html_path.write_text(f"<html><body><h1>{body}</h1></body></html>", encoding="utf-8")
+    return str(html_path)
+
+
+def test_process_crawled_html_filters_by_source_names(tmp_path, monkeypatch):
+    """Only pages belonging to the selected sources are processed."""
+    kube_page = _make_page(
+        "kubernetes", "https://kubernetes.io/docs/concepts/a",
+        _write_raw_html(tmp_path, "kubernetes", "a", "Kube concept"),
+    )
+    lang_page = _make_page(
+        "langchain", "https://python.langchain.com/docs/b",
+        _write_raw_html(tmp_path, "langchain", "b", "Langchain concept"),
+    )
+
+    processed_urls = []
+
+    monkeypatch.setattr("app.ingestion.pipeline.clean_html", lambda html, base_url=None: html)
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.html_to_markdown",
+        lambda cleaned: "# Converted Markdown",
+    )
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.split_into_concepts",
+        lambda markdown, category, source_name, source_url: [
+            (f"concept-{source_name}", "Concept", markdown)
+        ],
+    )
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.delete_concepts_by_source_urls",
+        lambda urls, knowledge_dir: None,
+    )
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.write_concept_file",
+        lambda knowledge_dir, category, concept_id, content: processed_urls.append(
+            (category, concept_id)
+        ),
+    )
+
+    processed = _process_crawled_html(
+        cache_dir=str(tmp_path / "cache"),
+        knowledge_dir=str(tmp_path / "knowledge"),
+        changed_pages=[kube_page, lang_page],
+        source_names=["kubernetes"],
+    )
+
+    assert processed == 1
+    assert processed_urls == [("kubernetes", "concept-kubernetes")]
+
+
+def test_process_crawled_html_empty_source_names_skips_all(tmp_path, monkeypatch):
+    """An empty source list means no crawled pages are processed."""
+    page = _make_page(
+        "kubernetes", "https://kubernetes.io/docs/concepts/a",
+        _write_raw_html(tmp_path, "kubernetes", "a", "Kube concept"),
+    )
+
+    processed_urls = []
+
+    monkeypatch.setattr("app.ingestion.pipeline.clean_html", lambda html, base_url=None: html)
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.html_to_markdown",
+        lambda cleaned: "# Converted Markdown",
+    )
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.split_into_concepts",
+        lambda markdown, category, source_name, source_url: [("c", "T", markdown)],
+    )
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.write_concept_file",
+        lambda knowledge_dir, category, concept_id, content: processed_urls.append(
+            (category, concept_id)
+        ),
+    )
+
+    processed = _process_crawled_html(
+        cache_dir=str(tmp_path / "cache"),
+        knowledge_dir=str(tmp_path / "knowledge"),
+        changed_pages=[page],
+        source_names=[],
+    )
+
+    assert processed == 0
+    assert processed_urls == []

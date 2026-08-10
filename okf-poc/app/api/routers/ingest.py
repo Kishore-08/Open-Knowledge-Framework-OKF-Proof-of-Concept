@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 import os
 from pathlib import Path
@@ -23,6 +23,7 @@ def _run_ingest_job(job):
             cache_dir=params.get("cache_dir") or settings.CACHE_DIR,
             knowledge_dir=params.get("knowledge_dir") or settings.KNOWLEDGE_DIR,
             cancel_event=job.cancel_event,
+            source_names=params.get("sources"),
         )
         return result
     except JobCancelledError:
@@ -35,6 +36,24 @@ def _run_ingest_job(job):
 # Register the ingestion handler once at import time.
 job_manager.register_handler("ingest", _run_ingest_job)
 
+@router.get("/sources")
+async def list_available_sources():
+    """List documentation sources available for ingestion (from sources.yaml)."""
+    from app.ingestion.crawler import load_sources
+
+    data = load_sources()
+    sources = []
+    for source in data.get("sources", []):
+        sources.append(
+            {
+                "name": source.get("name"),
+                "base_url": source.get("base_url"),
+                "category": source.get("category"),
+                "enabled": bool(source.get("enabled", False)),
+            }
+        )
+    return {"sources": sources}
+
 @router.get("/status")
 async def get_ingestion_status():
     status = get_status()
@@ -46,6 +65,7 @@ class IngestRequest(BaseModel):
     """Payload definition for triggering ingestion."""
     cache_dir: str = settings.CACHE_DIR
     knowledge_dir: str = settings.KNOWLEDGE_DIR
+    sources: List[str] = []
 class IngestResponse(BaseModel):
     """Structured response confirming ingestion status."""
     status: str
@@ -59,6 +79,11 @@ async def ingest_documents(request: IngestRequest):
     Triggers the OKF ingestion pipeline.
     Reads cached/raw documents from `cache_dir`, generates OKF metadata,
     saves them to `knowledge_dir`, and indexes them into Qdrant.
+
+    Optional `sources` lists the documentation sources (from sources.yaml) to
+    crawl. When omitted (None), the enabled sources are crawled. When an empty
+    list is passed, crawling is skipped entirely and only cached/uploaded files
+    are processed.
 
     The pipeline runs as a tracked Job (see /api/v1/jobs) with a queue:
     if ingestion is already running, the new request is queued instead of
@@ -78,6 +103,7 @@ async def ingest_documents(request: IngestRequest):
             params={
                 "cache_dir": request.cache_dir,
                 "knowledge_dir": request.knowledge_dir,
+                "sources": request.sources or [],
             },
         )
 
@@ -140,14 +166,28 @@ class UploadResponse(BaseModel):
 
 
 @router.post("/upload", response_model=UploadResponse)
-async def upload_documents(files: List[UploadFile] = File(...)):
+async def upload_documents(
+    files: List[UploadFile] = File(...),
+    sources: Optional[str] = Form(""),
+):
     """
     Upload documents directly through the UI.
     Files are saved to the configured cache directory and then processed
     through the existing ingestion pipeline.
-    
+
+    Optional `sources` is a comma-separated list of documentation source
+    names to crawl alongside the uploaded files.
+
     Supported formats: PDF (.pdf), Markdown (.md), Text (.txt), JSON (.json)
     """
+    # Parse the comma-separated source list.
+    source_names = []
+    if sources:
+        source_names = [
+            s.strip()
+            for s in sources.split(",")
+            if s.strip()
+        ]
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
     
@@ -233,6 +273,7 @@ async def upload_documents(files: List[UploadFile] = File(...)):
             params={
                 "cache_dir": cache_dir,
                 "knowledge_dir": knowledge_dir,
+                "sources": source_names,
             },
         )
         
