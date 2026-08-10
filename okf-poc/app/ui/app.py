@@ -95,7 +95,7 @@ def _theme_palette(theme: str) -> dict:
             "okf-alert-bg": "rgba(255, 255, 255, 0.94)",
             "okf-chip-bg": "rgba(66, 133, 244, 0.16)",
             "okf-chip-text": "#1a73e8",
-            "okf-hero-grad": "linear-gradient(90deg, #174ea6 0%, #4285f4 45%, #1a73e8 100%)",
+            "okf-hero-grad": "linear-gradient(90deg, #174ea6 0%, #4285f4 50%, #7c3aed 100%)",
             "okf-scrollbar": "rgba(15, 23, 42, 0.25)",
             "okf-citation-bg": "rgba(255, 255, 255, 0.9)",
             "okf-citation-border": "rgba(15, 23, 42, 0.11)",
@@ -104,7 +104,7 @@ def _theme_palette(theme: str) -> dict:
             "okf-citation-content": "#334155",
             "okf-src-chip-text": "#334155",
             "okf-src-chip-bold": "#0f172a",
-            "okf-placeholder": "#9aa0a6",
+            "okf-placeholder": "#5f6368",
         }
     return dark
 
@@ -112,7 +112,7 @@ def _theme_palette(theme: str) -> dict:
 def _build_theme_css(theme: str) -> str:
     """Render the glassmorphism stylesheet for the requested theme (dark/light)."""
     p = _theme_palette(theme)
-    return f"""
+    main = f"""
 <style>
     /* Auroral backdrop */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -168,11 +168,17 @@ def _build_theme_css(theme: str) -> str:
     .hero-title {{
         font-size: 2.2rem;
         font-weight: 750;
+        line-height: 1.2;
+    }}
+    .hero-text {{
         background: {p['okf-hero-grad']};
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
-        line-height: 1.2;
+    }}
+    .hero-emoji {{
+        -webkit-text-fill-color: initial;
+        margin-right: 0.15rem;
     }}
     .hero-sub {{ color: {p['okf-text-dim']}; font-size: 0.98rem; margin-top: 0.2rem; }}
 
@@ -399,77 +405,97 @@ def _build_theme_css(theme: str) -> str:
         background: {p['okf-metric-bg']};
         border: 1px solid {p['okf-border-soft']};
     }}
-
-    /* ---- Top-right theme toggle (working sun/moon segmented switch) ----
-       Implemented as two plain anchors that reload with ?theme=dark/light —
-       no inline JS, so it works reliably inside Streamlit. */
-    .theme-float {{
-        position: fixed;
-        top: 14px;
-        right: 22px;
-        z-index: 1000;
-        display: inline-flex;
-        gap: 4px;
-        padding: 4px;
-        border-radius: 999px;
-        border: 1px solid {p['okf-border']};
-        background: {p['okf-glass-bg']};
-        backdrop-filter: blur(14px) saturate(140%);
-        -webkit-backdrop-filter: blur(14px) saturate(140%);
-        box-shadow: 0 6px 20px {p['okf-glass-shadow']};
+</style>
+"""
+    extra = ""
+    if theme == "light":
+        extra = f"""
+<style>
+    /* ---- Light-mode legibility ----
+       Streamlit's base theme renders light text; in light mode we must paint
+       every native element dark so no content (expanders, captions, dropdowns,
+       labels, links) becomes invisible on the bright background. */
+    [data-testid="stAppViewContainer"] {{ color: {p['okf-text']}; }}
+    [data-testid="stMarkdownContainer"] p,
+    [data-testid="stMarkdownContainer"] li,
+    [data-testid="stMarkdownContainer"] td,
+    [data-testid="stMarkdownContainer"] th,
+    [data-testid="stMarkdownContainer"] blockquote {{
+        color: {p['okf-text']} !important;
     }}
-    .theme-float a {{
-        width: 38px;
-        height: 34px;
-        border-radius: 999px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.05rem;
-        color: {p['okf-text-dim']};
+    [data-testid="stMarkdownContainer"] a {{
+        color: #1a73e8 !important;
         text-decoration: none;
-        transition: all 0.2s ease;
     }}
-    .theme-float a:hover {{
-        background: {p['okf-hover-bg']};
-        color: {p['okf-text']};
+    [data-testid="stMarkdownContainer"] a:hover {{
+        text-decoration: underline;
     }}
-    .theme-float a.active {{
-        background: {p['okf-primary-grad']};
-        color: #fff;
-        box-shadow: 0 4px 14px rgba(66, 133, 244, 0.45);
+    [data-testid="stCaptionContainer"] p,
+    .stCaption p,
+    [data-testid="stMarkdownContainer"] small {{
+        color: {p['okf-text-dim']} !important;
+    }}
+    [data-testid="stWidgetLabel"],
+    [data-testid="stWidgetLabel"] p {{
+        color: {p['okf-text']} !important;
+    }}
+    [data-testid="stExpander"] {{
+        background: rgba(255, 255, 255, 0.75);
+        border: 1px solid {p['okf-border-soft']};
+        border-radius: 16px;
+        margin-bottom: 0.5rem;
+    }}
+    [data-testid="stExpander"] button,
+    [data-testid="stExpander"] summary {{
+        color: {p['okf-text']} !important;
+    }}
+    [data-testid="stExpander"] p,
+    [data-testid="stExpander"] li {{
+        color: {p['okf-text']} !important;
+    }}
+    [data-baseweb="menu"],
+    [data-baseweb="popover"] {{
+        background: #ffffff !important;
+        border: 1px solid {p['okf-border']} !important;
+    }}
+    [data-baseweb="menu"] [role="option"],
+    [data-baseweb="menu"] [role="option"] span {{
+        color: {p['okf-text']} !important;
+    }}
+    [data-baseweb="menu"] [role="option"]:hover,
+    [data-baseweb="menu"] [aria-selected="true"] {{
+        background: #e8f0fe !important;
+    }}
+    [data-testid="stMultiSelect"] input,
+    [data-testid="stMultiSelect"] div,
+    [data-testid="stSelectbox"] div {{
+        color: {p['okf-text']} !important;
+    }}
+    [data-testid="stRadio"] label p,
+    [data-testid="stCheckbox"] label p {{
+        color: {p['okf-text']} !important;
+    }}
+    [data-testid="stChatInput"] textarea {{
+        background: #ffffff !important;
+        border-color: rgba(60, 64, 67, 0.28) !important;
+        box-shadow: 0 1px 6px rgba(60, 64, 67, 0.16) !important;
+    }}
+    [data-testid="stAlert"] {{
+        background: rgba(255, 255, 255, 0.95) !important;
+    }}
+    [data-testid="stFileUploaderDropzone"] div {{
+        color: {p['okf-text-dim']} !important;
     }}
 </style>
 """
+    return main + extra
 
-def _render_theme_toggle():
-    """Render the fixed top-right sun/moon segmented theme toggle.
-
-    Implemented as two plain <a> anchors pointing at ``?theme=dark`` and
-    ``?theme=light``. Clicking one navigates to the new URL and Streamlit picks
-    up the query param on the next run — no inline JS required (Streamlit strips
-    ``<script>`` tags from markdown, which is why a JS-based toggle never fired).
-    """
-    active = st.session_state.theme
-    dark_cls = " active" if active == "dark" else ""
-    light_cls = " active" if active == "light" else ""
-    st.markdown(f"""
-<div class="theme-float" role="group" aria-label="Color theme">
-  <a href="?theme=dark" class="tf-opt{dark_cls}" title="Dark mode" aria-label="Dark mode">&#127769;</a>
-  <a href="?theme=light" class="tf-opt{light_cls}" title="Light mode" aria-label="Light mode">&#9728;&#65039;</a>
-</div>
-""", unsafe_allow_html=True)
-
-# Theme state: read from ?theme= query param (set by the top-right toggle).
-# Defaults to light (Google-inspired).
-_theme_param = st.query_params.get("theme", "light")
-if _theme_param not in ("dark", "light"):
-    _theme_param = "light"
-st.session_state.theme = _theme_param
+# Theme state. Dark is the default — it mirrors the original OKF dark design
+# exactly. The sidebar toggle flips between dark and light at runtime.
+if "theme" not in st.session_state:
+    st.session_state.theme = "dark"
 
 st.markdown(_build_theme_css(st.session_state.theme), unsafe_allow_html=True)
-
-_render_theme_toggle()
 
 # ---------------------------------------------------------------------------
 # API helpers
@@ -583,7 +609,7 @@ if "last_uploaded" not in st.session_state:
 # ---------------------------------------------------------------------------
 def render_knowledge_base(is_healthy: bool):
     """Knowledge Base browser: categories, concept list, metadata, and full content."""
-    st.markdown('<div class="hero-title">📚 OKF Knowledge Base</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-title"><span class="hero-emoji">📚</span> <span class="hero-text">OKF Knowledge Base</span></div>', unsafe_allow_html=True)
     st.markdown('<div class="hero-sub">Browse the curated OKF knowledge repository. Each concept is a Markdown file with YAML metadata and links back to its official source.</div>', unsafe_allow_html=True)
 
     if not is_healthy:
@@ -677,6 +703,17 @@ def render_knowledge_base(is_healthy: bool):
 with st.sidebar:
     st.title("⚙️ OKF Control Panel")
     st.markdown("Manage your Open Knowledge Framework pipeline.")
+
+    # Dual-mode theme toggle
+    dark_mode = st.toggle(
+        "🌙 Dark mode",
+        value=st.session_state.theme == "dark",
+        help="Switch between the dark and light glassmorphism themes.",
+    )
+    new_theme = "dark" if dark_mode else "light"
+    if new_theme != st.session_state.theme:
+        st.session_state.theme = new_theme
+        st.rerun()
 
     st.divider()
 
@@ -855,7 +892,7 @@ if page == "📚 Knowledge Base":
     st.stop()
 
 # Hero header
-st.markdown('<div class="hero-title">🧠 OKF Knowledge Retrieval</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero-title"><span class="hero-emoji">🧠</span> <span class="hero-text">OKF Knowledge Retrieval</span></div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="hero-sub">Ask questions against your enterprise knowledge base. '
     'Answers are generated using Hybrid Search and strict OKF citations.</div>',
