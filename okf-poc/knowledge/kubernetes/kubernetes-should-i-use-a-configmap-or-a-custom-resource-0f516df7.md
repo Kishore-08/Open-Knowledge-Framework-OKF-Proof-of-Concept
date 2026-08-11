@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/
-updated_at: '2026-08-08'
-created_at: '2026-08-08'
+updated_at: '2026-08-10'
+created_at: '2026-08-10'
 ---
 
 ## Should I use a ConfigMap or a custom resource?

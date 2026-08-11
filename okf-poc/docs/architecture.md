@@ -129,67 +129,40 @@ This workflow describes how a user query is answered using **Hybrid Search** and
 flowchart TD
 
     A([User Query])
-
-    B(FastAPI /query)
-
+    B[FastAPI /query]
     C[LlamaIndex Query Engine]
-
     D[(Qdrant Vector Database)]
 
     subgraph "Hybrid Search"
-
-        E[Semantic Search]
-
-        F[Keyword Search (BM25)]
-
-        G[Reciprocal Rank Fusion]
+        E["Semantic Search"]
+        F["Keyword Search - BM25"]
+        G["Reciprocal Rank Fusion"]
 
         D --> E
-
         D --> F
-
         E --> G
-
         F --> G
-
     end
 
-    H[Retrieve Top-K OKF Chunks]
-
-    I[Prompt Builder]
-
+    H["Retrieve Top-K OKF Chunks"]
+    I["Prompt Builder"]
     J((LLM))
-
-    K[Generated Answer]
-
-    L[Extract Citations]
-
-    M(FastAPI Response)
-
+    K["Generated Answer"]
+    L["Extract Citations"]
+    M["FastAPI Response"]
     N([Streamlit UI])
 
     A --> B
-
     B --> C
-
     C --> D
-
     G --> H
-
     H --> I
-
-    I -->|Context + Citation Instructions| J
-
+    I -->|"Context + Citation Instructions"| J
     J --> K
-
     J --> L
-
     K --> M
-
     L --> M
-
-    M --> N
-```
+    M --> N```
 
 ---
 

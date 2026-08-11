@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/overview/working-with-objects/object-management/
-updated_at: '2026-08-08'
-created_at: '2026-08-08'
+updated_at: '2026-08-10'
+created_at: '2026-08-10'
 ---
 
 ## Imperative commands

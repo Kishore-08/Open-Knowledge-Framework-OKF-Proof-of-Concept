@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/cluster-administration/swap-memory-management/
-updated_at: '2026-08-08'
-created_at: '2026-08-08'
+updated_at: '2026-08-10'
+created_at: '2026-08-10'
 ---
 
 ### Disable swap for system-critical daemons

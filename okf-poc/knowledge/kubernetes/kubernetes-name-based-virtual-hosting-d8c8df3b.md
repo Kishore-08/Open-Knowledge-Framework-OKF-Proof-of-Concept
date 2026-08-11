@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/services-networking/ingress/
-updated_at: '2026-08-08'
-created_at: '2026-08-08'
+updated_at: '2026-08-10'
+created_at: '2026-08-10'
 ---
 
 ### Name based virtual hosting
