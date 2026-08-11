@@ -14,6 +14,7 @@ from .crawler import crawl_configured_sources
 from .metadata_extractor import generate_okf_metadata
 from app.ingestion.status import update_status
 from app.indexing.indexer import concepts_to_documents
+from app.indexing.vector_state import filter_documents_for_indexing
 from app.retrieval.query_engine import configure_llm_settings
 from app.core.config import settings
 from app.okf.formatter import format_and_save_okf
@@ -249,12 +250,36 @@ def _discover_cached_crawl_pages(cache_dir: str) -> list[dict]:
     return pages
 
 
+def _knowledge_has_concepts(knowledge_dir: str) -> bool:
+    """True when the knowledge repository already contains OKF concept files."""
+    if not os.path.isdir(knowledge_dir):
+        return False
+    for dirpath, _dirnames, filenames in os.walk(knowledge_dir):
+        if "_quarantine" in dirpath:
+            continue
+        if any(name.endswith(".md") for name in filenames):
+            return True
+    return False
+
+
+def _track_knowledge_path(knowledge_dir: str, path: str, updated_paths: set[str]) -> None:
+    """Record a knowledge file (absolute or relative) for incremental indexing."""
+    if not path:
+        return
+    if os.path.isabs(path):
+        rel = os.path.relpath(path, knowledge_dir)
+    else:
+        rel = path
+    updated_paths.add(rel.replace("\\", "/"))
+
+
 def _process_crawled_html(
     cache_dir: str,
     knowledge_dir: str,
     changed_pages: list[dict],
     cancel_event: Optional[threading.Event] = None,
     source_names: Optional[list] = None,
+    updated_knowledge_paths: Optional[set[str]] = None,
 ) -> int:
     """
     Process the crawler output into OKF concept files. The legacy code only read
@@ -267,10 +292,16 @@ def _process_crawled_html(
     state_manager = StateManager(cache_dir)
 
     if source_names is None:
-        # Default behaviour: crawl the enabled sources. When the crawl only
-        # produced 304 cache hits, recover the cached pages from the on-disk
-        # state so the knowledge repo is not left empty.
-        pages_to_process = changed_pages or state_manager.get_all_crawler_states()
+        # Default behaviour: only convert pages that changed in this crawl.
+        # Recover the full cached crawl ONLY on first bootstrap when knowledge/
+        # is still empty — otherwise every re-run would re-convert hundreds of
+        # pages and trigger a full Qdrant re-embed (expensive Gemini quota).
+        if changed_pages:
+            pages_to_process = changed_pages
+        elif not _knowledge_has_concepts(knowledge_dir):
+            pages_to_process = state_manager.get_all_crawler_states()
+        else:
+            pages_to_process = []
     else:
         # Explicit source selection: process ONLY what was freshly downloaded for
         # the selected sources. Never fall back to cached pages from earlier
@@ -346,12 +377,14 @@ def _process_crawled_html(
             )
 
             for concept_id, _title, content in concepts:
-                write_concept_file(
+                written_path = write_concept_file(
                     knowledge_dir=knowledge_dir,
                     category=category,
                     concept_id=concept_id,
                     content=content,
                 )
+                if updated_knowledge_paths is not None:
+                    _track_knowledge_path(knowledge_dir, written_path, updated_knowledge_paths)
 
             processed += 1
             update_status(
@@ -411,6 +444,7 @@ def run_ingestion_pipeline(
         knowledge_dir = settings.KNOWLEDGE_DIR
 
     upload_only = bool(only_files)
+    updated_knowledge_paths: set[str] = set()
 
     print("🚀 Starting OKF Ingestion Pipeline...")
     update_status(
@@ -497,6 +531,7 @@ def run_ingestion_pipeline(
         changed_pages=crawl_result.get("changed_pages", []),
         cancel_event=cancel_event,
         source_names=[] if upload_only else source_names,
+        updated_knowledge_paths=updated_knowledge_paths,
     )
 
     update_status(
@@ -536,16 +571,13 @@ def run_ingestion_pipeline(
             f"📂 Local cached files: changed/new={len(changed_local_files)}"
         )
 
-        # Re-run the local raw conversion whenever the pipeline is invoked from the
-        # API even for a cache hit crawl. The incremental state only tells us which
-        # inputs changed. However a fresh call into the API should still have the
-        # filesystem authoritative input count at its disposal. When the state
-        # indicates 'no changed files' we can fall back to the full cache tree rather
-        # than silently treating the repository as empty.
         if changed_local_files:
             local_files = changed_local_files
-        else:
+        elif not _knowledge_has_concepts(knowledge_dir):
+            # First bootstrap: knowledge/ is empty but cache/ may have uploads.
             local_files = state_manager.discover_local_files()
+        else:
+            local_files = []
 
     raw_docs = []
     for file_path in local_files:
@@ -624,6 +656,11 @@ def run_ingestion_pipeline(
                 output_dir=category_dir,
                 filename=filename,
             )
+            _track_knowledge_path(
+                knowledge_dir,
+                os.path.join(category_dir, filename),
+                updated_knowledge_paths,
+            )
 
             saved_count += 1
             update_status(
@@ -679,9 +716,40 @@ def run_ingestion_pipeline(
         print("⚠️ No valid OKF concepts were produced; nothing to index.")
         return {"status": "skipped", "message": "No valid OKF concepts were produced."}
 
-    source_files = [d.metadata["source_file"] for d in docs if d.metadata.get("source_file")]
-    _index, failed_ids = index_documents(
+    docs_to_index, skipped = filter_documents_for_indexing(
         docs,
+        updated_paths=updated_knowledge_paths,
+    )
+    if not docs_to_index:
+        print(
+            f"ℹ️ Skipping vector indexing — all {skipped} concept(s) are already "
+            "present in Qdrant and unchanged since the last run."
+        )
+        update_status(
+            status="completed",
+            stage="completed",
+            stage_message="Ingestion completed — knowledge is stored in OKF format and indexed",
+            message="Ingestion completed (index unchanged)",
+            processed=crawled_count + saved_count,
+            indexed=len(docs),
+            failed=crawl_result["failed"],
+            current_source="",
+        )
+        return {
+            "status": "success",
+            "indexed_documents": len(docs),
+            "skipped_indexing": skipped,
+        }
+
+    if skipped:
+        print(
+            f"ℹ️ Incremental indexing: embedding {len(docs_to_index)} changed/new "
+            f"concept(s), skipping {skipped} already indexed."
+        )
+
+    source_files = [d.metadata["source_file"] for d in docs_to_index if d.metadata.get("source_file")]
+    _index, failed_ids = index_documents(
+        docs_to_index,
         collection_name=settings.QDRANT_CONCEPTS_COLLECTION,
         source_files=source_files,
         show_progress=True,

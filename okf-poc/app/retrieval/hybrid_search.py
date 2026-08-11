@@ -56,6 +56,54 @@ def get_qdrant_client() -> qdrant_client.QdrantClient:
     return qdrant_client.QdrantClient(url=qdrant_url, timeout=300)
 
 
+def get_collection_point_count(collection_name: str = None) -> int:
+    """Return the number of points stored in a Qdrant collection."""
+    if collection_name is None:
+        collection_name = settings.QDRANT_CONCEPTS_COLLECTION
+    try:
+        client = get_qdrant_client()
+        if not client.collection_exists(collection_name):
+            return 0
+        info = client.get_collection(collection_name)
+        return int(getattr(info, "points_count", 0) or 0)
+    except Exception:  # noqa: BLE001 - best-effort stats for incremental indexing
+        return 0
+
+
+def get_indexed_source_files(collection_name: str = None) -> set[str]:
+    """
+    Return the set of knowledge `source_file` payload values already in Qdrant.
+
+    Used to skip re-embedding documents that survived a docker compose restart
+    and to detect when the Qdrant volume was wiped but local cache state was not.
+    """
+    if collection_name is None:
+        collection_name = settings.QDRANT_CONCEPTS_COLLECTION
+
+    client = get_qdrant_client()
+    if not client.collection_exists(collection_name):
+        return set()
+
+    indexed: set[str] = set()
+    offset = None
+    while True:
+        points, offset = client.scroll(
+            collection_name=collection_name,
+            limit=256,
+            offset=offset,
+            with_payload=["source_file"],
+            with_vectors=False,
+        )
+        for point in points:
+            payload = point.payload or {}
+            source_file = payload.get("source_file")
+            if source_file:
+                indexed.add(str(source_file))
+        if offset is None:
+            break
+    return indexed
+
+
 def reset_hybrid_collection(collection_name: str = None) -> None:
     """
     Delete a Qdrant collection that was created with hybrid (sparse) vectors.
@@ -280,5 +328,14 @@ def index_documents(
             "Re-run indexing later to retry just the failures (idempotent re-ingest "
             "will replace any partially-indexed chunks for these source files)."
         )
+
+    successful_docs = [
+        doc for doc in documents
+        if (doc.metadata.get("id") or doc.metadata.get("source_file")) not in failed_ids
+    ]
+    if successful_docs:
+        from app.indexing.vector_state import mark_documents_indexed
+
+        mark_documents_indexed(successful_docs)
 
     return index, failed_ids

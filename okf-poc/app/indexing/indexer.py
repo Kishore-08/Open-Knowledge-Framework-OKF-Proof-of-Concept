@@ -16,6 +16,7 @@ from llama_index.core import Document
 
 from app.core.config import settings
 from app.okf.repository import load_all_concepts
+from app.indexing.vector_state import filter_documents_for_indexing
 from app.retrieval.hybrid_search import get_qdrant_vector_store, index_documents
 
 
@@ -57,9 +58,18 @@ def concepts_to_documents(concepts) -> List[Document]:
     return docs
 
 
-def build_concepts_index(*, collection_name: Optional[str] = None, with_embeddings: bool = True):
+def build_concepts_index(
+    *,
+    collection_name: Optional[str] = None,
+    with_embeddings: bool = True,
+    force_full: bool = False,
+):
     """
-    Index every concept in the knowledge repository into Qdrant.
+    Index concepts from the knowledge repository into Qdrant.
+
+    By default this is incremental: only concepts missing from Qdrant or whose
+    content changed since the last successful index are embedded. Pass
+    `force_full=True` to re-embed everything (expensive — uses Gemini quota).
 
     - `with_embeddings=True` requires a configured Gemini API key (dense vectors).
     - `with_embeddings=False` performs a "dry-run" that still validates documents
@@ -85,15 +95,28 @@ def build_concepts_index(*, collection_name: Optional[str] = None, with_embeddin
     if not configured:
         return {"indexed": 0, "error": "Gemini API key required for embeddings. Set GEMINI_API_KEY."}
 
-    source_files = [d.metadata["source_file"] for d in docs if d.metadata.get("source_file")]
+    docs_to_index, skipped = filter_documents_for_indexing(docs, force_full=force_full)
+    if not docs_to_index:
+        return {
+            "indexed": 0,
+            "skipped": skipped,
+            "collection": collection_name,
+            "message": f"All {skipped} concept(s) already indexed in Qdrant; nothing to do.",
+        }
+
+    if skipped:
+        print(f"ℹ️ Skipping {skipped} unchanged concept(s) already present in Qdrant.")
+
+    source_files = [d.metadata["source_file"] for d in docs_to_index if d.metadata.get("source_file")]
     _index, failed_ids = index_documents(
-        docs,
+        docs_to_index,
         collection_name=collection_name,
         source_files=source_files,
         show_progress=True,
     )
     result = {
-        "indexed": len(docs) - len(failed_ids),
+        "indexed": len(docs_to_index) - len(failed_ids),
+        "skipped": skipped,
         "collection": collection_name,
     }
     if failed_ids:

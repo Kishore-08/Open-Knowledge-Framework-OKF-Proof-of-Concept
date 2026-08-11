@@ -21,6 +21,9 @@ cache/*
 # Local backups created by migration/cleanup scripts - never commit them either.
 backups/
 
+# Local Qdrant vector storage (bind-mounted by docker-compose.yml).
+qdrant_storage/
+
 # Bundled virtualenvs must never be committed - recreate with `pip install -r requirements/`.
 .venv/
 .venv-eval/

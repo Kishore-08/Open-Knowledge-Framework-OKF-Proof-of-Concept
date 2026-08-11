@@ -1,3 +1,5 @@
+# Stable project name keeps the Qdrant volume across directory renames.
+name: okf-poc
 
 services:
   api:
@@ -35,7 +37,6 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      - qdrant_data:/qdrant/storage
-
-volumes:
-  qdrant_data:
+      # Bind mount so vector data survives `docker compose down` / rebuilds.
+      # Do NOT use `docker compose down -v` unless you intentionally wipe Qdrant.
+      - ./qdrant_storage:/qdrant/storage

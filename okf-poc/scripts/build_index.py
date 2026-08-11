@@ -3,7 +3,8 @@
 Build the Qdrant concept index from the knowledge repository (Phase 9).
 
 Usage:
-    python -m scripts.build_index                       # embed + upsert (needs GEMINI_API_KEY)
+    python -m scripts.build_index                       # incremental embed (default)
+    python -m scripts.build_index --full                # re-embed everything
     python -m scripts.build_index --dry-run             # validate documents, no embeddings
     python -m scripts.build_index --source kubernetes   # reserved: filter by category
 """
@@ -25,9 +26,14 @@ def main() -> None:
         action="store_true",
         help="Validate concepts without calling the embedding API",
     )
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Re-embed every concept, even if already present in Qdrant (uses Gemini quota)",
+    )
     args = parser.parse_args()
 
-    result = build_concepts_index(with_embeddings=not args.dry_run)
+    result = build_concepts_index(with_embeddings=not args.dry_run, force_full=args.full)
     print(result)
 
 
