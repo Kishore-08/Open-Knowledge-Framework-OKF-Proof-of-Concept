@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+*.env
+
+# Data & Knowledge
+# NOTE: as of the cache/ + knowledge/ restructure (see README "Data Organization"),
+# `data/raw` and `data/knowledge` are the OLD locations and should not be used or
+# committed - everything now lives under cache/ (disposable) and knowledge/ (source
+# of truth). Run scripts/migrate_data_structure.py once, then delete data/ entirely.
+data/
+
+# cache/ is disposable (crawled HTML, sync state, uploaded raw files) - never commit it.
+cache/*
+!cache/.gitkeep
+
+# knowledge/ is the source of truth (generated OKF Markdown) - it MUST be committed,
+# so do not ignore it.
+
+# Local backups created by migration/cleanup scripts - never commit them either.
+backups/
+
+# Bundled virtualenvs must never be committed - recreate with `pip install -r requirements/`.
+.venv/
+.venv-eval/
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/

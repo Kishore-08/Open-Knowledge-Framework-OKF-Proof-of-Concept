@@ -1,0 +1,37 @@
+---
+id: python-corresponding-tools-https-docs-python-org-3-library-pathlib--e66b1645
+type: concept
+title: Corresponding tools[¶](https://docs.python.org/3/library/pathlib.html#corresponding-tools
+  "Link to this heading")
+description: 'Below is a table mapping various [`os`](https://docs.python.org/3/library/os.html#module-os
+  "os: Miscellaneous operating system interfaces.") functions to their corresponding'
+category: python
+tags: []
+source:
+  name: python
+  url: https://docs.python.org/3/library/pathlib.html
+updated_at: '2026-08-10'
+created_at: '2026-08-10'
+---
+
+### Corresponding tools[¶](https://docs.python.org/3/library/pathlib.html#corresponding-tools "Link to this heading")
+
+Below is a table mapping various [`os`](https://docs.python.org/3/library/os.html#module-os "os: Miscellaneous operating system interfaces.") functions to their corresponding
+[`PurePath`](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath "pathlib.PurePath")/[`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path "pathlib.Path") equivalent.
+
+| [`os`](https://docs.python.org/3/library/os.html#module-os "os: Miscellaneous operating system interfaces.") and [`os.path`](https://docs.python.org/3/library/os.path.html#module-os.path "os.path: Operations on pathnames.") | `pathlib` |
+| --- | --- |
+| [`os.path.dirname()`](https://docs.python.org/3/library/os.path.html#os.path.dirname "os.path.dirname") | [`PurePath.parent`](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.parent "pathlib.PurePath.parent") |
+| [`os.path.basename()`](https://docs.python.org/3/library/os.path.html#os.path.basename "os.path.basename") | [`PurePath.name`](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.name "pathlib.PurePath.name") |
+| [`os.path.splitext()`](https://docs.python.org/3/library/os.path.html#os.path.splitext "os.path.splitext") | [`PurePath.stem`](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.stem "pathlib.PurePath.stem"), [`PurePath.suffix`](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.suffix "pathlib.PurePath.suffix") |
+| [`os.path.join()`](https://docs.python.org/3/library/os.path.html#os.path.join "os.path.join") | [`PurePath.joinpath()`](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.joinpath "pathlib.PurePath.joinpath") |
+| [`os.path.isabs()`](https://docs.python.org/3/library/os.path.html#os.path.isabs "os.path.isabs") | [`PurePath.is_absolute()`](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.is_absolute "pathlib.PurePath.is_absolute") |
+| [`os.path.relpath()`](https://docs.python.org/3/library/os.path.html#os.path.relpath "os.path.relpath") | [`PurePath.relative_to()`](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.relative_to "pathlib.PurePath.relative_to") [[1]](https://docs.python.org/3/library/pathlib.html#id7) |
+| [`os.path.expanduser()`](https://docs.python.org/3/library/os.path.html#os.path.expanduser "os.path.expanduser") | [`Path.expanduser()`](https://docs.python.org/3/library/pathlib.html#pathlib.Path.expanduser "pathlib.Path.expanduser") [[2]](https://docs.python.org/3/library/pathlib.html#id8) |
+| [`os.path.realpath()`](https://docs.python.org/3/library/os.path.html#os.path.realpath "os.path.realpath") | [`Path.resolve()`](https://docs.python.org/3/library/pathlib.html#pathlib.Path.resolve "pathlib.Path.resolve") |
+| [`os.path.abspath()`](https://docs.python.org/3/library/os.path.html#os.path.abspath "os.path.abspath") | [`Path.absolute()`](https://docs.python.org/3/library/pathlib.html#pathlib.Path.absolute "pathlib.Path.absolute") [[3]](https://docs.python.org/3/library/pathlib.html#id9) |
+| [`os.path.exists()`](https://docs.python.org/3/library/os.path.html#os.path.exists "os.path.exists") | [`Path.exists()`](https://docs.python.org/3/library/pathlib.html#pathlib.Path.exists "pathlib.Path.exists") |
+| [`os.path.isfile()`](https://docs.python.org/3/library/os.path.html#os.path.isfile "os.path.isfile") | [`Path.is_file()`](https://docs.python.org/3/library/pathlib.html#pathlib.Path.is_file "pathlib.Path.is_file") |
+| [`os.path.isdir()`](https://docs.python.org/3/library/os.path.html#os.path.isdir "os.path.isdir") | [`Path.is_dir()`](https://docs.python.org/3/library/pathlib.html#pathlib.Path.is_dir "pathlib.Path.is_dir") |
+| [`os.path.islink()`](https://docs.python.org/3/library/os.path.html#os.path.islink "os.path.islink") | [`Path.is_symlink()`](https://docs.python.org/3/library/pathlib.html#pathlib.Path.is_symlink "pathlib.Path.is_symlink") |
+| [`os.path.isju

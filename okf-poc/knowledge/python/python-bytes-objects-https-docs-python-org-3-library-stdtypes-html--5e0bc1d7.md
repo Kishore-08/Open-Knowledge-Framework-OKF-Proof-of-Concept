@@ -1,0 +1,92 @@
+---
+id: python-bytes-objects-https-docs-python-org-3-library-stdtypes-html--5e0bc1d7
+type: concept
+title: Bytes Objects[¶](https://docs.python.org/3/library/stdtypes.html#bytes-objects
+  "Link to this heading")
+description: Bytes objects are immutable sequences of single bytes. Since many major
+category: python
+tags: []
+source:
+  name: python
+  url: https://docs.python.org/3/library/stdtypes.html
+updated_at: '2026-08-10'
+created_at: '2026-08-10'
+---
+
+### Bytes Objects[¶](https://docs.python.org/3/library/stdtypes.html#bytes-objects "Link to this heading")
+
+Bytes objects are immutable sequences of single bytes. Since many major
+binary protocols are based on the ASCII text encoding, bytes objects offer
+several methods that are only valid when working with ASCII compatible
+data and are closely related to string objects in a variety of other ways.
+
+*class* bytes(*source=b''*)[¶](https://docs.python.org/3/library/stdtypes.html#bytes "Link to this definition")
+
+*class* bytes(*source*, *encoding*, *errors='strict'*)
+:   Firstly, the syntax for bytes literals is largely the same as that for string
+    literals, except that a `b` prefix is added:
+
+    - Single quotes: `b'still allows embedded "double" quotes'`
+    - Double quotes: `b"still allows embedded 'single' quotes"`
+    - Triple quoted: `b'''3 single quotes'''`, `b"""3 double quotes"""`
+
+    Only ASCII characters are permitted in bytes literals (regardless of the
+    declared source code encoding). Any binary values over 127 must be entered
+    into bytes literals using the appropriate escape sequence.
+
+    As with string literals, bytes literals may also use a `r` prefix to disable
+    processing of escape sequences. See [String and Bytes literals](https://docs.python.org/3/reference/lexical_analysis.html#strings) for more about the various
+    forms of bytes literal, including supported escape sequences.
+
+    While bytes literals and representations are based on ASCII text, bytes
+    objects actually behave like immutable sequences of integers, with each
+    value in the sequence restricted such that `0 <= x < 256` (attempts to
+    violate this restriction will trigger [`ValueError`](https://docs.python.org/3/library/exceptions.html#ValueError "ValueError")). This is done
+    deliberately to emphasise that while many binary formats include ASCII based
+    elements and can be usefully manipulated with some text-oriented algorithms,
+    this is not generally the case for arbitrary binary data (blindly applying
+    text processing algorithms to binary data formats that are not ASCII
+    compatible will usually lead to data corruption).
+
+    In addition to the literal forms, bytes objects can be created in a number of
+    other ways:
+
+    - A zero-filled bytes object of a specified length: `bytes(10)`
+    - From an iterable of integers: `bytes(range(20))`
+    - Copying existing binary data via the buffer protocol: `bytes(obj)`
+
+    Also see the [bytes](https://docs.python.org/3/library/functions.html#func-bytes) built-in.
+
+    Since 2 hexadecimal digits correspond precisely to a single byte, hexadecimal
+    numbers are a commonly used format for describing binary data. Accordingly,
+    the bytes type has an additional class method to read data in that format:
+
+    *classmethod* fromhex(*string*, */*)[¶](https://docs.python.org/3/library/stdtypes.html#bytes.fromhex "Link to this definition")
+    :   This `bytes` class method returns a bytes object, decoding the
+        given string object. The string must contain two hexadecimal digits per
+        byte, with ASCII whitespace being ignored.
+
+        ```
+        >>> bytes.fromhex('2Ef0 F1f2  ')
+        b'.\xf0\xf1\xf2'
+        ```
+
+        Changed in version 3.7: `bytes.fromhex()` now skips all ASCII whitespace in the string,
+        not just spaces.
+
+        Changed in version 3.14: `bytes.fromhex()` now accepts ASCII `bytes` and
+        [bytes-like objects](https://docs.python.org/3/glossary.html#term-bytes-like-object) as input.
+
+    A reverse conversion function exists to transform a bytes object into its
+    hexadecimal representation.
+
+    hex(*\**, *bytes\_per\_sep=1*)[¶](https://docs.python.org/3/library/stdtypes.html#bytes.hex "Link to this definition")
+
+    hex(*sep*, *bytes\_per\_sep=1*)
+    :   Return a string object containing two hexadecimal digits for each
+        byte in the instance.
+
+        ```
+        >>> b'\xf0\xf1\xf2'.hex()
+        'f0f1f2'
+        ```

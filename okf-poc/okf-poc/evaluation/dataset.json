@@ -1,0 +1,84 @@
+{
+"questions": [
+{
+"question": "What is the primary function of a Kubernetes Pod?",
+"ground_truth": "A Pod is the smallest deployable unit in Kubernetes and represents a single instance of a running process in your cluster, typically hosting one or more containers."
+},
+{
+"question": "Explain the difference between a Deployment and a StatefulSet.",
+"ground_truth": "Deployments manage stateless applications and treat all pods as interchangeable. StatefulSets manage stateful applications, providing guarantees about the ordering and uniqueness of pods."
+},
+{
+"question": "What is a Kubelet?",
+"ground_truth": "The kubelet is the primary 'node agent' that runs on each node in the cluster. It ensures that containers are running in a Pod."
+},
+{
+"question": "How does an Ingress differ from a NodePort?",
+"ground_truth": "NodePort exposes a service on a static port on each Node's IP. Ingress is an API object that manages external access to the services in a cluster, typically HTTP, providing routing rules, load balancing, and SSL termination."
+},
+{
+"question": "What happens if a Liveness probe fails?",
+"ground_truth": "If a Liveness probe fails, the kubelet kills the container, and the container is subjected to its restart policy."
+},
+{
+"question": "What is the purpose of a ConfigMap?",
+"ground_truth": "A ConfigMap is an API object used to store non-confidential data in key-value pairs. Pods can consume ConfigMaps as environment variables, command-line arguments, or as configuration files in a volume."
+},
+{
+"question": "Summarize the control plane architecture.",
+"ground_truth": "The control plane manages the worker nodes and the Pods. Its core components include the kube-apiserver (frontend), etcd (backing store), kube-scheduler (assigns Pods to Nodes), and kube-controller-manager (runs controller processes)."
+},
+{
+"question": "Can I bake a chocolate cake in Kubernetes?",
+"ground_truth": "I cannot answer this based on the ingested OKF sources."
+},
+{
+"question": "What is etcd used for?",
+"ground_truth": "etcd is a consistent and highly-available key value store used as Kubernetes' backing store for all cluster data."
+},
+{
+"question": "How do you secure network traffic between pods?",
+"ground_truth": "Network traffic between pods can be secured using Network Policies, which define rules specifying how pods are allowed to communicate with each other and other network endpoints."
+},
+{
+"question": "What is a DaemonSet?",
+"ground_truth": "A DaemonSet ensures that all (or some) Nodes run a copy of a Pod. As nodes are added to the cluster, Pods are added to them."
+},
+{
+"question": "What is the default scheduling algorithm in Kubernetes?",
+"ground_truth": "The default scheduler, kube-scheduler, selects a node for a newly created pod using a two-step operation: Filtering (finding feasible nodes) and Scoring (ranking feasible nodes)."
+},
+{
+"question": "What is a HorizontalPodAutoscaler (HPA)?",
+"ground_truth": "HPA automatically updates a workload resource (like a Deployment or StatefulSet), with the aim of automatically scaling the workload to match demand."
+},
+{
+"question": "Define a PersistentVolumeClaim (PVC).",
+"ground_truth": "A PVC is a request for storage by a user. It is similar to a Pod. Pods consume node resources and PVCs consume PV resources."
+},
+{
+"question": "Who invented the Python programming language?",
+"ground_truth": "I cannot answer this based on the ingested OKF sources."
+},
+{
+"question": "What is a Service in Kubernetes?",
+"ground_truth": "A Service is an abstract way to expose an application running on a set of Pods as a network service. It provides a stable IP address and DNS name."
+},
+{
+"question": "What does a Readiness probe do?",
+"ground_truth": "A Readiness probe determines if a container is ready to respond to requests. If it fails, the endpoints controller removes the Pod's IP address from the endpoints of all Services that match the Pod."
+},
+{
+"question": "Explain the role of kube-proxy.",
+"ground_truth": "kube-proxy is a network proxy that runs on each node in your cluster, implementing part of the Kubernetes Service concept. It maintains network rules on nodes."
+},
+{
+"question": "What are Namespaces?",
+"ground_truth": "Namespaces provides a mechanism for isolating groups of resources within a single cluster. They are intended for use in environments with many users spread across multiple teams."
+},
+{
+"question": "How does Kubernetes handle Secrets?",
+"ground_truth": "A Secret is an object that contains a small amount of sensitive data such as a password, a token, or a key. Using a Secret means that you don't need to include confidential data in your application code."
+}
+]
+}
