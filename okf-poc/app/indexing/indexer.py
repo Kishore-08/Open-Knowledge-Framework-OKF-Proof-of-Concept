@@ -111,7 +111,7 @@ def build_concepts_index(
     _index, failed_ids = index_documents(
         docs_to_index,
         collection_name=collection_name,
-        source_files=source_files,
+        source_files=[],
         show_progress=True,
     )
     result = {

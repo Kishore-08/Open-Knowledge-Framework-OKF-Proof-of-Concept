@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     LLM_FALLBACK_MODEL: str = "gemini-3.5-flash-lite"
     # gemini-embedding-001's free-tier quota (1000 req/day) is easily exhausted;
     # gemini-embedding-2 has a separate quota pool and produces 3072-dim vectors.
-    EMBEDDING_MODEL: str = "models/gemini-embedding-2"
+    EMBEDDING_MODEL: str = "models/gemini-embedding-1"
     TEMPERATURE: float = 0.0
 
     # LLM resilience: retry Gemini calls on 429 quota/rate-limit errors.

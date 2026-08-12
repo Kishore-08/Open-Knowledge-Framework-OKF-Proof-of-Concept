@@ -220,9 +220,7 @@ def index_documents(
     source_files = source_files or []
 
     vector_store = get_qdrant_vector_store(collection_name)
-    reset_hybrid_collection(collection_name)
-    delete_points_by_field(collection_name, "source_file", source_files)
-
+    
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
     splitter = SentenceSplitter(
         chunk_size=settings.CHUNK_SIZE,

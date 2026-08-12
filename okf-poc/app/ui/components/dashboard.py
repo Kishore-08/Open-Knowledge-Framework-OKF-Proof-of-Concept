@@ -52,7 +52,7 @@ def browser_api_base(configured: str) -> str:
         return "http://localhost:8000"
 
 
-def _build_html(api_base: str, theme: str = "light", initial_status: Optional[dict] = None) -> str:
+def _build_html(api_base: str, theme: str = "light", initial_status: Optional[dict] = None, job_id: Optional[str] = None) -> str:
     """Build the full self-contained HTML+JS dashboard.
 
     ``initial_status`` is embedded as ``window.__OKF_STATUS__`` and applied
@@ -62,6 +62,13 @@ def _build_html(api_base: str, theme: str = "light", initial_status: Optional[di
 
     # Escape for embedding in a <script> string safely.
     api_base_js = _html.escape(api_base, quote=True)
+
+    if job_id:
+        status_url = f"{api_base}/api/v1/jobs/{job_id}"
+    else:
+        status_url = f"{api_base}/api/v1/ingest/status"
+
+    status_url_js = _html.escape(status_url, quote=True)
 
     # Embed the server-side status as a raw JS object literal. HTML-entity
     # escaping would corrupt the JSON (quotes become &quot;), so we only guard
@@ -426,14 +433,16 @@ def _build_html(api_base: str, theme: str = "light", initial_status: Optional[di
         display: grid;
         grid-template-columns: 2fr 1fr;
         gap: 12px;
+        align-items: stretch;
+        margin-bottom: 12px;
     }
     @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
-    .chart-card { padding: 10px 14px; }
+    .chart-card { padding: 10px 14px; min-height: 230px; overflow: visible;}
     .chart-card h3 {
         font-size: 0.82rem; font-weight: 600; color: var(--text-dim);
         margin-bottom: 4px;
     }
-    .chart-box { width: 100%; height: 150px; position: relative; }
+    .chart-box { width: 100%; height: 190px; position: relative; }
     .chart-note {
         font-size: 0.75rem; color: var(--text-dim); padding: 8px;
         text-align: center;
@@ -463,16 +472,48 @@ def _build_html(api_base: str, theme: str = "light", initial_status: Optional[di
     }
 
     .donut-wrap {
-        display: flex; align-items: center; justify-content: center;
-        flex-direction: column; gap: 6px; height: 110px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 10px;
+        height: 110px;
     }
-    .donut { width: 100px; height: 100px; border-radius: 50%; position: relative; }
-    .donut .center {
-        position: absolute; inset: 16px; border-radius: 50%;
-        display: grid; place-items: center;
-        font-size: 1.2rem; font-weight: 700;
+
+    .donut-container {
+        position: relative;
+        width: 100px;
+        height: 100px;
+    }
+
+    .donut {
+        width: 100px;
+        height: 100px;
+    }
+
+    .donut-center {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+
+        width: 56px;
+        height: 56px;
+
+        border-radius: 50%;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        font-size: 1rem;
+        font-weight: 700;
+
         background: var(--donut-center);
         color: var(--text);
+
+        pointer-events: none;
+        z-index: 10;
     }
     .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.72rem; color: var(--text-dim); }
     .legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -563,7 +604,10 @@ def _build_html(api_base: str, theme: str = "light", initial_status: Optional[di
         <div class="glass chart-card">
             <h3>Pipeline Mix</h3>
             <div class="donut-wrap" id="mixBox">
-                <div class="donut" id="donut"><div class="center" id="donutCenter">0%</div></div>
+                <div class="donut-container">
+                    <div class="donut" id="donut"></div>
+                    <div class="donut-center" id="donutCenter">0%</div>
+                </div>
                 <div class="legend" id="mixLegend"></div>
             </div>
         </div>
@@ -574,7 +618,7 @@ def _build_html(api_base: str, theme: str = "light", initial_status: Optional[di
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <script>
 (function () {
-    const API_BASE = "__API_BASE_JS__";
+    const STATUS_URL = "__STATUS_URL_JS__";
     const THEME = document.body.dataset.theme || "light";
     // Server-side status embedded on every Streamlit rerun. This is the primary
     // source of truth so the counters move even when the browser cannot reach
@@ -865,98 +909,172 @@ def _build_html(api_base: str, theme: str = "light", initial_status: Optional[di
     };
 
     function initCharts() {
-        if (typeof echarts === "undefined") return;
-        const box = $("tokenBox");
-        if (box) {
-            box.innerHTML = "";
-            tokenChart = echarts.init(box);
+
+        if (typeof echarts === "undefined") {
+            return;
         }
-        donut = echarts.init($("donut"));
-        echartsReady = true;
-        renderCharts();
+
+        try {
+
+            const box = $("tokenBox");
+
+            if (box) {
+                box.innerHTML = "";
+                tokenChart = echarts.init(box);
+            }
+
+            const donutElement = $("donut");
+
+            if (donutElement) {
+                donut = echarts.init(donutElement);
+            }
+
+            echartsReady = true;
+
+            renderCharts();
+
+        } catch (error) {
+
+            console.error(
+                "Failed to initialize dashboard charts:",
+                error
+            );
+
+            echartsReady = false;
+        }
     }
 
     function renderCharts() {
         if (!echartsReady) return;
-        const T = chartTheme[THEME] || chartTheme.light;
 
-        const hist = state.tokenHistory;
-        if (tokenChart && hist.length) {
-            const labels = hist.map((h) => h.label);
-            tokenChart.setOption({
+        try {
+            const T = chartTheme[THEME] || chartTheme.light;
+
+            const hist = state.tokenHistory;
+            if (tokenChart && hist.length) {
+                const labels = hist.map((h) => h.label);
+                tokenChart.setOption({
+                    animation: true,
+                    animationDurationUpdate: 400,
+                    tooltip: {
+                        trigger: "axis",
+                        backgroundColor: T.tooltipBg,
+                        borderColor: T.tooltipBorder,
+                        textStyle: { color: T.tooltipText },
+                    },
+                    grid: { left: 44, right: 12, top: 18, bottom: 24 },
+                    legend: {
+                        data: ["Prompt", "Completion"],
+                        textStyle: { color: T.axisLabel },
+                        top: 0
+                    },
+                    xAxis: {
+                        type: "category",
+                        data: labels,
+                        axisLine: { lineStyle: { color: T.axisLine } },
+                        axisLabel: { color: T.axisLabel, fontSize: 10 },
+                    },
+                    yAxis: {
+                        type: "value",
+                        splitLine: { lineStyle: { color: T.splitLine } },
+                        axisLabel: { color: T.axisLabel, fontSize: 10 },
+                    },
+                    series: [
+                        {
+                            name: "Prompt",
+                            type: "line",
+                            smooth: true,
+                            showSymbol: false,
+                            lineStyle: { width: 3, color: "#4285f4" },
+                            areaStyle: { color: "rgba(66,133,244,0.22)" },
+                            data: hist.map((h) => h.prompt),
+                        },
+                        {
+                            name: "Completion",
+                            type: "line",
+                            smooth: true,
+                            showSymbol: false,
+                            lineStyle: { width: 3, color: "#34a853" },
+                            areaStyle: { color: "rgba(52,168,83,0.20)" },
+                            data: hist.map((h) => h.completion),
+                        },
+                    ],
+                });
+            }
+
+            const mix = [
+                {
+                    name: "Processed",
+                    value: state.tgt.processed || 0,
+                    itemStyle: { color: "#10b981" }
+                },
+                {
+                    name: "Indexed",
+                    value: state.tgt.indexed || 0,
+                    itemStyle: { color: "#4285f4" }
+                },
+                {
+                    name: "Failed",
+                    value: state.tgt.failed || 0,
+                    itemStyle: { color: "#ef4444" }
+                },
+            ];
+
+            donut.setOption({
                 animation: true,
                 animationDurationUpdate: 400,
                 tooltip: {
-                    trigger: "axis",
+                    trigger: "item",
                     backgroundColor: T.tooltipBg,
                     borderColor: T.tooltipBorder,
                     textStyle: { color: T.tooltipText },
                 },
-                grid: { left: 44, right: 12, top: 18, bottom: 24 },
-                legend: { data: ["Prompt", "Completion"], textStyle: { color: T.axisLabel }, top: 0 },
-                xAxis: {
-                    type: "category",
-                    data: labels,
-                    axisLine: { lineStyle: { color: T.axisLine } },
-                    axisLabel: { color: T.axisLabel, fontSize: 10 },
-                },
-                yAxis: {
-                    type: "value",
-                    splitLine: { lineStyle: { color: T.splitLine } },
-                    axisLabel: { color: T.axisLabel, fontSize: 10 },
-                },
-                series: [
-                    {
-                        name: "Prompt",
-                        type: "line",
-                        smooth: true,
-                        showSymbol: false,
-                        lineStyle: { width: 3, color: "#4285f4" },
-                        areaStyle: { color: "rgba(66,133,244,0.22)" },
-                        data: hist.map((h) => h.prompt),
+                series: [{
+                    type: "pie",
+                    radius: ["62%", "88%"],
+                    avoidLabelOverlap: true,
+                    itemStyle: {
+                        borderColor: T.donutBorder,
+                        borderWidth: 3
                     },
-                    {
-                        name: "Completion",
-                        type: "line",
-                        smooth: true,
-                        showSymbol: false,
-                        lineStyle: { width: 3, color: "#34a853" },
-                        areaStyle: { color: "rgba(52,168,83,0.20)" },
-                        data: hist.map((h) => h.completion),
+                    label: { show: false },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            color: T.tooltipText
+                        }
                     },
-                ],
+                    data: mix.filter((d) => d.value > 0),
+                }],
             });
-        }
 
-        const mix = [
-            { name: "Processed", value: state.tgt.processed || 0, itemStyle: { color: "#10b981" } },
-            { name: "Indexed", value: state.tgt.indexed || 0, itemStyle: { color: "#4285f4" } },
-            { name: "Failed", value: state.tgt.failed || 0, itemStyle: { color: "#ef4444" } },
-        ];
-        donut.setOption({
-            animation: true,
-            animationDurationUpdate: 400,
-            tooltip: {
-                trigger: "item",
-                backgroundColor: T.tooltipBg,
-                borderColor: T.tooltipBorder,
-                textStyle: { color: T.tooltipText },
-            },
-            series: [{
-                type: "pie",
-                radius: ["62%", "88%"],
-                avoidLabelOverlap: true,
-                itemStyle: { borderColor: T.donutBorder, borderWidth: 3 },
-                label: { show: false },
-                emphasis: { label: { show: true, color: T.tooltipText } },
-                data: mix.filter((d) => d.value > 0),
-            }],
-        });
-        const total = mix.reduce((s, d) => s + d.value, 0);
-        $("donutCenter").textContent = total > 0 ? (state.tgt.progress || 0) + "%" : "0%";
-        $("mixLegend").innerHTML = mix.map((d) =>
-            `<span><i style="background:${d.itemStyle.color}"></i>${d.name} ${d.value}</span>`
-        ).join("");
+            const total = mix.reduce((s, d) => s + d.value, 0);
+            const donutCenter = $("donutCenter");
+
+            if (donutCenter) {
+                donutCenter.textContent =
+                    total > 0
+                        ? (state.tgt.progress || 0) + "%"
+                        : "0%";
+            }
+
+            const mixLegend = $("mixLegend");
+
+            if (mixLegend) {
+                mixLegend.innerHTML = mix.map((d) =>
+                    `<span>
+                        <i style="background:${d.itemStyle.color}"></i>
+                        ${d.name} ${d.value}
+                    </span>`
+                ).join("");
+            }
+
+        } catch (error) {
+            console.error(
+                "Dashboard chart rendering failed:",
+                error
+            );
+        }
     }
 
     // fallback: simple CSS bars when echarts CDN is unavailable
@@ -1042,7 +1160,7 @@ def _build_html(api_base: str, theme: str = "light", initial_status: Optional[di
     // ---- polling (enhancement only; embedded status is the source of truth) ----
     async function poll() {
         try {
-            const res = await fetch(API_BASE + "/api/v1/ingest/status", { cache: "no-store" });
+            const res = await fetch( STATUS_URL,{ cache: "no-store"});
             if (!res.ok) throw new Error("status " + res.status);
             const s = await res.json();
             applyStatus(s, { notify: true });
@@ -1061,31 +1179,84 @@ def _build_html(api_base: str, theme: str = "light", initial_status: Optional[di
     }
 
     buildSteps();
-    if (typeof echarts !== "undefined") {
-        initCharts();
-    } else {
-        window.addEventListener("echarts-loaded", initCharts);
-        const t = setTimeout(renderFallbackTokens, 2500);
-        window.addEventListener("echarts-loaded", () => clearTimeout(t));
-    }
+
+    /*
+    * Render ingestion status FIRST.
+    * Charts are optional decoration and must never block live status.
+    */
 
     renderNumbers();
     renderSteps();
     renderActivity();
+
     if (EMBEDDED) {
-        applyStatus(INITIAL, { notify: true });
+        applyStatus(INITIAL, {
+            notify: true
+        });
     }
-    setBadge(state.lastStatus || "idle");
+
+    setBadge(
+        state.lastStatus || "idle"
+    );
+
     renderRateLimitBadge();
+
+
+    /*
+    * Start live status polling BEFORE charts.
+    */
+
     poll();
-    window.setInterval(poll, 800);
-    window.setInterval(save, 2000);
+
+    window.setInterval(
+        poll,
+        800
+    );
+
+    window.setInterval(
+        save,
+        2000
+    );
+
+
+    /*
+    * Initialize charts LAST.
+    */
+
+    if (typeof echarts !== "undefined") {
+
+        initCharts();
+
+    } else {
+
+        const t = setTimeout(
+            renderFallbackTokens,
+            2500
+        );
+
+        window.addEventListener(
+            "echarts-loaded",
+            initCharts
+        );
+
+        window.addEventListener(
+            "echarts-loaded",
+            () => clearTimeout(t)
+        );
+    }
 })();
 </script>
 </body>
 </html>
-""".replace("__API_BASE_JS__", api_base_js).replace(
-        "__THEME__", _html.escape(theme, quote=True)
+""".replace(
+        "__STATUS_URL_JS__",
+        status_url_js,
+    ).replace(
+        "__THEME__",
+        _html.escape(theme, quote=True),
+    ).replace(
+        "window.__OKF_STATUS__ || null",
+        "(%s) || null" % status_js,
     ).replace(
         "window.__OKF_STATUS__ || null",
         "(%s) || null" % status_js,
@@ -1096,7 +1267,8 @@ def render_live_dashboard(
     api_host: str,
     status: Optional[dict] = None,
     theme: str = "light",
-    height: int = 620,
+    height: int = 760,
+    job_id: Optional[str] = None,
 ) -> None:
     """Render the live glassmorphism ingestion dashboard.
 
@@ -1111,5 +1283,5 @@ def render_live_dashboard(
     small screen still needs it.
     """
     base = browser_api_base(api_host)
-    html = _build_html(base, theme=theme, initial_status=status)
+    html = _build_html(base, theme=theme, initial_status=status,job_id=job_id)
     st.components.v1.html(html, height=height, scrolling=False)

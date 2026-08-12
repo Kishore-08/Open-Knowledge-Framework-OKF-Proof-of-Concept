@@ -13,6 +13,7 @@ services:
       - ./knowledge:/app/knowledge
       - ./cache:/app/cache
       - ./config:/app/config
+      - ./scripts:/app/scripts
     env_file:
       - .env
     depends_on:
@@ -40,3 +41,8 @@ services:
       # Bind mount so vector data survives `docker compose down` / rebuilds.
       # Do NOT use `docker compose down -v` unless you intentionally wipe Qdrant.
       - ./qdrant_storage:/qdrant/storage
+    restart: unless-stopped
+
+volumes:
+  qdrant_data:
+    name: okf_qdrant_data

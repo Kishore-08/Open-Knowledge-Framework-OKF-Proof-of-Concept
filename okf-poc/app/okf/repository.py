@@ -96,6 +96,45 @@ def load_all_concepts(knowledge_dir: Optional[str] = None, use_cache: bool = Tru
     _cache_key_value = _cache_key(root)
     return concepts
 
+def load_concepts_from_paths(paths: List[str]) -> list[OKFConceptFile]:
+    """
+    Load only the specific OKF concept files supplied in paths.
+
+    Used by incremental ingestion so we do not reload and re-embed the
+    entire knowledge repository whenever only a few concepts changed.
+    """
+    concepts: list[OKFConceptFile] = []
+
+    for path in paths:
+        if not path or not os.path.isfile(path):
+            continue
+
+        try:
+            raw_meta, body = parse_okf_file(path)
+            meta = OKFConcept.model_validate(raw_meta)
+
+            if not _is_usable_concept(meta):
+                print(
+                    f"⚠️ Skipping unusable OKF concept "
+                    f"(bad title/category): {path}"
+                )
+                continue
+
+            concepts.append(
+                OKFConceptFile(
+                    metadata=meta,
+                    content=body.strip(),
+                    filepath=path,
+                )
+            )
+
+        except Exception as exc:
+            print(
+                f"⚠️ Skipping invalid OKF concept: "
+                f"{path} ({exc})"
+            )
+
+    return concepts
 
 # ---------------------------------------------------------------------------
 # Listing / lookup

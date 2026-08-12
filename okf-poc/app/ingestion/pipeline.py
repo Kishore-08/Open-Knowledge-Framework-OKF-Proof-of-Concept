@@ -26,7 +26,7 @@ from app.converter.markdown import (
     write_concept_file,
 )
 from app.okf.repository import (
-    load_all_concepts,
+    load_concepts_from_paths,
     delete_concepts_by_source_urls,
 )
 from app.retrieval.hybrid_search import (
@@ -299,7 +299,7 @@ def _process_crawled_html(
         if changed_pages:
             pages_to_process = changed_pages
         elif not _knowledge_has_concepts(knowledge_dir):
-            pages_to_process = state_manager.get_all_crawler_states()
+            pages_to_process = changed_pages or []
         else:
             pages_to_process = []
     else:
@@ -328,6 +328,7 @@ def _process_crawled_html(
     )
 
     processed = 0
+    written_paths = []
 
     for page in pages_to_process:
         _check_cancelled(cancel_event)
@@ -383,6 +384,9 @@ def _process_crawled_html(
                     concept_id=concept_id,
                     content=content,
                 )
+
+                written_paths.append(written_path)
+
                 if updated_knowledge_paths is not None:
                     _track_knowledge_path(knowledge_dir, written_path, updated_knowledge_paths)
 
@@ -405,7 +409,7 @@ def _process_crawled_html(
                 f"{html_path}: {exc}"
             )
 
-    return processed
+    return processed, written_paths
 
 def run_ingestion_pipeline(
     cache_dir: str = None,
@@ -525,13 +529,12 @@ def run_ingestion_pipeline(
     # 1. Convert crawled HTML into OKF concept files.
     _check_cancelled(cancel_event)
 
-    crawled_count = _process_crawled_html(
+    crawled_count, crawled_okf_paths = _process_crawled_html(
         cache_dir=cache_dir,
         knowledge_dir=knowledge_dir,
         changed_pages=crawl_result.get("changed_pages", []),
         cancel_event=cancel_event,
         source_names=[] if upload_only else source_names,
-        updated_knowledge_paths=updated_knowledge_paths,
     )
 
     update_status(
@@ -565,19 +568,13 @@ def run_ingestion_pipeline(
         changed_local_files = list(local_files)
         print(f"📂 Upload-only files: {len(local_files)}")
     else:
-        changed_local_files, processing_state = state_manager.get_changed_files(processing_state)
+        changed_local_files, processing_state = state_manager.get_changed_files( processing_state )
 
-        print(
-            f"📂 Local cached files: changed/new={len(changed_local_files)}"
-        )
+    print(
+        f"📂 Local cached files: "
+        f"changed/new={len(changed_local_files)}")
 
-        if changed_local_files:
-            local_files = changed_local_files
-        elif not _knowledge_has_concepts(knowledge_dir):
-            # First bootstrap: knowledge/ is empty but cache/ may have uploads.
-            local_files = state_manager.discover_local_files()
-        else:
-            local_files = []
+    local_files = changed_local_files
 
     raw_docs = []
     for file_path in local_files:
@@ -609,6 +606,7 @@ def run_ingestion_pipeline(
     )
 
     saved_count = 0
+    changed_okf_paths = []
 
     # 2, 3 & 4. Extract Metadata (in parallel), Bridge to OKF Schema, Save Files.
     # Metadata extraction is the slowest step (LLM calls); running it across a
@@ -646,16 +644,31 @@ def run_ingestion_pipeline(
 
             # Use the slug id as the filename for consistency
             filename = f"{okf_meta['id']}_{i}.md"
-            category_dir = os.path.join(knowledge_dir, str(okf_meta.get("category") or "reference").strip())
+
+            category_dir = os.path.join(
+                knowledge_dir,
+                str(
+                    okf_meta.get("category")
+                    or "reference"
+                ).strip()
+            )
+
             os.makedirs(category_dir, exist_ok=True)
 
-            # Physically save the OKF-formatted Markdown file to disk
             format_and_save_okf(
                 text=doc.text,
                 metadata=okf_meta,
                 output_dir=category_dir,
                 filename=filename,
             )
+
+            saved_okf_path = os.path.join(
+                category_dir,
+                filename,
+            )
+
+            changed_okf_paths.append(saved_okf_path)
+
             _track_knowledge_path(
                 knowledge_dir,
                 os.path.join(category_dir, filename),
@@ -703,53 +716,86 @@ def run_ingestion_pipeline(
     #    documents, metadata, and provenance that search + query layers consume.
     _check_cancelled(cancel_event)
 
-    print("📦 Re-reading OKF files and connecting to Qdrant for vector indexing...")
+    print(
+        "📦 Connecting to Qdrant for incremental vector indexing..."
+    )
+
     update_status(
         stage="indexing",
-        stage_message="Indexing OKF knowledge into Qdrant",
-        message="Indexing concepts into the vector database",
+        stage_message="Indexing changed OKF knowledge into Qdrant",
+        message="Indexing changed concepts into the vector database",
         current_source="",
     )
-    concepts = load_all_concepts(knowledge_dir, use_cache=False)
-    docs = concepts_to_documents(concepts)
-    if not docs:
-        print("⚠️ No valid OKF concepts were produced; nothing to index.")
-        return {"status": "skipped", "message": "No valid OKF concepts were produced."}
 
-    docs_to_index, skipped = filter_documents_for_indexing(
-        docs,
-        updated_paths=updated_knowledge_paths,
-    )
-    if not docs_to_index:
-        print(
-            f"ℹ️ Skipping vector indexing — all {skipped} concept(s) are already "
-            "present in Qdrant and unchanged since the last run."
+    all_changed_okf_paths = list(
+        dict.fromkeys(
+            crawled_okf_paths
+            + changed_okf_paths
         )
+    )
+
+    print(
+        f"📦 Changed OKF concepts to index: "
+        f"{len(all_changed_okf_paths)}"
+    )
+
+    if not all_changed_okf_paths:
+        print(
+            "✅ No knowledge files changed. "
+            "Existing Qdrant vectors will be reused."
+        )
+
         update_status(
             status="completed",
             stage="completed",
-            stage_message="Ingestion completed — knowledge is stored in OKF format and indexed",
-            message="Ingestion completed (index unchanged)",
+            stage_message="No knowledge changes detected",
+            message="Existing Qdrant index reused",
             processed=crawled_count + saved_count,
-            indexed=len(docs),
+            indexed=0,
             failed=crawl_result["failed"],
             current_source="",
         )
+
         return {
             "status": "success",
-            "indexed_documents": len(docs),
-            "skipped_indexing": skipped,
+            "indexed_documents": 0,
+            "message": "No changes detected; existing Qdrant vectors reused.",
         }
 
-    if skipped:
+
+    concepts = load_concepts_from_paths(
+        all_changed_okf_paths
+    )
+
+    docs = concepts_to_documents(concepts)
+
+    if not docs:
         print(
-            f"ℹ️ Incremental indexing: embedding {len(docs_to_index)} changed/new "
-            f"concept(s), skipping {skipped} already indexed."
+            "⚠️ Changed files produced no valid OKF concepts; "
+            "nothing to index."
         )
 
-    source_files = [d.metadata["source_file"] for d in docs_to_index if d.metadata.get("source_file")]
+        return {
+            "status": "skipped",
+            "message": "No valid changed OKF concepts were produced.",
+        }
+
+
+    source_files = [
+        d.metadata["source_file"]
+        for d in docs
+        if d.metadata.get("source_file")
+    ]
+
+
+    print(
+        f"🧠 Sending only {len(docs)} changed "
+        f"concept(s) for embedding."
+    )
+
+
     _index, failed_ids = index_documents(
-        docs_to_index,
+        docs,
         collection_name=settings.QDRANT_CONCEPTS_COLLECTION,
         source_files=source_files,
         show_progress=True,
@@ -757,7 +803,7 @@ def run_ingestion_pipeline(
         cancel_event=cancel_event,
     )
     if failed_ids:
-        print(
+            print(
             f"⚠️ {len(failed_ids)}/{len(docs)} document(s) were not indexed into Qdrant "
             "after retries (see log above). Filesystem knowledge/ still has them, so "
             "keyword search will find them; re-run ingestion to retry indexing."

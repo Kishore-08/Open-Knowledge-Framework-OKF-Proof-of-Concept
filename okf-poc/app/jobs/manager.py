@@ -191,11 +191,25 @@ class JobManager:
             return any(j.status in ACTIVE_STATUSES for j in self._jobs.values())
 
     def get_active_job(self) -> Optional[Job]:
-        """The currently running job (or the most recent queued one)."""
+        """Return the actual currently running job, otherwise the next queued job."""
         with self._lock:
-            for job in self._jobs.values():
-                if job.status in {STATUS_QUEUED, STATUS_RUNNING, STATUS_CANCELLING}:
+            # Always prefer the actual running job.
+            if self._active_job_id:
+                active = self._jobs.get(self._active_job_id)
+
+                if active and active.status in {
+                    STATUS_RUNNING,
+                    STATUS_CANCELLING,
+                }:
+                    return active
+
+            # If worker has not started yet, return queued job.
+            for job_id in self._queue:
+                job = self._jobs.get(job_id)
+
+                if job and job.status == STATUS_QUEUED:
                     return job
+
             return None
 
     # ------------------------------------------------------------- progress

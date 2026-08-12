@@ -126,11 +126,37 @@ def _build_theme_css(theme: str) -> str:
         font-family: 'Inter', sans-serif;
     }}
 
-    /* Hide Streamlit chrome (Deploy button, toolbar, footer, menu) */
-    #MainMenu, footer {{ visibility: hidden; }}
-    [data-testid="stToolbar"], [data-testid="stDecoration"] {{ display: none; }}
-    .block-container {{ padding-top: 1.5rem; max-width: 1400px; }}
-    [data-testid="stHeader"] {{ background: transparent; }}
+   
+    /* Hide only unwanted Streamlit chrome */
+    #MainMenu,
+    footer {{
+        visibility: hidden;
+    }}
+
+    /* Do NOT hide the entire toolbar.
+    It may contain the sidebar reopen control. */
+    [data-testid="stDecoration"] {{
+        display: none;
+    }}
+
+    /* Keep header transparent */
+    [data-testid="stHeader"] {{
+        background: transparent;
+    }}
+
+    /* Ensure sidebar collapse/reopen button stays visible */
+    [data-testid="stSidebarCollapsedControl"] {{
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        z-index: 999999 !important;
+        position: relative !important;
+    }}
+
+    /* Keep Streamlit header above custom elements */
+    [data-testid="stHeader"] {{
+        z-index: 999998 !important;
+    }}
 
     /* Scrollbar */
     ::-webkit-scrollbar {{ width: 8px; height: 8px; }}
@@ -252,24 +278,95 @@ def _build_theme_css(theme: str) -> str:
     }}
     [data-testid="stChatMessage"] p {{ color: {p['okf-text']}; }}
 
-    /* Search bar (chat input) — full-width, comfortably tall, padded placeholder */
-    [data-testid="stChatInput"] {{
-        max-width: 100%;
+/* =========================================================
+   CHAT INPUT — ALIGN TEXT FIELD + SEND BUTTON
+   ========================================================= */
+
+    [data-testid="stBottom"],
+    [data-testid="stBottomBlockContainer"],
+    [data-testid="stBottom"] > div,
+    [data-testid="stBottomBlockContainer"] > div {{
+        background: transparent !important;
+        box-shadow: none !important;
     }}
+    [data-testid="stChatInput"] {{
+        max-width: 100% !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }}
+
+    /* Input + send button row */
+    [data-testid="stChatInput"] form {{
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 10px !important;
+        position: relative !important;
+    }}
+
+    /* Input wrapper */
+    [data-testid="stChatInput"] form > div {{
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+    }}
+
+    /* Search textarea */
     [data-testid="stChatInput"] textarea {{
+        width: 100% !important;
+        min-height: 56px !important;
+        height: 56px !important;
+
         background: {p['okf-input-bg']} !important;
         border: 1px solid {p['okf-border']} !important;
         border-radius: 22px !important;
+
         color: {p['okf-text']} !important;
         font-size: 1.02rem !important;
-        line-height: 1.5 !important;
-        min-height: 56px !important;
-        padding: 0.7rem 3.2rem 0.7rem 1.2rem !important;
+        line-height: 24px !important;
+
+        padding: 16px 1.2rem !important;
+
+        resize: none !important;
     }}
+
     [data-testid="stChatInput"] textarea::placeholder {{
         color: {p['okf-placeholder']} !important;
         opacity: 1;
     }}
+
+    /* Send arrow */
+    [data-testid="stChatInput"] form button {{
+        flex: 0 0 auto !important;
+
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+
+        margin: 0 !important;
+
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+
+        align-self: center !important;
+    }}
+
+    /* Remove dark Streamlit bottom wrapper */
+    [data-testid="stBottomBlockContainer"],
+    [data-testid="stBottom"],
+    [data-testid="stBottom"] > div {{
+        background: transparent !important;
+        box-shadow: none !important;
+    }}
+
+    /* Remove bottom pseudo-element/gradient */
+    [data-testid="stBottom"]::before,
+    [data-testid="stBottom"]::after {{
+        background: transparent !important;
+        box-shadow: none !important;
+    }}
+
     [data-testid="stChatInput"] [data-testid="stChatInputSuggestion"] {{
         padding-left: 1.2rem !important;
     }}
@@ -279,6 +376,38 @@ def _build_theme_css(theme: str) -> str:
         background: {p['okf-chip-bg']} !important;
         border-radius: 999px !important;
         color: {p['okf-chip-text']} !important;
+    }}
+
+    /* Dropdown popup */
+    [data-baseweb="popover"] {{
+        background: #ffffff !important;
+    }}
+
+    [data-baseweb="popover"] [role="listbox"] {{
+        background: #ffffff !important;
+        color: #1f2937 !important;
+    }}
+
+    /* Dropdown options */
+    [data-baseweb="popover"] [role="option"] {{
+        background: #ffffff !important;
+        color: #1f2937 !important;
+    }}
+
+    [data-baseweb="popover"] [role="option"]:hover {{
+        background: #f1f5f9 !important;
+        color: #1f2937 !important;
+    }}
+
+    /* Selected option */
+    [data-baseweb="popover"] [aria-selected="true"] {{
+        background: #e8f0fe !important;
+        color: #1a73e8 !important;
+    }}
+
+    /* Text inside dropdown */
+    [data-baseweb="popover"] [role="option"] span {{
+        color: #1f2937 !important;
     }}
 
     /* ---- Metrics ---- */
@@ -471,23 +600,131 @@ def _build_theme_css(theme: str) -> str:
     [data-baseweb="menu"] [aria-selected="true"] {{
         background: #e8f0fe !important;
     }}
-    [data-testid="stMultiSelect"] input,
-    [data-testid="stMultiSelect"] div,
-    [data-testid="stSelectbox"] div {{
-        color: {p['okf-text']} !important;
+    [data-testid="stMultiSelect"] > div {{
+        background: #ffffff !important;
+        border: 1px solid rgba(15, 23, 42, 0.14) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
     }}
+
+    [data-testid="stMultiSelect"] [data-baseweb="tag"] {{
+        background: #e8f0fe !important;
+        color: #1a73e8 !important;
+        border: 1px solid rgba(66, 133, 244, 0.22) !important;
+    }}
+
+    [data-testid="stMultiSelect"] [data-baseweb="tag"] span {{
+        color: #1a73e8 !important;
+    }}
+
+    [data-testid="stMultiSelect"] [data-baseweb="tag"] svg {{
+        fill: #1a73e8 !important;
+        color: #1a73e8 !important;
+    }}
+
+    [data-testid="stMultiSelect"] svg {{
+        fill: #5f6368 !important;
+        color: #5f6368 !important;
+    }}
+
+    [data-testid="stMultiSelect"] input {{
+        color: #1f2937 !important;
+        background: transparent !important;
+    }}
+
+
+    /* =========================
+       LIGHT MODE - FILE UPLOAD
+       ========================= */
+
+    [data-testid="stFileUploaderDropzone"] {{
+        background: #ffffff !important;
+        border: 2px dashed rgba(66, 133, 244, 0.35) !important;
+        border-radius: 16px !important;
+    }}
+
+    [data-testid="stFileUploaderDropzone"]:hover {{
+        background: #f8fbff !important;
+        border-color: #4285f4 !important;
+    }}
+
+    [data-testid="stFileUploaderDropzone"] button {{
+        background: #e8f0fe !important;
+        color: #1a73e8 !important;
+        border: 1px solid rgba(66, 133, 244, 0.25) !important;
+        box-shadow: none !important;
+    }}
+
+    [data-testid="stFileUploaderDropzone"] button p,
+    [data-testid="stFileUploaderDropzone"] button span {{
+        color: #1a73e8 !important;
+    }}
+
+    [data-testid="stFileUploaderDropzone"] button svg {{
+        fill: #1a73e8 !important;
+        color: #1a73e8 !important;
+    }}
+
+    [data-testid="stFileUploaderDropzone"] small,
+    [data-testid="stFileUploaderDropzone"] p {{
+        color: #4b5563 !important;
+    }}
+
     [data-testid="stRadio"] label p,
     [data-testid="stCheckbox"] label p {{
         color: {p['okf-text']} !important;
     }}
+
+    /* =========================
+    LIGHT MODE - CHAT INPUT
+    ========================= */
+
+    [data-testid="stBottom"],
+    [data-testid="stBottomBlockContainer"],
+    [data-testid="stBottom"] > div,
+    [data-testid="stBottomBlockContainer"] > div {{
+        background: transparent !important;
+        box-shadow: none !important;
+    }}
+
+    [data-testid="stChatInput"] {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }}
+
     [data-testid="stChatInput"] textarea {{
         background: #ffffff !important;
-        border-color: rgba(60, 64, 67, 0.28) !important;
-        box-shadow: 0 1px 6px rgba(60, 64, 67, 0.16) !important;
+        color: #1f2937 !important;
+
+        border: 1px solid rgba(60, 64, 67, 0.22) !important;
+        border-radius: 22px !important;
+
+        box-shadow:
+            0 1px 2px rgba(60, 64, 67, 0.08),
+            0 2px 8px rgba(60, 64, 67, 0.08) !important;
     }}
+
+    [data-testid="stChatInput"] textarea::placeholder {{
+        color: #80868b !important;
+    }}
+
+    [data-testid="stChatInput"] button {{
+        background: #4285f4 !important;
+        border: none !important;
+        border-radius: 12px !important;
+        color: #ffffff !important;
+    }}
+
+    [data-testid="stChatInput"] button svg {{
+        fill: #ffffff !important;
+        color: #ffffff !important;
+    }}
+
     [data-testid="stAlert"] {{
         background: rgba(255, 255, 255, 0.95) !important;
     }}
+
     [data-testid="stFileUploaderDropzone"] div {{
         color: {p['okf-text-dim']} !important;
     }}
@@ -528,9 +765,12 @@ def get_available_sources():
     return []
 
 def trigger_ingestion(sources=None):
-    """Starts ingestion for the selected documentation sources."""
+    """Starts ingestion and stores the exact job ID."""
     try:
-        payload = {"sources": sources or []}
+        payload = {
+            "sources": sources or []
+        }
+
         res = requests.post(
             f"{API_HOST}/api/v1/ingest/",
             json=payload,
@@ -539,16 +779,32 @@ def trigger_ingestion(sources=None):
 
         if res.status_code != 200:
             st.sidebar.error(f"❌ Error: {res.text}")
-            return
+            return False
 
         data = res.json()
+
+        job_id = data.get("job_id")
+
+        if not job_id:
+            st.sidebar.error(
+                "Ingestion started but API did not return a job ID."
+            )
+            return False
+
+        st.session_state.ingestion_job_id = job_id
         st.session_state.ingestion_running = True
+        st.session_state.ingestion_overlay_open = True
+
         st.session_state.ingestion_message = data.get(
             "message",
-            "Ingestion started."
+            "Ingestion started.",
         )
+
+        return True
+
     except requests.exceptions.RequestException as e:
         st.sidebar.error(f"Connection Error: {e}")
+        return False
 
 def get_ingestion_status():
     """Gets the current ingestion status from FastAPI."""
@@ -563,6 +819,25 @@ def get_ingestion_status():
     except requests.exceptions.RequestException:
         return None
 
+def get_job_status(job_id):
+    """Fetch status for one exact ingestion job."""
+    if not job_id:
+        return None
+
+    try:
+        res = requests.get(
+            f"{API_HOST}/api/v1/jobs/{job_id}",
+            timeout=5,
+        )
+
+        if res.status_code == 200:
+            return res.json()
+
+        return None
+
+    except requests.exceptions.RequestException:
+        return None
+    
 def upload_files(files, sources=None):
     """Upload files to the backend and start processing for selected sources.
 
@@ -599,6 +874,12 @@ if "messages" not in st.session_state:
 
 if "ingestion_running" not in st.session_state:
     st.session_state.ingestion_running = False
+    
+if "ingestion_job_id" not in st.session_state:
+    st.session_state.ingestion_job_id = None
+
+if "ingestion_overlay_open" not in st.session_state:
+    st.session_state.ingestion_overlay_open = False
 
 if "ingestion_message" not in st.session_state:
     st.session_state.ingestion_message = ""
@@ -830,19 +1111,44 @@ with st.sidebar:
                     response = upload_files(uploaded_files, selected_sources)
                     if response.status_code == 200:
                         result = response.json()
-                        st.session_state.ingestion_running = True
-                        st.session_state.upload_success_message = result.get('message', 'Upload successful')
-                        st.rerun()
+
+                        job_id = result.get("job_id")
+
+                        if not job_id:
+                            st.error("Upload succeeded but no ingestion job ID was returned.")
+                        else:
+                            st.session_state.ingestion_job_id = job_id
+                            st.session_state.ingestion_running = True
+                            st.session_state.ingestion_overlay_open = True
+                            st.session_state.upload_success_message = result.get(
+                                "message",
+                                "Upload successful",
+                            )
+
+                            st.rerun()
                     else:
                         st.error(f"Upload failed: {response.text}")
                 except requests.exceptions.RequestException as e:
                     st.error(f"Connection error: {e}")
         else:
-            trigger_ingestion(selected_sources)
-            st.rerun()
+            started = trigger_ingestion(selected_sources)
+
+            if started:
+                st.rerun()
 
     if not can_run and st.session_state.ingestion_running:
         running_status = get_ingestion_status()
+        if running_status:
+            status_value = running_status.get("status", "").lower()
+
+            if status_value in {
+                "completed",
+                "success",
+                "failed",
+                "cancelled",
+            }:
+                st.session_state.ingestion_running = False
+                st.session_state.ingestion_overlay_open = False
         stage = (running_status or {}).get("stage", "")
         stage_labels = {
             "starting": "Starting pipeline…",
@@ -872,7 +1178,7 @@ with st.sidebar:
                 unsafe_allow_html=True,
             )
         if st.button("⏹ Stop Ingestion", use_container_width=True, key="stop_ingestion_btn"):
-            job_id = (running_status or {}).get("job_id")
+            job_id = st.session_state.get("ingestion_job_id")
             if job_id:
                 try:
                     requests.post(
@@ -910,50 +1216,66 @@ st.markdown(
 # the API directly.
 def _dismiss_ingestion_overlay() -> None:
     """
-    Shared by every way of closing the dialog (native X, Escape, click
-    outside, or our own footer button) so session state never gets out of
-    sync with what's actually on screen. Closing the overlay only hides the
-    popup - the pipeline itself keeps running in the background and is still
-    visible from the sidebar mini-progress indicator.
+    Close only the popup.
+    The ingestion job continues running in the background.
     """
     st.session_state.ingestion_running = False
 
 
-@st.dialog("Live Ingestion Pipeline", width="large", dismissible=True, on_dismiss=_dismiss_ingestion_overlay)
+@st.dialog(
+    "Live Ingestion Pipeline",
+    width="large",
+    dismissible=True,
+    on_dismiss=_dismiss_ingestion_overlay,
+)
 def ingestion_overlay() -> None:
-    status = get_ingestion_status()
+
+    job_id = st.session_state.get("ingestion_job_id")
+
+    if not job_id:
+        st.warning("No ingestion job is currently being tracked.")
+        return
+
+    initial_status = get_job_status(job_id)
+
     st.markdown(
-        '<div class="dialog-hint">Watching the pipeline in real time: '
-        'Download from official website → store raw data in cache → run the '
-        'ingestion pipeline → OKF knowledge files → indexed into Qdrant.</div>',
+        '<div class="dialog-hint">'
+        'Watching the pipeline in real time: '
+        'Download from official website → store raw data in cache → '
+        'run the ingestion pipeline → OKF knowledge files → '
+        'indexed into Qdrant.'
+        '</div>',
         unsafe_allow_html=True,
     )
-    render_live_dashboard(API_HOST, status=status, theme=st.session_state.theme)
-    col_hint, col_btn = st.columns([3, 1])
-    col_hint.caption(
-        "The pipeline keeps running in the background. Close this overlay "
-        "(✕ top-right, Esc, or the button here) and monitor progress from the sidebar."
+
+    render_live_dashboard(
+        API_HOST,
+        status=initial_status,
+        theme=st.session_state.theme,
+        job_id=job_id,
     )
-    if col_btn.button("Close", key="close_ingestion_overlay", use_container_width=True):
+
+    col_hint, col_btn = st.columns([3, 1])
+
+    col_hint.caption(
+        "The ingestion job continues running on the backend. "
+        "The dashboard above updates automatically."
+    )
+
+    if col_btn.button(
+        "Close",
+        key="close_ingestion_overlay",
+        use_container_width=True,
+    ):
         _dismiss_ingestion_overlay()
         st.rerun()
 
 
-if st.session_state.ingestion_running:
+if (
+    st.session_state.ingestion_running
+    and st.session_state.ingestion_overlay_open
+):
     ingestion_overlay()
-
-    status = get_ingestion_status()
-    if status and status.get("status", "running") in ("completed", "success", "failed", "cancelled"):
-        st.session_state.ingestion_running = False
-        st.rerun()
-
-    # Rerun every ~2s while the pipeline is active so the overlay re-embeds the
-    # latest server-side status. The embedded status is what drives the counters
-    # when the browser cannot reach the API directly (preview domain + docker
-    # host); the component's own polling adds smoother sub-2s updates when the
-    # API is reachable from the browser (e.g. localhost).
-    time.sleep(2)
-    st.rerun()
 
 # Display Chat History
 for message in st.session_state.messages:

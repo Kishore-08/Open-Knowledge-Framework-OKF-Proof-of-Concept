@@ -72,6 +72,7 @@ class IngestResponse(BaseModel):
     status: str
     message: str
     indexed_documents: int = 0
+    job_id: Optional[str] = None
 
 
 @router.post("/", response_model=IngestResponse)
@@ -95,8 +96,9 @@ async def ingest_documents(request: IngestRequest):
             active = job_manager.get_active_job()
             return IngestResponse(
                 status="queued",
-                message="Ingestion is already running; your request was queued.",
+                message="Ingestion is already running.",
                 indexed_documents=active.indexed_documents if active else 0,
+                job_id=active.id if active else None,
             )
 
         # Persist the user's selection into sources.yaml so the config file (and
@@ -117,8 +119,9 @@ async def ingest_documents(request: IngestRequest):
 
         return IngestResponse(
             status="started",
-            message="Ingestion pipeline started in the background (job id: {job.id}).".format(job=job),
+            message=f"Ingestion pipeline started in the background (job id: {job.id}).",
             indexed_documents=0,
+            job_id=job.id,
         )
 
     except Exception as e:
@@ -171,6 +174,7 @@ class UploadResponse(BaseModel):
     files: List[str]
     message: str
     errors: List[str] = []
+    job_id: Optional[str] = None
 
 
 @router.post("/upload", response_model=UploadResponse)
@@ -267,7 +271,8 @@ async def upload_documents(
             indexed=False,
             files=[],
             message="No files were uploaded successfully",
-            errors=errors
+            errors=errors,
+            job_id=job.id
         )
     
     # Trigger ingestion pipeline. Uploaded files are processed as upload-only:
@@ -292,7 +297,8 @@ async def upload_documents(
             indexed=False,  # Will be updated by status endpoint
             files=uploaded_files,
             message=f"Successfully uploaded {len(uploaded_files)} file(s). Processing started in background (job id: {job.id}).",
-            errors=errors
+            errors=errors,
+            job_id=job.id
         )
         
     except Exception as e:

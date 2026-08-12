@@ -1,45 +1,48 @@
 ---
-id: api-spec-ingestion-pipeline-job-status
+id: api-spec-documentation-ingestion-pipeline-status-log
 type: concept
-title: Ingestion Pipeline Job Status
-description: This document represents the JSON status payload for a running documentation
-  ingestion pipeline. It tracks metrics such as processed documents, errors, progress
-  percentage, and configuration parameters.
+title: Documentation Ingestion Pipeline Status Log
+description: This document contains a JSON-formatted status log for a documentation
+  ingestion pipeline processing Linux man pages. It tracks processing metrics such
+  as completion status, error counts, progress percentage, and stage execution details.
 category: api-spec
 tags:
-- Ingestion Pipeline
-- Job Status
-- Documentation Processing
-- JSON
+- documentation ingestion
+- pipeline status
+- cache processing
+- Linux man pages
+- system logs
 source:
   name: Ingested document
   url: ''
-created_at: '2026-08-12'
-updated_at: '2026-08-12'
+created_at: '2026-08-11'
+updated_at: '2026-08-11'
 aliases: []
 related: []
 document_type: API Spec
 trust_level: Medium
-source_file: 9e033734d16f.json
+source_file: bfd6658d5e69.json
 ---
 
 {
   "completion_tokens_estimate": 0,
-  "created_at": 1786493253.3223424,
+  "created_at": 1786488318.1957068,
   "current_source": "",
   "discovered": 0,
   "error": null,
-  "failed": 0,
+  "failed": 1,
   "fetched": 0,
   "finished_at": null,
-  "id": "9e033734d16f",
+  "id": "bfd6658d5e69",
   "indexed": 0,
   "indexed_documents": 0,
   "message": "Processing crawled documentation",
   "params": {
     "cache_dir": "cache",
     "knowledge_dir": "knowledge",
-    "sources": []
+    "sources": [
+      "linux-man-pages"
+    ]
   },
   "processed": 0,
   "progress_percent": 48,
@@ -48,7 +51,7 @@ source_file: 9e033734d16f.json
   "result": null,
   "stage": "converting",
   "stage_message": "Starting the ingestion pipeline from the cache folder",
-  "started_at": 1786493253.3239288,
+  "started_at": 1786488318.196362,
   "status": "running",
   "total_documents": 0,
   "total_tokens_estimate": 0,
