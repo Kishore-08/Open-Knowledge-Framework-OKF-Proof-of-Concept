@@ -1,0 +1,296 @@
+:root {
+    --okf-bg: #0b1020;
+    --okf-glow-1: rgba(99, 102, 241, 0.22);
+    --okf-glow-2: rgba(236, 72, 153, 0.16);
+    --okf-glow-3: rgba(139, 92, 246, 0.14);
+    --okf-glass-bg: rgba(255, 255, 255, 0.05);
+    --okf-glass-border: rgba(255, 255, 255, 0.12);
+    --okf-glass-shadow: rgba(0, 0, 0, 0.35);
+    --okf-text: #e2e8f0;
+    --okf-text-dim: #94a3b8;
+    --okf-text-faint: #64748b;
+    --okf-heading: #f1f5f9;
+    --okf-sidebar-bg: rgba(15, 18, 40, 0.55);
+    --okf-border: rgba(255, 255, 255, 0.14);
+    --okf-border-soft: rgba(255, 255, 255, 0.10);
+    --okf-hover-bg: rgba(99, 102, 241, 0.18);
+    --okf-hover-border: rgba(99, 102, 241, 0.6);
+    --okf-primary-grad: linear-gradient(135deg, #6366f1, #8b5cf6);
+    --okf-input-bg: rgba(255, 255, 255, 0.06);
+    --okf-chat-bg: rgba(255, 255, 255, 0.045);
+    --okf-chat-border: rgba(255, 255, 255, 0.10);
+    --okf-metric-bg: rgba(255, 255, 255, 0.04);
+    --okf-alert-bg: rgba(255, 255, 255, 0.05);
+    --okf-chip-bg: rgba(99, 102, 241, 0.22);
+    --okf-chip-text: #c7d2fe;
+    --okf-hero-grad: linear-gradient(90deg, #fff 0%, #c7d2fe 45%, #f0abfc 100%);
+    --okf-scrollbar: rgba(255, 255, 255, 0.15);
+    --okf-citation-bg: rgba(255, 255, 255, 0.05);
+    --okf-citation-border: rgba(255, 255, 255, 0.1);
+    --okf-citation-title: #a5b4fc;
+    --okf-citation-score-bg: rgba(99, 102, 241, 0.25);
+    --okf-citation-content: #cbd5e1;
+    --okf-src-chip-text: #cbd5e1;
+    --okf-src-chip-bold: #f1f5f9;
+    --okf-placeholder: #64748b;
+}
+
+/* Streamlit's configured base theme is light, so native widgets keep dark
+   text unless Dark Mode explicitly repaints them. Keep these rules here—not
+   in base.css—so they cannot leak into the light palette. */
+[data-testid="stAppViewContainer"] {
+    color: var(--okf-text) !important;
+}
+
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] li,
+[data-testid="stMarkdownContainer"] td,
+[data-testid="stMarkdownContainer"] th,
+[data-testid="stMarkdownContainer"] blockquote,
+[data-testid="stWidgetLabel"],
+[data-testid="stWidgetLabel"] p {
+    color: var(--okf-text) !important;
+}
+
+[data-testid="stCaptionContainer"] p,
+.stCaption p,
+[data-testid="stMarkdownContainer"] small {
+    color: var(--okf-text-dim) !important;
+}
+
+[data-testid="stMarkdownContainer"] a {
+    color: var(--okf-citation-title) !important;
+}
+
+/* Inputs and selectors need their BaseWeb wrappers painted as well as the
+   nested input; otherwise Streamlit's light theme leaves a white surface. */
+[data-testid="stTextInput"] [data-baseweb="input"],
+[data-testid="stMultiSelect"] [data-baseweb="select"] > div,
+[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--okf-border) !important;
+    color: var(--okf-text) !important;
+}
+
+[data-testid="stMultiSelect"] input,
+[data-testid="stSelectbox"] span {
+    color: var(--okf-text) !important;
+    -webkit-text-fill-color: var(--okf-text) !important;
+}
+
+[data-testid="stMultiSelect"] input::placeholder {
+    color: var(--okf-text-dim) !important;
+    -webkit-text-fill-color: var(--okf-text-dim) !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stMultiSelect"] svg,
+[data-testid="stSelectbox"] svg {
+    color: var(--okf-text-dim) !important;
+    fill: var(--okf-text-dim) !important;
+}
+
+/* Dropdown menus are portalled outside the widget, so they require their own
+   dark surfaces and option colors. Streamlit/BaseWeb can wrap the list in a
+   few different containers depending on widget type, so we paint all of them. */
+[data-baseweb="popover"],
+[data-baseweb="popover"] > div,
+[data-baseweb="popover"] > div > div,
+[data-baseweb="menu"],
+[data-baseweb="menu"] > div,
+[data-baseweb="menu"] > div > div,
+[data-baseweb="popover"] ul,
+[data-baseweb="menu"] ul,
+[data-baseweb="popover"] [role="listbox"],
+[data-baseweb="popover"] [role="listbox"] > div {
+    background-color: rgba(15, 18, 40, 0.98) !important;
+    background-image: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.055),
+        rgba(99, 102, 241, 0.045)
+    ) !important;
+    color: var(--okf-text) !important;
+    border-color: var(--okf-border) !important;
+    backdrop-filter: blur(24px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+}
+
+[data-baseweb="popover"] [role="option"],
+[data-baseweb="popover"] [role="option"] > div,
+[data-baseweb="popover"] li,
+[data-baseweb="popover"] li > div,
+[data-baseweb="menu"] li,
+[data-baseweb="menu"] li > div {
+    background: transparent !important;
+    color: var(--okf-text) !important;
+}
+
+[data-baseweb="popover"] [role="option"] span,
+[data-baseweb="popover"] li span,
+[data-baseweb="menu"] li span {
+    color: var(--okf-text) !important;
+}
+
+[data-baseweb="popover"] [role="option"]:hover,
+[data-baseweb="popover"] [role="option"][aria-selected="true"],
+[data-baseweb="popover"] [aria-selected="true"],
+[data-baseweb="popover"] li:hover,
+[data-baseweb="popover"] li[aria-selected="true"],
+[data-baseweb="menu"] li:hover,
+[data-baseweb="menu"] li[aria-selected="true"] {
+    background: var(--okf-hover-bg) !important;
+    color: var(--okf-heading) !important;
+}
+
+/* File uploader button and its disabled state must contrast with the dropzone. */
+[data-testid="stFileUploaderDropzone"] button {
+    background: rgba(255, 255, 255, 0.07) !important;
+    border: 1px solid var(--okf-border) !important;
+    color: var(--okf-text) !important;
+    transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease !important;
+}
+
+[data-testid="stFileUploaderDropzone"] button p,
+[data-testid="stFileUploaderDropzone"] button span,
+[data-testid="stFileUploaderDropzone"] button svg {
+    color: var(--okf-text) !important;
+    fill: currentColor !important;
+}
+
+[data-testid="stFileUploaderDropzone"] button:disabled {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: var(--okf-text-dim) !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stFileUploaderDropzone"] button:not(:disabled):hover,
+[data-testid="stFileUploaderDropzone"]:hover button:not(:disabled) {
+    background: rgba(99, 102, 241, 0.18) !important;
+    border-color: rgba(99, 102, 241, 0.6) !important;
+    box-shadow: 0 10px 24px rgba(99, 102, 241, 0.18) !important;
+    transform: translateY(-1px) !important;
+}
+
+[data-testid="stFileUploaderDropzone"] button:not(:disabled):hover p,
+[data-testid="stFileUploaderDropzone"] button:not(:disabled):hover span,
+[data-testid="stFileUploaderDropzone"] button:not(:disabled):hover svg {
+    color: var(--okf-heading) !important;
+    fill: currentColor !important;
+}
+
+[data-testid="stExpander"] {
+    background: rgba(255, 255, 255, 0.035) !important;
+    border-color: var(--okf-border-soft) !important;
+}
+
+[data-testid="stExpander"] details > summary {
+    background: rgba(255, 255, 255, 0.055) !important;
+}
+
+[data-testid="stExpander"] details > div {
+    background: rgba(255, 255, 255, 0.015) !important;
+}
+
+[data-testid="stExpander"] details > summary,
+[data-testid="stExpander"] details > summary p,
+[data-testid="stExpander"] details > summary span,
+[data-testid="stExpander"] details > div,
+[data-testid="stExpander"] p,
+[data-testid="stExpander"] li,
+[data-testid="stExpander"] strong {
+    color: var(--okf-text) !important;
+}
+
+[data-testid="stExpander"] details > summary svg {
+    color: var(--okf-text-dim) !important;
+    fill: currentColor !important;
+}
+
+/* =========================================================
+   DARK MODE — RESTORE ORIGINAL INGESTION DIALOG
+   ========================================================= */
+
+[data-testid="stDialog"] {
+    background: transparent !important;
+}
+
+[data-testid="stDialog"] [role="dialog"] {
+    background: rgba(15, 18, 40, 0.96) !important;
+
+    backdrop-filter: blur(28px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(150%) !important;
+
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+
+    border-radius: 28px !important;
+
+    box-shadow:
+        0 24px 80px rgba(0, 0, 0, 0.55) !important;
+
+    color: #e2e8f0 !important;
+}
+
+
+/* Dialog title */
+[data-testid="stDialog"] h1,
+[data-testid="stDialog"] h2,
+[data-testid="stDialog"] h3 {
+    color: #f1f5f9 !important;
+}
+
+
+/* Normal dialog text */
+[data-testid="stDialog"] p,
+[data-testid="stDialog"] span,
+[data-testid="stDialog"] label {
+    color: #cbd5e1;
+}
+
+
+/* Top hint */
+[data-testid="stDialog"] .dialog-hint {
+    background: rgba(255, 255, 255, 0.04) !important;
+
+    border:
+        1px solid rgba(255, 255, 255, 0.10) !important;
+
+    color: #94a3b8 !important;
+}
+
+
+/* Bottom footer area */
+[data-testid="stDialog"] [data-testid="stHorizontalBlock"] {
+    background: transparent !important;
+}
+
+
+/* Close button */
+[data-testid="stDialog"] .stButton > button {
+    background: rgba(255, 255, 255, 0.06) !important;
+
+    border:
+        1px solid rgba(255, 255, 255, 0.14) !important;
+
+    color: #e2e8f0 !important;
+
+    box-shadow: none !important;
+}
+
+
+[data-testid="stDialog"] .stButton > button:hover {
+    background: rgba(99, 102, 241, 0.18) !important;
+
+    border-color:
+        rgba(99, 102, 241, 0.60) !important;
+}
+
+
+/* Native X button */
+[data-testid="stDialog"] button[aria-label="Close"] {
+    color: #e2e8f0 !important;
+}
+
+[data-testid="stDialog"] button[aria-label="Close"] svg {
+    color: #e2e8f0 !important;
+    fill: #e2e8f0 !important;
+}

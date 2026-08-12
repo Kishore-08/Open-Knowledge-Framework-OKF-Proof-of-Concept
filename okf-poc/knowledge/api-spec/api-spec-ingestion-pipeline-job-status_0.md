@@ -2,15 +2,16 @@
 id: api-spec-ingestion-pipeline-job-status
 type: concept
 title: Ingestion Pipeline Job Status
-description: This document represents the JSON status payload for a running documentation
-  ingestion pipeline. It tracks metrics such as processed documents, errors, progress
-  percentage, and configuration parameters.
+description: This document represents a status report and configuration state of an
+  active documentation ingestion pipeline job. It tracks progress metrics such as
+  processing stage, document counts, token estimates, and directories used for caching
+  and knowledge storage.
 category: api-spec
 tags:
 - Ingestion Pipeline
 - Job Status
-- Documentation Processing
-- JSON
+- Data Processing
+- System Monitoring
 source:
   name: Ingested document
   url: ''
@@ -19,20 +20,20 @@ updated_at: '2026-08-12'
 aliases: []
 related: []
 document_type: API Spec
-trust_level: Medium
-source_file: 9e033734d16f.json
+trust_level: High
+source_file: 1b0baa21ac59.json
 ---
 
 {
   "completion_tokens_estimate": 0,
-  "created_at": 1786493253.3223424,
+  "created_at": 1786514146.7111847,
   "current_source": "",
   "discovered": 0,
   "error": null,
   "failed": 0,
   "fetched": 0,
   "finished_at": null,
-  "id": "9e033734d16f",
+  "id": "1b0baa21ac59",
   "indexed": 0,
   "indexed_documents": 0,
   "message": "Processing crawled documentation",
@@ -48,7 +49,7 @@ source_file: 9e033734d16f.json
   "result": null,
   "stage": "converting",
   "stage_message": "Starting the ingestion pipeline from the cache folder",
-  "started_at": 1786493253.3239288,
+  "started_at": 1786514146.712674,
   "status": "running",
   "total_documents": 0,
   "total_tokens_estimate": 0,

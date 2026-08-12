@@ -1,0 +1,560 @@
+/* Auroral backdrop */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    .stApp {
+        background:
+            radial-gradient(1000px 500px at 15% -10%, var(--okf-glow-1), transparent 60%),
+            radial-gradient(800px 500px at 110% 10%, var(--okf-glow-2), transparent 55%),
+            radial-gradient(700px 600px at 50% 120%, var(--okf-glow-3), transparent 60%),
+            var(--okf-bg);
+        font-family: 'Inter', sans-serif;
+    }
+
+   
+    /* Hide only unwanted Streamlit chrome */
+    #MainMenu,
+    footer {
+        visibility: hidden;
+    }
+
+    /* Do NOT hide the entire toolbar.
+    It may contain the sidebar reopen control. */
+    [data-testid="stDecoration"] {
+        display: none;
+    }
+
+    /* Keep header transparent */
+    [data-testid="stHeader"] {
+        background: transparent;
+    }
+
+    /* Ensure sidebar collapse/reopen button stays visible */
+    [data-testid="stSidebarCollapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        z-index: 999999 !important;
+        position: relative !important;
+    }
+
+    /* Keep Streamlit header above custom elements */
+    [data-testid="stHeader"] {
+        z-index: 999998 !important;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: var(--okf-scrollbar); border-radius: 999px; }
+
+    /* ---- Glassmorphism shared card ---- */
+    .glass-card {
+        background: var(--okf-glass-bg);
+        backdrop-filter: blur(18px) saturate(140%);
+        -webkit-backdrop-filter: blur(18px) saturate(140%);
+        border: 1px solid var(--okf-glass-border);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px var(--okf-glass-shadow);
+        padding: 1.1rem 1.3rem;
+        margin-bottom: 0.75rem;
+    }
+
+    /* ---- Sidebar ---- */
+    [data-testid="stSidebar"] {
+        background: var(--okf-sidebar-bg);
+        backdrop-filter: blur(24px) saturate(140%);
+        -webkit-backdrop-filter: blur(24px) saturate(140%);
+        border-right: 1px solid var(--okf-border-soft);
+    }
+    [data-testid="stSidebar"] * { color: var(--okf-text); }
+    [data-testid="stSidebar"] .stTitle h1 { font-size: 1.35rem; font-weight: 700; }
+    [data-testid="stSidebar"] hr { border-color: var(--okf-border-soft); }
+
+    /* ---- Headers ---- */
+    h1, h2, h3 {
+        color: var(--okf-heading) !important;
+        font-weight: 650 !important;
+        letter-spacing: -0.01em;
+    }
+    .hero-title {
+        font-size: 2.2rem;
+        font-weight: 750;
+        line-height: 1.2;
+    }
+    .hero-text {
+        background: var(--okf-hero-grad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .hero-emoji {
+        -webkit-text-fill-color: initial;
+        margin-right: 0.15rem;
+    }
+    .hero-sub { color: var(--okf-text-dim); font-size: 0.98rem; margin-top: 0.2rem; }
+
+    /* ---- Buttons ---- */
+    .stButton > button, .stDownloadButton > button {
+        border-radius: 14px !important;
+        font-weight: 600 !important;
+        border: 1px solid var(--okf-border) !important;
+        background: var(--okf-glass-bg) !important;
+        color: var(--okf-text) !important;
+        backdrop-filter: blur(10px);
+        transition: all 0.2s ease !important;
+    }
+    .stButton > button:hover, .stDownloadButton > button:hover {
+        border-color: var(--okf-hover-border) !important;
+        background: var(--okf-hover-bg) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.25);
+    }
+    .stButton > button[kind="primary"] {
+        background: var(--okf-primary-grad) !important;
+        color: #fff !important;
+        border: none !important;
+        box-shadow: 0 6px 24px rgba(99, 102, 241, 0.35);
+    }
+    .stButton > button[kind="primary"]:hover {
+        filter: brightness(1.1);
+        box-shadow: 0 8px 28px rgba(99, 102, 241, 0.5);
+    }
+
+    /* ---- Upload dropzone ---- */
+    [data-testid="stFileUploaderDropzone"] {
+        background: var(--okf-input-bg) !important;
+        border: 2px dashed rgba(96, 165, 250, 0.35) !important;
+        border-radius: 18px !important;
+        backdrop-filter: blur(12px);
+        transition: all 0.25s ease;
+    }
+    [data-testid="stFileUploaderDropzone"]:hover {
+        border-color: rgba(96, 165, 250, 0.7) !important;
+        background: rgba(96, 165, 250, 0.06) !important;
+    }
+    [data-testid="stFileUploaderDropzone"] small,
+    [data-testid="stFileUploaderDropzone"] div { color: var(--okf-text-dim) !important; }
+
+    /* ---- Inputs ---- */
+    .stTextInput input, .stTextArea textarea, .stSelectbox [data-baseweb="select"] > div {
+        background: var(--okf-input-bg) !important;
+        border: 1px solid var(--okf-border) !important;
+        border-radius: 12px !important;
+        color: var(--okf-text) !important;
+        padding: 0.55rem 0.95rem !important;
+    }
+    .stTextInput input::placeholder, .stTextArea textarea::placeholder {
+        color: var(--okf-placeholder) !important;
+        opacity: 1;
+    }
+    .stTextInput input:focus, .stTextArea textarea:focus {
+        border-color: rgba(66, 133, 244, 0.6) !important;
+        box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.15) !important;
+    }
+
+    /* ---- Chat ---- */
+    [data-testid="stChatMessage"] {
+        background: var(--okf-chat-bg);
+        backdrop-filter: blur(14px);
+        border: 1px solid var(--okf-chat-border);
+        border-radius: 18px;
+        padding: 0.9rem 1rem;
+        margin-bottom: 0.6rem;
+    }
+    [data-testid="stChatMessage"] p { color: var(--okf-text); }
+
+    /* =========================================================
+    CHAT INPUT — DARK MODE
+    ========================================================= */
+
+    /* ---------------------------------------------------------
+    1. Remove Streamlit bottom-area background
+    --------------------------------------------------------- */
+
+    [data-testid="stBottom"],
+    [data-testid="stBottomBlockContainer"],
+    [data-testid="stBottom"] > div,
+    [data-testid="stBottomBlockContainer"] > div {
+        background: transparent !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    /* Remove bottom gradient / pseudo-elements */
+    [data-testid="stBottom"]::before,
+    [data-testid="stBottom"]::after,
+    [data-testid="stBottomBlockContainer"]::before,
+    [data-testid="stBottomBlockContainer"]::after {
+        background: transparent !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+    }
+
+
+    /* ---------------------------------------------------------
+    2. Main Chat Input
+    --------------------------------------------------------- */
+
+    [data-testid="stChatInput"] {
+        max-width: 100% !important;
+
+        background: transparent !important;
+        background-color: transparent !important;
+
+        border: none !important;
+        box-shadow: none !important;
+
+        padding: 0 !important;
+    }
+
+
+    /* ---------------------------------------------------------
+    3. IMPORTANT:
+        Remove Streamlit's generated dark wrapper
+        (.st-emotion-cache-jchoyf)
+    --------------------------------------------------------- */
+
+    [data-testid="stChatInput"] > div {
+        background: transparent !important;
+        background-color: transparent !important;
+
+        border: none !important;
+        box-shadow: none !important;
+
+        padding: 0 !important;
+    }
+
+    /* Nested wrapper */
+    [data-testid="stChatInput"] > div > div {
+        background: transparent !important;
+        background-color: transparent !important;
+
+        border: none !important;
+        box-shadow: none !important;
+
+        padding: 0 !important;
+    }
+
+
+    /* ---------------------------------------------------------
+    4. Input + Send Button Row
+    --------------------------------------------------------- */
+
+    [data-testid="stChatInput"] form {
+        display: flex !important;
+
+        flex-direction: row !important;
+        align-items: center !important;
+
+        gap: 10px !important;
+
+        position: relative !important;
+
+        background: transparent !important;
+        background-color: transparent !important;
+
+        border: none !important;
+        box-shadow: none !important;
+
+        padding: 0 !important;
+    }
+
+
+    /* ---------------------------------------------------------
+    5. Input Wrapper
+    --------------------------------------------------------- */
+
+    [data-testid="stChatInput"] form > div {
+        flex: 1 1 auto !important;
+
+        min-width: 0 !important;
+
+        background: transparent !important;
+        background-color: transparent !important;
+
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+
+    /* ---------------------------------------------------------
+    6. Actual Search / Text Input
+    --------------------------------------------------------- */
+
+    [data-testid="stChatInput"] textarea {
+        width: 100% !important;
+
+        min-height: 56px !important;
+        height: 56px !important;
+
+        background: var(--okf-input-bg) !important;
+
+        border: 1px solid var(--okf-border) !important;
+
+        border-radius: 22px !important;
+
+        color: var(--okf-text) !important;
+
+        font-size: 1.02rem !important;
+
+        line-height: 24px !important;
+
+        padding: 16px 1.2rem !important;
+
+        resize: none !important;
+
+        box-shadow: none !important;
+    }
+
+
+    /* Placeholder */
+    [data-testid="stChatInput"] textarea::placeholder {
+        color: var(--okf-placeholder) !important;
+        opacity: 1 !important;
+    }
+
+
+    /* ---------------------------------------------------------
+    7. Send Arrow Button
+    --------------------------------------------------------- */
+
+    [data-testid="stChatInput"] form button {
+        flex: 0 0 auto !important;
+
+        width: 48px !important;
+        height: 48px !important;
+
+        min-width: 48px !important;
+        min-height: 48px !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+
+        align-self: center !important;
+
+        position: static !important;
+
+        transform: none !important;
+
+        display: flex !important;
+
+        align-items: center !important;
+        justify-content: center !important;
+
+        background: #4285f4 !important;
+
+        border: none !important;
+
+        border-radius: 12px !important;
+
+        box-shadow: none !important;
+    }
+
+
+    /* Send arrow icon */
+    [data-testid="stChatInput"] form button svg {
+        color: #ffffff !important;
+
+        fill: #ffffff !important;
+    }
+
+
+    /* ---------------------------------------------------------
+    8. Chat Input Suggestions
+    --------------------------------------------------------- */
+
+    [data-testid="stChatInput"] [data-testid="stChatInputSuggestion"] {
+        padding-left: 1.2rem !important;
+
+        background: transparent !important;
+        background-color: transparent !important;
+    }
+
+
+    /* ---------------------------------------------------------
+    9. Extra protection against Streamlit dark wrappers
+    --------------------------------------------------------- */
+
+    [data-testid="stChatInput"] form > div,
+    [data-testid="stChatInput"] form > div > div,
+    [data-testid="stChatInput"] form > div > div > div {
+        background: transparent !important;
+        background-color: transparent !important;
+
+        box-shadow: none !important;
+    }
+
+
+    /* ---------------------------------------------------------
+    10. Prevent generated Streamlit wrapper from becoming
+        visible in dark mode
+    --------------------------------------------------------- */
+
+    [data-testid="stChatInput"] * {
+        --background-color: transparent;
+    }
+
+    /* ---- Multiselect chips ---- */
+    [data-baseweb="tag"] {
+        background: var(--okf-chip-bg) !important;
+        border-radius: 999px !important;
+        color: var(--okf-chip-text) !important;
+    }
+
+    /* Dropdown popup. BaseWeb renders this in a document-level portal, so it
+       must use palette variables rather than theme-specific white values. */
+    [data-baseweb="popover"],
+    [data-baseweb="popover"] [role="listbox"],
+    [data-baseweb="menu"] {
+        background: var(--okf-input-bg) !important;
+        color: var(--okf-text) !important;
+        border-color: var(--okf-border) !important;
+    }
+
+    [data-baseweb="popover"] [role="option"],
+    [data-baseweb="menu"] li {
+        background: transparent !important;
+        color: var(--okf-text) !important;
+    }
+
+    [data-baseweb="popover"] [role="option"]:hover,
+    [data-baseweb="menu"] li:hover,
+    [data-baseweb="popover"] [aria-selected="true"] {
+        background: var(--okf-hover-bg) !important;
+        color: var(--okf-text) !important;
+    }
+
+    [data-baseweb="popover"] [role="option"] span,
+    [data-baseweb="menu"] li span {
+        color: var(--okf-text) !important;
+    }
+
+    /* ---- Metrics ---- */
+    [data-testid="stMetric"] {
+        background: var(--okf-metric-bg);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--okf-border-soft);
+        border-radius: 16px;
+        padding: 0.8rem 1rem;
+    }
+    [data-testid="stMetric"] label { color: var(--okf-text-dim) !important; }
+    [data-testid="stMetricValue"] { color: var(--okf-heading) !important; }
+
+    /* ---- Info/warning/error boxes ---- */
+    .stAlert {
+        border-radius: 16px !important;
+        border: 1px solid var(--okf-border-soft) !important;
+        background: var(--okf-alert-bg) !important;
+        backdrop-filter: blur(12px);
+    }
+    .stAlert p { color: var(--okf-text) !important; }
+
+    /* ---- Status pill for sidebar ---- */
+    .health-pill {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 6px 14px; border-radius: 999px;
+        font-size: 0.78rem; font-weight: 600;
+        border: 1px solid var(--okf-border);
+        background: var(--okf-glass-bg);
+        color: var(--okf-text);
+        margin: 2px 0;
+    }
+    .health-pill .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .ok .dot { background: #10b981; box-shadow: 0 0 8px #10b981; }
+    .bad .dot { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+    .warn .dot { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+
+    /* Source chip row */
+    .src-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 12px; margin: 2px 4px 2px 0;
+        border-radius: 999px; font-size: 0.78rem;
+        border: 1px solid var(--okf-border);
+        background: var(--okf-glass-bg);
+        color: var(--okf-src-chip-text);
+    }
+    .src-chip b { color: var(--okf-src-chip-bold); }
+
+    /* Citation cards (used by the chat) */
+    .citation-card {
+        background: var(--okf-citation-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--okf-citation-border);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        border-left: 4px solid #6366f1;
+    }
+    .citation-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        border-color: rgba(99, 102, 241, 0.6);
+    }
+    .citation-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--okf-citation-title);
+        margin-bottom: 0.25rem;
+        display: flex;
+        justify-content: space-between;
+    }
+    .citation-score {
+        font-size: 0.75rem;
+        background: var(--okf-citation-score-bg);
+        color: var(--okf-citation-title);
+        padding: 0.1rem 0.5rem;
+        border-radius: 9999px;
+    }
+    .citation-content {
+        font-size: 0.85rem;
+        color: var(--okf-citation-content);
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* ---- Ingestion overlay dialog (curved edges popup) ---- */
+    [data-testid="stDialog"] {
+        border-radius: 28px !important;
+        overflow: hidden;
+    }
+    [data-testid="stDialog"] [role="dialog"] {
+        background: var(--okf-glass-bg);
+        backdrop-filter: blur(28px) saturate(150%);
+        -webkit-backdrop-filter: blur(28px) saturate(150%);
+        border: 1px solid var(--okf-glass-border);
+        border-radius: 28px !important;
+        box-shadow: 0 24px 80px var(--okf-glass-shadow);
+        /* Safety net: whatever the dialog's content height ends up being on a
+           given screen, it never grows past the viewport. Content scrolls
+           *inside* the dialog instead of pushing the footer Close button (or,
+           previously, the hidden native X) below the visible/reachable area -
+           that mismatch was the actual reason the close control was
+           effectively unreachable. */
+        max-height: 88vh !important;
+        overflow-y: auto !important;
+    }
+    [data-testid="stDialog"] h1, [data-testid="stDialog"] h2 {
+        color: var(--okf-heading) !important;
+    }
+    [data-testid="stDialog"] [role="dialog"] > div {
+        border-radius: 28px !important;
+    }
+    /* The native close (X) stays visible and functional - see on_dismiss in
+       ingestion_overlay(), which keeps session state in sync however the
+       dialog is closed (X, Escape, click-outside, or our own footer button),
+       so there is always at least one obvious, guaranteed-visible way out. */
+    .dialog-hint {
+        font-size: 0.8rem;
+        color: var(--okf-text-dim);
+        margin: -0.2rem 0 0.6rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 10px;
+        background: var(--okf-metric-bg);
+        border: 1px solid var(--okf-border-soft);
+    }

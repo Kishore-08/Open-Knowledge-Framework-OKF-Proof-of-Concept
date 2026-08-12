@@ -4,7 +4,7 @@ sources:
   sitemap_url: https://kubernetes.io/sitemap.xml
   url_filter: /docs/concepts/
   category: kubernetes
-  enabled: false
+  enabled: true
 - name: apache-httpd
   base_url: https://httpd.apache.org
   sitemap_url: https://httpd.apache.org/sitemap.xml

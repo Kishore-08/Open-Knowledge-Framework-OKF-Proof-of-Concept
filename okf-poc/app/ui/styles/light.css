@@ -1,0 +1,441 @@
+:root {
+    --okf-bg: #f6f8fb;
+    --okf-glow-1: rgba(66, 133, 244, 0.14);
+    --okf-glow-2: rgba(52, 168, 83, 0.07);
+    --okf-glow-3: rgba(251, 188, 5, 0.08);
+    --okf-glass-bg: rgba(255, 255, 255, 0.92);
+    --okf-glass-border: rgba(15, 23, 42, 0.08);
+    --okf-glass-shadow: rgba(60, 64, 67, 0.14);
+    --okf-text: #1f2937;
+    --okf-text-dim: #4b5563;
+    --okf-text-faint: #94a3b8;
+    --okf-heading: #0f172a;
+    --okf-sidebar-bg: rgba(255, 255, 255, 0.9);
+    --okf-border: rgba(15, 23, 42, 0.13);
+    --okf-border-soft: rgba(15, 23, 42, 0.09);
+    --okf-hover-bg: rgba(66, 133, 244, 0.12);
+    --okf-hover-border: rgba(66, 133, 244, 0.6);
+    --okf-primary-grad: linear-gradient(135deg, #4285f4, #1a73e8);
+    --okf-input-bg: #ffffff;
+    --okf-chat-bg: rgba(255, 255, 255, 0.94);
+    --okf-chat-border: rgba(15, 23, 42, 0.09);
+    --okf-metric-bg: rgba(255, 255, 255, 0.88);
+    --okf-alert-bg: rgba(255, 255, 255, 0.94);
+    --okf-chip-bg: rgba(66, 133, 244, 0.16);
+    --okf-chip-text: #1a73e8;
+    --okf-hero-grad: linear-gradient(90deg, #174ea6 0%, #4285f4 50%, #7c3aed 100%);
+    --okf-scrollbar: rgba(15, 23, 42, 0.25);
+    --okf-citation-bg: rgba(255, 255, 255, 0.9);
+    --okf-citation-border: rgba(15, 23, 42, 0.11);
+    --okf-citation-title: #1a73e8;
+    --okf-citation-score-bg: rgba(66, 133, 244, 0.14);
+    --okf-citation-content: #334155;
+    --okf-src-chip-text: #334155;
+    --okf-src-chip-bold: #0f172a;
+    --okf-placeholder: #5f6368;
+}
+
+/* ---- Light-mode legibility ----
+       Streamlit's base theme renders light text; in light mode we must paint
+       every native element dark so no content (expanders, captions, dropdowns,
+       labels, links) becomes invisible on the bright background. */
+    [data-testid="stAppViewContainer"] { color: var(--okf-text); }
+    [data-testid="stMarkdownContainer"] p,
+    [data-testid="stMarkdownContainer"] li,
+    [data-testid="stMarkdownContainer"] td,
+    [data-testid="stMarkdownContainer"] th,
+    [data-testid="stMarkdownContainer"] blockquote {
+        color: var(--okf-text) !important;
+    }
+    [data-testid="stMarkdownContainer"] a {
+        color: #1a73e8 !important;
+        text-decoration: none;
+    }
+    [data-testid="stMarkdownContainer"] a:hover {
+        text-decoration: underline;
+    }
+    [data-testid="stCaptionContainer"] p,
+    .stCaption p,
+    [data-testid="stMarkdownContainer"] small {
+        color: var(--okf-text-dim) !important;
+    }
+    [data-testid="stWidgetLabel"],
+    [data-testid="stWidgetLabel"] p {
+        color: var(--okf-text) !important;
+    }
+    [data-testid="stExpander"] {
+        background: rgba(255, 255, 255, 0.75);
+        border: 1px solid var(--okf-border-soft);
+        border-radius: 16px;
+        margin-bottom: 0.5rem;
+    }
+    [data-testid="stExpander"] button,
+    [data-testid="stExpander"] summary {
+        color: var(--okf-text) !important;
+    }
+    [data-testid="stExpander"] p,
+    [data-testid="stExpander"] li {
+        color: var(--okf-text) !important;
+    }
+    [data-baseweb="menu"],
+    [data-baseweb="popover"] {
+        background: #ffffff !important;
+        border: 1px solid var(--okf-border) !important;
+    }
+    [data-baseweb="menu"] [role="option"],
+    [data-baseweb="menu"] [role="option"] span {
+        color: var(--okf-text) !important;
+    }
+    [data-baseweb="menu"] [role="option"]:hover,
+    [data-baseweb="menu"] [aria-selected="true"] {
+        background: #e8f0fe !important;
+    }
+    [data-testid="stMultiSelect"] > div {
+        background: #ffffff !important;
+        border: 1px solid rgba(15, 23, 42, 0.14) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+    }
+
+    [data-testid="stMultiSelect"] [data-baseweb="tag"] {
+        background: #e8f0fe !important;
+        color: #1a73e8 !important;
+        border: 1px solid rgba(66, 133, 244, 0.22) !important;
+    }
+
+    [data-testid="stMultiSelect"] [data-baseweb="tag"] span {
+        color: #1a73e8 !important;
+    }
+
+    [data-testid="stMultiSelect"] [data-baseweb="tag"] svg {
+        fill: #1a73e8 !important;
+        color: #1a73e8 !important;
+    }
+
+    [data-testid="stMultiSelect"] svg {
+        fill: #5f6368 !important;
+        color: #5f6368 !important;
+    }
+
+    [data-testid="stMultiSelect"] input {
+        color: #1f2937 !important;
+        background: transparent !important;
+    }
+
+
+    /* =========================
+       LIGHT MODE - FILE UPLOAD
+       ========================= */
+
+    [data-testid="stFileUploaderDropzone"] {
+        background: #ffffff !important;
+        border: 2px dashed rgba(66, 133, 244, 0.35) !important;
+        border-radius: 16px !important;
+    }
+
+    [data-testid="stFileUploaderDropzone"]:hover {
+        background: #f8fbff !important;
+        border-color: #4285f4 !important;
+    }
+
+    [data-testid="stFileUploaderDropzone"] button {
+        background: #e8f0fe !important;
+        color: #1a73e8 !important;
+        border: 1px solid rgba(66, 133, 244, 0.25) !important;
+        box-shadow: none !important;
+    }
+
+    [data-testid="stFileUploaderDropzone"] button p,
+    [data-testid="stFileUploaderDropzone"] button span {
+        color: #1a73e8 !important;
+    }
+
+    [data-testid="stFileUploaderDropzone"] button svg {
+        fill: #1a73e8 !important;
+        color: #1a73e8 !important;
+    }
+
+    [data-testid="stFileUploaderDropzone"] small,
+    [data-testid="stFileUploaderDropzone"] p {
+        color: #4b5563 !important;
+    }
+
+    [data-testid="stRadio"] label p,
+    [data-testid="stCheckbox"] label p {
+        color: var(--okf-text) !important;
+    }
+
+    /* =========================
+    LIGHT MODE - CHAT INPUT
+    ========================= */
+
+    /* Remove Streamlit's outer dark wrapper */
+    [data-testid="stBottom"],
+    [data-testid="stBottomBlockContainer"],
+    [data-testid="stBottom"] > div,
+    [data-testid="stBottomBlockContainer"] > div {
+        background: transparent !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+    }
+
+    /* Remove background from chat input wrapper */
+    [data-testid="stChatInput"] {
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Remove background from the wrapper that DevTools
+    shows as .st-emotion-cache-jchoyf */
+    [data-testid="stChatInput"] > div {
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 !important;
+    }
+
+    /* Nested wrapper */
+    [data-testid="stChatInput"] > div > div {
+        background: transparent !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+    }
+
+    /* Actual white search field */
+    [data-testid="stChatInput"] textarea {
+        background: #ffffff !important;
+        color: #1f2937 !important;
+
+        border: 1px solid rgba(60, 64, 67, 0.22) !important;
+        border-radius: 22px !important;
+
+        box-shadow:
+            0 1px 2px rgba(60, 64, 67, 0.08),
+            0 2px 8px rgba(60, 64, 67, 0.08) !important;
+    }
+
+    [data-testid="stChatInput"] textarea::placeholder {
+        color: #80868b !important;
+    }
+
+    /* Send button */
+    [data-testid="stChatInput"] button {
+        position: static !important;
+        transform: none !important;
+
+        align-self: center !important;
+
+        background: #4285f4 !important;
+        border: none !important;
+        border-radius: 12px !important;
+        color: #ffffff !important;
+    }
+
+    [data-testid="stChatInput"] button svg {
+        fill: #ffffff !important;
+        color: #ffffff !important;
+    }    
+
+    [data-testid="stAlert"] {
+        background: rgba(255, 255, 255, 0.95) !important;
+    }
+
+    [data-testid="stFileUploaderDropzone"] div {
+        color: var(--okf-text-dim) !important;
+    }
+
+        /* =========================================================
+       LIGHT MODE — SELECT / MULTISELECT / EXPANDER FIX
+       ========================================================= */
+
+    /* ---------- MULTISELECT: Documentation Sources ---------- */
+
+    [data-testid="stMultiSelect"] [data-baseweb="select"] > div {
+        background: #ffffff !important;
+        color: #1f2937 !important;
+        border-color: #d1d5db !important;
+    }
+
+    [data-testid="stMultiSelect"] input {
+        color: #1f2937 !important;
+        -webkit-text-fill-color: #1f2937 !important;
+    }
+
+    [data-testid="stMultiSelect"] input::placeholder {
+        color: #6b7280 !important;
+        -webkit-text-fill-color: #6b7280 !important;
+    }
+
+    [data-testid="stMultiSelect"] svg {
+        color: #64748b !important;
+        fill: #64748b !important;
+    }
+
+
+    /* ---------- SELECTBOX: Category ---------- */
+
+    [data-testid="stSelectbox"] [data-baseweb="select"] > div {
+        background: #ffffff !important;
+        color: #1f2937 !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 10px !important;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+    }
+
+    [data-testid="stSelectbox"] [data-baseweb="select"] span {
+        color: #334155 !important;
+    }
+
+    [data-testid="stSelectbox"] svg {
+        color: #64748b !important;
+        fill: #64748b !important;
+    }
+
+
+    /* ---------- SELECT / MULTISELECT DROPDOWN ---------- */
+
+    [data-baseweb="popover"],
+    [data-baseweb="menu"] {
+        background: #ffffff !important;
+        color: #1f2937 !important;
+    }
+
+    [data-baseweb="menu"] li {
+        background: #ffffff !important;
+        color: #334155 !important;
+    }
+
+    [data-baseweb="menu"] li:hover {
+        background: #f1f5f9 !important;
+        color: #1d4ed8 !important;
+    }
+
+
+    /* ---------- CONCEPT EXPANDER ---------- */
+
+    [data-testid="stExpander"] {
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        overflow: hidden !important;
+    }
+
+    [data-testid="stExpander"] details > summary {
+        background: #f8fafc !important;
+        color: #334155 !important;
+    }
+
+    [data-testid="stExpander"] details > summary p,
+    [data-testid="stExpander"] details > summary span {
+        color: #334155 !important;
+    }
+
+    [data-testid="stExpander"] details > summary svg {
+        color: #64748b !important;
+        fill: #64748b !important;
+    }
+
+    [data-testid="stExpander"] details > div {
+        background: #ffffff !important;
+        color: #334155 !important;
+    }
+
+    /* =========================================================
+    LIGHT MODE — TOGGLE FIX
+    ========================================================= */
+
+    /* Toggle container */
+    [data-testid="stToggle"] {
+        color: #334155 !important;
+    }
+
+    /* Toggle label */
+    [data-testid="stToggle"] label {
+        color: #334155 !important;
+    }
+
+    [data-testid="stToggle"] label p {
+        color: #334155 !important;
+    }
+
+    [data-testid="stToggle"] label span {
+        color: #334155 !important;
+    }
+
+    /* =========================================================
+    TOGGLE SWITCH
+    ========================================================= */
+
+    /* OFF state */
+    [data-testid="stToggle"] [role="switch"] {
+        background-color: #cbd5e1 !important;
+        background: #cbd5e1 !important;
+
+        border: 1px solid #94a3b8 !important;
+
+        opacity: 1 !important;
+    }
+
+
+    /* ON state */
+    [data-testid="stToggle"] [role="switch"][aria-checked="true"] {
+        background-color: #4285f4 !important;
+        background: #4285f4 !important;
+
+        border-color: #4285f4 !important;
+
+        opacity: 1 !important;
+    }
+
+
+    /* Toggle knob */
+    [data-testid="stToggle"] [role="switch"]::after {
+        background-color: #ffffff !important;
+        background: #ffffff !important;
+
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.25) !important;
+
+        opacity: 1 !important;
+    }
+
+
+    /* Also target Streamlit's inner knob */
+    [data-testid="stToggle"] [role="switch"] > div {
+        background-color: #ffffff !important;
+        background: #ffffff !important;
+
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.25) !important;
+
+        opacity: 1 !important;
+    }
+
+
+    /* =========================================================
+    TOGGLE ICONS / SVG
+    ========================================================= */
+
+    [data-testid="stToggle"] svg {
+        color: #475569 !important;
+        fill: #475569 !important;
+
+        opacity: 1 !important;
+    }
+
+
+    /* =========================================================
+    EXTRA LIGHT-MODE PROTECTION
+    ========================================================= */
+
+    [data-testid="stToggle"] input {
+        opacity: 1 !important;
+    }
+
+    [data-testid="stToggle"] [data-baseweb="checkbox"] {
+        opacity: 1 !important;
+    }
