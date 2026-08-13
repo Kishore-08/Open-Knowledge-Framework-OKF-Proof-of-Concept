@@ -22,12 +22,8 @@ def repo():
 
 
 def test_repository_loads_valid_concepts(repo):
-    # The checked-in `knowledge/` directory now contains the full ingested
-    # corpus (kubernetes/tutorial/reference + the original linux/apache/
-    # langchain concepts) restored from the previously-orphaned
-    # `data/knowledge/` path - see ISSUE_RESOLUTION_2.md §1. This is just a
-    # sanity floor, not an exact count, since the corpus grows as ingestion
-    # runs.
+    # This is a sanity floor, not an exact count, because the checked-in
+    # knowledge corpus grows as ingestion runs.
     assert len(repo) >= 6
     for concept in repo:
         assert concept.metadata.id

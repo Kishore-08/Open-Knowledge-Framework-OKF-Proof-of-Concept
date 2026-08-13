@@ -6,7 +6,6 @@ Usage:
     python -m scripts.build_index                       # incremental embed (default)
     python -m scripts.build_index --full                # re-embed everything
     python -m scripts.build_index --dry-run             # validate documents, no embeddings
-    python -m scripts.build_index --source kubernetes   # reserved: filter by category
 """
 
 import argparse
@@ -29,7 +28,7 @@ def main() -> None:
     parser.add_argument(
         "--full",
         action="store_true",
-        help="Re-embed every concept, even if already present in Qdrant (uses Gemini quota)",
+        help="Re-embed every concept, even if already present in Qdrant (uses provider quota)",
     )
     args = parser.parse_args()
 

@@ -12,6 +12,7 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import sys
 from typing import List
@@ -32,6 +33,23 @@ def _sources() -> List[dict]:
         return (yaml.safe_load(f) or {}).get("sources", [])
 
 
+def _cached_page_urls(source_name: str) -> dict[str, str]:
+    """Map cached HTML paths to their original URLs using crawler state."""
+    state_path = os.path.join(settings.CACHE_DIR, ".state", f"{source_name}.json")
+    try:
+        with open(state_path, "r", encoding="utf-8") as file:
+            pages = (json.load(file) or {}).get("pages", {})
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+    result = {}
+    for url, metadata in pages.items():
+        raw_file = (metadata or {}).get("raw_file")
+        if raw_file:
+            result[os.path.normpath(os.path.join(settings.CACHE_DIR, raw_file))] = url
+    return result
+
+
 def convert_cached_source(source: dict, knowledge_dir: str, dry_run: bool) -> dict:
     """Convert every cached HTML page for a source into concepts."""
     cache_root = os.path.join(settings.CACHE_DIR, source["name"].lower())
@@ -41,7 +59,9 @@ def convert_cached_source(source: dict, knowledge_dir: str, dry_run: bool) -> di
     category = source.get("category", source["name"].lower())
     source_name = source["name"]
     concepts_written = 0
+    concepts_found = 0
     pages_processed = 0
+    page_urls = _cached_page_urls(source_name)
 
     for fname in sorted(os.listdir(cache_root)):
         if not fname.endswith(".html"):
@@ -55,9 +75,7 @@ def convert_cached_source(source: dict, knowledge_dir: str, dry_run: bool) -> di
             print(f"⚠️ Could not read {path}: {exc}")
             continue
 
-        # Extract the source URL from the filename? We store hash-based names, so
-        # we fall back to the site root as provenance.
-        source_url = source["base_url"]
+        source_url = page_urls.get(os.path.normpath(path), source["base_url"])
 
         try:
             cleaned = clean_html(html, base_url=source["base_url"])
@@ -70,13 +88,19 @@ def convert_cached_source(source: dict, knowledge_dir: str, dry_run: bool) -> di
             markdown, category=category, source_name=source_name, source_url=source_url
         )
         for concept_id, _title, content in concepts:
+            concepts_found += 1
             if dry_run:
                 print(f"  📄 would write {concept_id}")
                 continue
             write_concept_file(knowledge_dir, category, concept_id, content)
             concepts_written += 1
 
-    return {"source": source["name"], "pages": pages_processed, "concepts": concepts_written}
+    return {
+        "source": source["name"],
+        "pages": pages_processed,
+        "concepts": concepts_found,
+        "written": concepts_written,
+    }
 
 
 def main() -> None:
@@ -88,7 +112,10 @@ def main() -> None:
 
     sources = _sources()
     if args.source:
-        sources = [s for s in sources if s["name"] == args.source]
+        sources = [s for s in sources if s["name"].lower() == args.source.lower()]
+
+    if not sources:
+        parser.error("no matching sources found in the configured sources file")
 
     total = {"pages": 0, "concepts": 0}
     for source in sources:

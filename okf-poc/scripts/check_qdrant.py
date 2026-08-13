@@ -1,17 +1,55 @@
 #!/usr/bin/env python3
-"""Check what's in Qdrant"""
+"""Inspect the configured OKF Qdrant collection without modifying it."""
 
+import argparse
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.core.config import settings
 from app.retrieval.hybrid_search import get_qdrant_client
 
-client = get_qdrant_client()
-collection_info = client.get_collection("okf_concepts")
 
-print(f"Collection: okf_concepts")
-print(f"Points count: {collection_info.points_count}")
-print(f"Vectors count: {collection_info.vectors_count}")
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--collection",
+        default=settings.QDRANT_CONCEPTS_COLLECTION,
+        help="Collection to inspect (default: configured QDRANT_CONCEPTS_COLLECTION)",
+    )
+    parser.add_argument("--limit", type=int, default=10, help="Sample points to show")
+    args = parser.parse_args()
 
-# Sample some points
-points = client.scroll("okf_concepts", limit=20)[0]
-print(f"\nSample points:")
-for p in points:
-    print(f"  - {p.payload.get('title')} (category={p.payload.get('category')})")
+    client = get_qdrant_client()
+    if not client.collection_exists(args.collection):
+        print(f"Collection '{args.collection}' does not exist.", file=sys.stderr)
+        print("Run an ingestion job or: python -m scripts.build_index", file=sys.stderr)
+        return 1
+
+    collection_info = client.get_collection(args.collection)
+    print(f"Collection: {args.collection}")
+    print(f"Points: {collection_info.points_count or 0}")
+
+    points, _ = client.scroll(
+        collection_name=args.collection,
+        limit=max(args.limit, 0),
+        with_payload=["id", "title", "category", "source_file"],
+        with_vectors=False,
+    )
+    if not points:
+        print("No points found.")
+        return 0
+
+    print("\nSample points:")
+    for point in points:
+        payload = point.payload or {}
+        title = payload.get("title") or payload.get("id") or point.id
+        category = payload.get("category") or "uncategorized"
+        source = payload.get("source_file") or "unknown source"
+        print(f"  - {title} (category={category}, source={source})")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

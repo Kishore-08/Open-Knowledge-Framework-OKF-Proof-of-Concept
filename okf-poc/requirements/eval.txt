@@ -18,5 +18,6 @@ pysbd>=0.3.4
 nest-asyncio
 appdirs
 google-generativeai
+google-genai>=1.52,<2
 
 pydantic-settings>=2.0,<3

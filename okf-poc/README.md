@@ -1,555 +1,257 @@
-# Open Knowledge Framework (OKF) Enterprise PoC
+# Open Knowledge Framework Enterprise PoC
 
-This repository contains a complete **Proof of Concept (PoC)** demonstrating how the **Open Knowledge Framework (OKF)** can be utilized alongside **LlamaIndex, Qdrant, FastAPI, and Streamlit** to build a highly accurate, hallucination-resistant **Enterprise AI Knowledge Assistant**.
+An enterprise knowledge-assistant proof of concept built with FastAPI,
+Streamlit, Qdrant, and LlamaIndex. It crawls documentation or accepts uploaded
+files, converts the content into structured Open Knowledge Framework (OKF)
+Markdown, indexes it for hybrid retrieval, and returns grounded answers with
+source citations.
 
----
+## What it includes
 
-# 🚀 Features
+- Documentation crawling from sources configured in `config/sources.yaml`
+- Upload support for PDF, Markdown, text, and JSON files
+- LLM-assisted metadata extraction and OKF Markdown generation
+- Dense and sparse retrieval through Qdrant
+- Grounded question answering with source citations
+- Background ingestion jobs with progress reporting and cancellation
+- A Streamlit interface for ingestion, browsing, search, and chat
+- A Ragas-based evaluation suite with retrieval, answer, grounding, and
+  citation metrics
 
-- **Multi-Source Ingestion**
-  - Supports parsing PDFs, Markdown, JSON, and raw text.
+## Architecture
 
-- **OKF Standardization**
-  - Automatically uses an LLM to extract metadata and formats raw data into strict OKF physical files (Markdown + YAML Frontmatter).
+```text
+Configured websites / uploaded files
+                 |
+                 v
+          Disposable cache
+                 |
+                 v
+       Parse + extract metadata
+                 |
+                 v
+       OKF Markdown knowledge base
+                 |
+                 v
+          Qdrant hybrid index
+                 |
+                 v
+       Retrieval + grounded answer
+                 |
+                 v
+        Streamlit UI / FastAPI
+```
 
-- **Hybrid Search**
-  - Uses Qdrant to perform simultaneous:
-    - Semantic (Dense Vector) Search
-    - Keyword (Sparse BM25) Search
+The repository deliberately separates intermediate data from durable project
+assets:
 
-- **Strict Citations**
-  - Forces the LLM to cite original OKF documents using YAML metadata and renders citation cards in the UI.
+- `cache/` contains downloaded pages, uploads, and ingestion state. It is
+  disposable and ignored by Git.
+- `knowledge/` contains the generated OKF Markdown files used by search and
+  question answering. It is the source of truth and should be versioned.
+- `qdrant_storage/` contains the local vector index. It is generated data and
+  is ignored by Git.
 
-- **Automated Evaluation**
-  - Includes a complete Ragas evaluation suite to measure:
-    - Accuracy
-    - Faithfulness
-    - Hallucination Rate
-    - Context Precision
-    - Context Recall
-
----
-
-# 📁 Project Structure
+## Project layout
 
 ```text
 okf-poc/
 ├── app/
-│   ├── api/                     # FastAPI backend and routers
-│   ├── core/                    # Configuration & settings
-│   ├── parser/                  # HTML cleaning, sitemap discovery
-│   ├── converter/               # HTML/raw text -> OKF Markdown
-│   ├── ingestion/               # Crawler, loaders & the ingestion pipeline
-│   ├── okf/                     # OKF schema, parser, formatter, repository
-│   ├── indexing/                # Concept -> LlamaIndex Document -> Qdrant
-│   ├── retrieval/               # Qdrant plumbing, LLM config, search & answer generation
-│   ├── storage/                 # State management, file tracking
-│   └── ui/                      # Streamlit UI
-│
-├── config/                      # Source definitions (config/sources.yaml)
-├── cache/                       # DISPOSABLE CACHE — crawled HTML, sync state,
-│                                 # manually uploaded raw files (.state/ subdirectory)
-│
-├── knowledge/                   # SOURCE OF TRUTH — generated OKF Markdown concept files
-├── docs/                        # Architecture diagrams & reports
-├── evaluation/                  # Ragas evaluation scripts
-├── notebooks/                   # Exploratory notebooks
-├── requirements/                # Split requirement files (api/ui/dev/eval/base)
-├── scripts/                     # CLI maintenance & migration scripts
-├── tests/                       # Unit tests
-│
+│   ├── api/          # FastAPI application and route handlers
+│   ├── converter/    # OKF Markdown conversion
+│   ├── core/         # Settings, authentication, and model clients
+│   ├── indexing/     # Qdrant indexing and vector state
+│   ├── ingestion/    # Crawling, loading, metadata extraction, pipeline
+│   ├── jobs/         # Background-job management
+│   ├── okf/          # OKF schema, parser, formatter, and repository
+│   ├── parser/       # Sitemap discovery and HTML cleaning
+│   ├── query/        # Search and answer generation
+│   ├── retrieval/    # Retrieval integrations
+│   ├── storage/      # Persistent ingestion state
+│   └── ui/           # Streamlit application
+├── cache/            # Disposable source cache
+├── config/           # Crawl sources and context supplements
+├── docs/             # Architecture and implementation notes
+├── evaluation/       # Dataset, scoring guide, evaluator, and results
+├── knowledge/        # Versioned OKF knowledge files
+├── requirements/     # API, UI, development, and evaluation dependencies
+├── scripts/          # Conversion, migration, cleanup, and backfill tools
 ├── docker-compose.yml
-├── Dockerfile.api / Dockerfile.ui
-├── .env.example
-└── README.md
+├── Dockerfile.api
+├── Dockerfile.ui
+└── .env.example
 ```
 
-## 🗂️ Data Organization: Cache vs. Source of Truth
+## Quick start
 
-The project maintains a clear separation between disposable cache and authoritative knowledge:
+### Prerequisites
 
-### `cache/` — Disposable Cache
+- Docker with Docker Compose
+- A Gemini Developer API key, or Google Cloud credentials for Vertex AI
+- Python 3.11+ only if you intend to run the evaluation suite locally
 
-**Purpose:** Temporary storage for downloaded and uploaded raw documents.
-
-**Contents:**
-- Crawled HTML from official documentation sites
-- Crawler synchronization state (`.state/` subdirectory)
-- Manually uploaded raw files (PDF, Markdown, TXT, JSON)
-- Processing state for incremental ingestion
-
-**Lifecycle:** **Can be deleted and rebuilt at any time.** Re-running the ingestion pipeline will:
-- Re-crawl sources defined in `config/sources.yaml`
-- Re-discover any raw files you've uploaded
-- Rebuild the cache from scratch
-
-**Git:** Add `cache/` to `.gitignore` — never commit cached files.
-
-### `knowledge/` — Source of Truth
-
-**Purpose:** The canonical knowledge base that powers search and Q&A.
-
-**Contents:**
-- OKF Markdown files with YAML frontmatter
-- Organized by category (e.g., `kubernetes/`, `docker/`, `reference/`)
-- Each file is a validated concept with metadata (title, description, tags, source URL)
-
-**Lifecycle:** **Must be preserved.** These files are generated by running LLM-powered metadata extraction over cached documents. They are:
-- Expensive to regenerate (requires API calls)
-- The actual content served to users
-- Version-controlled and backed up
-
-**Git:** Commit `knowledge/` to version control as a project asset.
-
-### Configuration
-
-Both paths are defined in `app/core/config.py`:
-
-```python
-CACHE_DIR: str = "cache"          # Disposable cache
-KNOWLEDGE_DIR: str = "knowledge"  # Source of truth
-```
-
-Override via `.env` if needed:
-
-```env
-CACHE_DIR=custom/cache/path
-KNOWLEDGE_DIR=custom/knowledge/path
-```
-
-### Migration from Old Structure
-
-If you have an existing installation using the old `data/raw/` and `data/knowledge/` structure:
-
-```bash
-python scripts/migrate_data_structure.py
-```
-
-This script will:
-1. Create timestamped backups
-2. Move `data/raw/` → `cache/`
-3. Move `data/knowledge/` → `knowledge/`
-4. Preserve all state files
-5. Clean up empty directories
-
----
-
-# 🛠️ Setup & Installation
-
-## Prerequisites
-
-Before starting, ensure the following are installed:
-
-- Docker
-- Docker Compose
-- Python 3.11+ (only for local evaluation)
-- Gemini API Key or OpenAI API Key
-
----
-
-## 1. Clone the Repository
-
-```bash
-git clone https://github.com/your-org/okf-poc.git
-
-cd okf-poc
-```
-
----
-
-## 2. Configure Environment Variables
-
-Copy the example environment file.
+### 1. Configure the environment
 
 ```bash
 cp .env.example .env
 ```
 
-Example `.env`
+The simplest local configuration uses the Gemini Developer API:
 
 ```env
-# LLM Provider
-LLM_PROVIDER=gemini
-
-# Gemini
+AI_PROVIDER=gemini
 GEMINI_API_KEY=your_api_key
 
-# OpenAI (Optional)
-OPENAI_API_KEY=
-
-# Models
 LLM_MODEL=gemini-3.5-flash
-EMBEDDING_MODEL=models/gemini-embedding-001
-
-# Qdrant
-QDRANT_HOST=qdrant
-QDRANT_PORT=6333
-
-# API
-API_HOST=0.0.0.0
-API_PORT=8000
+LLM_FALLBACK_MODEL=gemini-3.5-flash-lite
+EMBEDDING_MODEL=models/gemini-embedding-2
 ```
 
----
+To use Vertex AI instead, keep `AI_PROVIDER=vertex` and configure the Vertex
+project, location, models, and authentication values documented in
+`.env.example`. Do not commit `.env` or credentials.
 
-## 3. Add Raw Documents
+The container defaults in `.env.example` already point the UI to
+`http://api:8000` and the API to `http://qdrant:6333`.
 
-Copy your source documents into:
-
-```text
-data/raw/
-```
-
-Supported file types:
-
-- PDF
-- Markdown
-- JSON
-- TXT
-
-Example datasets:
-
-- Kubernetes Documentation
-- Apache Documentation
-- Linux Documentation
-- LangChain Documentation
-
----
-
-## 4. Build & Start Containers
+### 2. Start the stack
 
 ```bash
-docker-compose up --build -d
+docker compose up --build -d
 ```
 
 This starts:
 
-- FastAPI
-- Streamlit
-- Qdrant
+| Service | URL |
+| --- | --- |
+| Streamlit UI | <http://localhost:8501> |
+| FastAPI documentation | <http://localhost:8000/docs> |
+| API health check | <http://localhost:8000/health> |
+| Qdrant dashboard | <http://localhost:6333/dashboard> |
 
-Verify running containers:
+Check service logs with:
 
 ```bash
-docker ps
+docker compose logs -f api ui qdrant
 ```
 
----
+### 3. Ingest content
 
-# 🎮 Usage
+Open the Streamlit UI and either:
 
-## Streamlit UI
+- select one or more configured documentation sources and start ingestion, or
+- upload supported files and process them in upload-only mode.
 
-Once all containers are running, open:
+Source definitions, URL filters, crawl limits, and enabled defaults live in
+`config/sources.yaml`. Uploaded and crawled source files are written beneath
+`cache/`; generated OKF documents are written beneath `knowledge/`.
 
-```
-http://localhost:8501
-```
+### 4. Search and ask questions
 
-### Steps
+Use the Knowledge Base page to browse or search concepts. Use the chat page to
+ask a question; the response includes citations to the retrieved OKF sources.
 
-1. Open the sidebar.
-2. Click **Trigger Ingestion Pipeline**.
-3. The system will:
-   - Read files from `data/raw/`
-   - Convert them into OKF Markdown files
-   - Save them in `knowledge/`
-   - Generate embeddings
-   - Store vectors inside Qdrant
-4. Ask questions using the chat interface.
-5. Observe generated citation cards below every answer.
+## API overview
 
----
+All application routes, except `/health`, are under `/api/v1`.
 
-## FastAPI Backend
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | API and dependency health |
+| `GET` | `/api/v1/ingest/sources` | Available crawl sources |
+| `GET` | `/api/v1/ingest/status` | Current ingestion status |
+| `POST` | `/api/v1/ingest/` | Start an ingestion job |
+| `POST` | `/api/v1/ingest/upload` | Upload files and start ingestion |
+| `GET` | `/api/v1/jobs/` | List background jobs |
+| `GET` | `/api/v1/jobs/{job_id}` | Inspect a job |
+| `POST` | `/api/v1/jobs/{job_id}/cancel` | Cancel a job |
+| `POST` | `/api/v1/query/` | Retrieve matching concepts |
+| `POST` | `/api/v1/ask/` | Generate a grounded answer |
+| `GET` | `/api/v1/knowledge/stats` | Knowledge-base statistics |
+| `GET` | `/api/v1/knowledge/categories` | Available categories |
+| `GET` | `/api/v1/knowledge/concepts` | Browse concepts |
+| `GET` | `/api/v1/knowledge/search?q=...` | Search concepts |
 
-Swagger Documentation
+The OpenAPI page at <http://localhost:8000/docs> contains complete request and
+response schemas.
 
-```
-http://localhost:8000/docs
-```
+## Data migration
 
-### Available Endpoints
+Older checkouts used `data/raw/` and `data/knowledge/`. Migrate that layout with:
 
-#### Trigger Ingestion
-
-```http
-POST /api/v1/ingest
-```
-
-Converts and indexes documents.
-
----
-
-#### Query Documents
-
-```http
-POST /api/v1/query
+```bash
+python scripts/migrate_data_structure.py
 ```
 
-Example request
+The migration creates timestamped backups, moves raw data to `cache/`, moves
+generated knowledge to `knowledge/`, and preserves state files. Review the
+result before removing any backup.
 
-```json
-{
-  "query": "What is a Kubernetes Pod?"
-}
-```
+## Evaluation
 
-Example response
-
-```json
-{
-  "answer": "...",
-  "citations": [
-    {
-      "title": "Pods",
-      "source": "kubernetes/docs/concepts/pods.md"
-    }
-  ]
-}
-```
-
----
-
-## Qdrant Dashboard
-
-Inspect vectors and metadata.
-
-```
-http://localhost:6333/dashboard
-```
-
-You can view:
-
-- Collections
-- Vector Payloads
-- Metadata
-- Stored Documents
-
----
-
-# 🔄 Ingestion Pipeline
-
-The ingestion workflow follows the pipeline below:
-
-```text
-Raw Documents
-      │
-      ▼
-Document Loader
-      │
-      ▼
-Content Extraction
-      │
-      ▼
-Metadata Generation (LLM)
-      │
-      ▼
-OKF Formatter
-      │
-      ▼
-Markdown + YAML
-      │
-      ▼
-Embedding Generation
-      │
-      ▼
-Qdrant Indexing
-```
-
----
-
-# 🔍 Query Pipeline
-
-```text
-User Question
-      │
-      ▼
-Embedding Generation
-      │
-      ▼
-Hybrid Retrieval
-(Dense + BM25)
-      │
-      ▼
-Relevant OKF Files
-      │
-      ▼
-LLM
-      │
-      ▼
-Answer
-      │
-      ▼
-Citation Mapping
-      │
-      ▼
-Response to User
-```
-
----
-
-# 📊 Running the Evaluation Suite
-
-The project includes a complete **Ragas Evaluation** suite.
-
-It evaluates:
-
-- Retrieval Quality (Context Precision, Context Recall, Answer Relevancy)
-- Answer Correctness (accuracy against the ground truth)
-- Hallucination Rate (`1 - faithfulness`, using Faithfulness as the RAG hallucination / grounding proxy)
-- Source Citation Quality (fraction of retrieved, citable sources actually cited in the answer)
-- Document Observations (per-document retrieval/citation tallies across the run)
-
----
-
-## Install Dependencies
-
-The evaluation requires the RAGAS 0.1.9 stack. Install it in a dedicated
-virtualenv (the pinned versions in `requirements/eval.txt` are the only ones
-compatible with `evaluation/evaluate_ragas.py`):
- 
+The evaluator uses a pinned Ragas 0.1.9-compatible environment. Keep it
+separate from the application environment:
 
 ```bash
 python3 -m venv .venv-eval
 source .venv-eval/bin/activate
 pip install -r requirements/eval.txt
 ```
- 
-> Do not upgrade ragas: `ragas.metrics.collections` exports metric **classes**
-> (not instances) in ragas>=0.2, and `response_relevancy` does not exist in any
-> ragas version — the metric is named `answer_relevancy`. The script pins the
-> 0.1.9-era API it actually uses.
----
 
-## Ensure Services are Running
-
-Make sure:
-
-- Qdrant is running
-- FastAPI is running
-- Documents have already been ingested
-
----
-
-## Execute Evaluation
+With Qdrant populated and the required Gemini credentials available, run:
 
 ```bash
-GEMINI_API_KEY=<your-key> GEMINI_EVAL_MODEL=gemini-3.5-flash \
-  python evaluation/evaluate_ragas.py
+GEMINI_API_KEY=your_api_key \
+GEMINI_EVAL_MODEL=gemini-3.5-flash \
+python evaluation/evaluate_ragas.py
 ```
-The judge model defaults to `gemini-3.5-flash` and can be overridden with
-`GEMINI_EVAL_MODEL` (e.g. `gemini-3.5-flash-lite`).
----
 
-## Output
-
-Results are generated in:
+Results are written to `evaluation/results/` as timestamped detail CSV and
+summary JSON files. The latest run is also copied to:
 
 ```text
-evaluation/results/
+evaluation/results/evaluation_details_FINAL.csv
+evaluation/results/evaluation_summary_FINAL.json
 ```
 
-Generated files include:
+See `evaluation/SCORING.md` for metric definitions, aggregation rules, and
+guidance on interpreting the scores. Do not upgrade Ragas independently of the
+pinned evaluation requirements; newer releases use a different metrics API.
 
-```text
-evaluation_details_<timestamp>.csv   Per-question metrics + citation-quality columns
+## Local development
 
-evaluation_summary_<timestamp>.json  Overall averages + per-area scores + document observations
-```
-
----
-
-# 🧪 Running Unit Tests
-
-Execute all unit tests.
+Install all application and development dependencies with:
 
 ```bash
-pytest tests/
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements/dev.txt
 ```
 
----
+Run the backend and UI in separate terminals (Qdrant must also be reachable):
 
-# 📂 Generated Knowledge Base
-
-After ingestion, every source document becomes an OKF Markdown file.
-
-Example:
-
-```text
-knowledge/
-
-├── kubernetes-pods.md
-
-├── deployments.md
-
-├── services.md
+```bash
+uvicorn app.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Each document contains YAML Frontmatter.
-
-Example:
-
-```yaml
----
-title: Kubernetes Pods
-category: Kubernetes
-source: kubernetes.io
-author: CNCF
-last_updated: 2025-01-20
-tags:
-  - kubernetes
-  - pods
----
+```bash
+API_HOST=http://localhost:8000 streamlit run app/ui/app.py
 ```
 
----
+For local execution, set `QDRANT_URL=http://localhost:6333` in `.env` instead of
+the Docker service hostname.
 
-# 🏗️ Tech Stack
+## Operational notes
 
-| Layer | Technology |
-|---------|------------|
-| Backend | FastAPI |
-| Frontend | Streamlit |
-| Framework | LlamaIndex |
-| Vector Database | Qdrant |
-| Embeddings | Gemini / OpenAI |
-| LLM | Gemini / OpenAI |
-| Evaluation | Ragas |
-| Containerization | Docker |
-| API Docs | Swagger |
-| Configuration | Pydantic |
+- `docker compose down` stops the stack without deleting the bind-mounted
+  Qdrant data in `qdrant_storage/`.
+- Removing `cache/` is safe, but the next ingestion must fetch or upload the
+  source material again.
+- Preserve and version `knowledge/`; regenerating it requires model calls.
+- Changing embedding models or vector dimensions requires rebuilding the
+  Qdrant collection.
 
----
+## License
 
-# 📈 Future Improvements
-
-- Multi-user Authentication
-- Role-Based Access Control (RBAC)
-- Incremental Document Ingestion
-- Scheduled Re-indexing
-- Multi-Tenant Knowledge Bases
-- Feedback Collection
-- Analytics Dashboard
-- Source Ranking
-- Metadata Validation
-- Redis Caching
-- Kubernetes Deployment
-- CI/CD Pipeline
-- Monitoring with Prometheus & Grafana
-
----
-
-# 📄 License
-
-This project is intended as an Enterprise Proof of Concept for demonstrating the capabilities of the Open Knowledge Framework (OKF), Retrieval-Augmented Generation (RAG), and Hybrid Search architectures.
-
----
-
-# 👨‍💻 Author
-
-**Kishore Kumar K**
-
-Enterprise AI | DevOps | Cloud | Kubernetes | LLM Engineering
-
----
+No license file is currently included. Treat this repository as an internal
+proof of concept unless the project owner specifies other terms.

@@ -35,7 +35,7 @@ _PLACEHOLDER_TAGS = {"unknown", "unclassified"}
 _BAD_ID_RE = re.compile(r"^(unknown-document|document-\d+|unclassified)", re.IGNORECASE)
 
 
-def is_bad_concept(meta: dict, path: str) -> tuple:
+def is_bad_concept(meta: dict, _path: str) -> tuple[bool, str]:
     """Return (is_bad, reason) for a parsed concept's metadata dict."""
     cid = (meta.get("id") or "").strip()
     title = (meta.get("title") or "").strip()
@@ -49,7 +49,7 @@ def is_bad_concept(meta: dict, path: str) -> tuple:
         return True, f"placeholder title '{title}'"
     if re.match(r"^document[\s-]+\d+$", title, re.IGNORECASE):
         return True, f"auto-numbered title '{title}'"
-    if category in _PLACEHOLDER_CATEGORIES:
+    if category.lower() in _PLACEHOLDER_CATEGORIES:
         return True, f"placeholder category '{category}'"
     if any(t.lower() in _PLACEHOLDER_TAGS for t in tags):
         return True, f"placeholder tag in {tags}"

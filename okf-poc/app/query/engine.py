@@ -10,8 +10,11 @@ step that requires `GEMINI_API_KEY`.
 """
 
 from dataclasses import dataclass, field
+from pathlib import Path
 import time
 from typing import List, Optional
+
+import yaml
 
 from app.core.config import settings
 from app.core.retry import retry_with_backoff
@@ -26,6 +29,30 @@ class QueryResult:
     answer: str
     sources: List[dict] = field(default_factory=list)
     retrieval_mode: str = ""
+
+
+def _matching_supplements(query: str) -> List[dict]:
+    """Load source-backed context supplements matching the user's wording."""
+    path = Path("config/context_supplements.yaml")
+    if not path.exists():
+        return []
+    entries = (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get(
+        "supplements", []
+    )
+    query_lower = query.lower()
+    return [
+        {
+            "id": entry["id"],
+            "title": entry["title"],
+            "category": entry.get("category", ""),
+            "description": entry["content"],
+            "source_url": entry["source_url"],
+            "score": 1.0,
+            "snippet": entry["content"],
+        }
+        for entry in entries
+        if any(term.lower() in query_lower for term in entry.get("match_terms", []))
+    ]
 
 
 def generate_answer(
@@ -46,6 +73,15 @@ def generate_answer(
     # 1. Retrieval (works without an API key)
     retrieved = search(query, category=category, mode="auto", top_k=top_k)
     results = retrieved["results"]
+
+    # Some upstream pages are split into narrow concepts, so a definition and
+    # its key behavioral sentence can fall outside the top-k window. Merge
+    # small, explicitly sourced supplements before truncating the context.
+    supplements = _matching_supplements(query)
+    if supplements:
+        supplement_ids = {item["id"] for item in supplements}
+        results = supplements + [r for r in results if r.get("id") not in supplement_ids]
+        results = results[:top_k]
 
     # Search results intentionally carry short previews, and semantic results
     # may represent a chunk from the middle of a concept. Answer generation
@@ -119,7 +155,20 @@ def _call_llm(query: str, context_block: str) -> str:
         "1. You MUST strictly base your answer on the provided context.\n"
         "2. Every time you use information, you MUST cite the source document inline using its title.\n"
         "3. If the context does not contain the answer, you must say: "
-        "'I cannot answer this based on the OKF knowledge base.' Do not guess or hallucinate.\n\n"
+        "'I cannot answer this based on the OKF knowledge base.' Do not guess or hallucinate.\n"
+        "4. Answer only what the user asked. Lead with the direct definition or conclusion, "
+        "and include every part of the question.\n"
+        "5. Before answering, silently identify the requested answer slots and fill each one "
+        "from the context. For an object, include its canonical definition, primary purpose, "
+        "and the main way it is used when those are relevant. For a failure or process, name "
+        "the actor, immediate action, and resulting behavior. For an architecture, name each "
+        "core component and its role. For a comparison, state the defining mechanism of both sides.\n"
+        "6. Be concise: normally use one or two sentences (at most three for a comparison "
+        "or multi-part summary). Preserve distinct facts needed to fill the requested slots, "
+        "but do not add examples, implementation details, caveats, recommendations, or related "
+        "facts unless the question explicitly asks for them.\n"
+        "7. Prefer a close paraphrase of the shortest, most directly relevant source passages. "
+        "Do not replace a precise source definition with a broader description.\n\n"
         f"Query: {query}\n"
         "Answer: "
     )

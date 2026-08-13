@@ -1,0 +1,31 @@
+supplements:
+  - id: kubernetes-network-policy-definition
+    title: Network Policies
+    category: kubernetes
+    source_url: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+    match_terms: [network traffic, network policy, networkpolicy, between pods]
+    content: >-
+      NetworkPolicies specify how Pods are allowed to communicate with other
+      Pods, namespaces, IP blocks, and other network entities. A network plugin
+      that supports NetworkPolicy enforcement applies these rules.
+
+  - id: kubernetes-service-network-identity
+    title: Service network identity
+    category: kubernetes
+    source_url: https://kubernetes.io/docs/concepts/services-networking/service/
+    match_terms: [service in kubernetes, kubernetes service, what is a service]
+    content: >-
+      A Kubernetes Service exposes an application running on a changing set of
+      Pods through a stable network identity. A standard Service has a cluster
+      IP address, and cluster DNS creates a DNS record so clients can resolve
+      the Service by name even as its backing Pods change.
+
+  - id: kubernetes-failed-liveness-probe
+    title: Probe results
+    category: kubernetes
+    source_url: https://kubernetes.io/docs/concepts/workloads/pods/probes/
+    match_terms: [liveness probe fails, failed liveness probe, liveness failure]
+    content: >-
+      When a liveness probe reaches its configured failure threshold, the
+      kubelet kills the container. The container is then subjected to its
+      configured restart policy.

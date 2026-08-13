@@ -1,376 +1,196 @@
-# OKF Platform Architecture
+ahve # OKF Platform Architecture
 
-## Overview
+## Purpose
 
-The Open Knowledge Framework (OKF) platform is a RAG-based AI knowledge assistant that ingests documentation, converts it to a standardized format, and enables semantic search and question-answering with strict citation requirements.
+The OKF platform is a retrieval-augmented knowledge assistant. It acquires
+documentation, converts it into portable Markdown concepts with structured
+metadata, indexes those concepts, and answers questions using retrieved source
+material.
 
-## Core Principles
+The filesystem knowledge repository is authoritative. Qdrant is a generated
+retrieval index and can be rebuilt from the repository.
 
-1. **Cache vs. Source of Truth Separation**
-   - `cache/`: Disposable data that can be regenerated
-   - `knowledge/`: Authoritative OKF Markdown files (expensive to regenerate)
+## System context
 
-2. **Schema-Driven Knowledge**
-   - Every concept is a Markdown file with validated YAML frontmatter
-   - Consistent metadata enables reliable search and citation
+```mermaid
+flowchart LR
+    User[User] --> UI[Streamlit UI]
+    UI --> API[FastAPI API]
+    API --> Jobs[Background jobs]
+    API --> Query[Query engine]
+    API --> Repo[Knowledge repository]
 
-3. **Filesystem as Source of Truth**
-   - The vector database (Qdrant) is an acceleration layer only
-   - All knowledge is readable/editable Markdown files
-   - No vendor lock-in: the knowledge base is portable
+    Web[Configured websites] --> Ingest[Ingestion pipeline]
+    Uploads[Uploaded files] --> Ingest
+    Jobs --> Ingest
+    Ingest --> Cache[(cache/)]
+    Ingest --> Models[Gemini or Vertex AI]
+    Ingest --> Repo
+    Ingest --> Qdrant[(Qdrant)]
 
-4. **LLM as Last Resort**
-   - Crawling, parsing, indexing work without API keys
-   - LLM is only used for metadata extraction and answer generation
-   - Fallback to keyword search when embeddings unavailable
-
-## System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         User Interface                           │
-│                      (Streamlit / API)                           │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-        ┌────────────────────┼────────────────────┐
-        │                    │                    │
-        ▼                    ▼                    ▼
-┌──────────────┐   ┌─────────────────┐   ┌─────────────┐
-│   Ingestion  │   │   Query Engine  │   │  Repository │
-│   Pipeline   │   │                 │   │  (Browse)   │
-└──────────────┘   └─────────────────┘   └─────────────┘
-        │                    │                    │
-        │                    │                    │
-        ▼                    ▼                    ▼
-┌──────────────┐   ┌─────────────────┐   ┌─────────────┐
-│    cache/    │   │   Qdrant Index  │   │ knowledge/  │
-│  (crawler    │   │  (dense/sparse) │   │ (OKF .md)   │
-│   + raw)     │   │                 │   │             │
-└──────────────┘   └─────────────────┘   └─────────────┘
+    Query --> Repo
+    Query --> Qdrant
+    Query --> Models
 ```
 
-## Data Flow
+Docker Compose runs three services:
 
-### 1. Ingestion Pipeline
+| Service | Responsibility | Host port |
+| --- | --- | --- |
+| `ui` | Streamlit user interface | `8501` |
+| `api` | HTTP API, job control, ingestion, and queries | `8000` |
+| `qdrant` | Dense-vector retrieval index | `6333` |
 
-```
-Official Docs      Raw Files
-     │                 │
-     ▼                 ▼
-┌─────────────────────────────┐
-│     Web Crawler             │  (cache HTML, track state)
-│  + Local File Loader        │
-└─────────┬───────────────────┘
-          │
-          ▼
-     cache/.state/  (sync tracking)
-     cache/<source>/  (HTML files)
-          │
-          ▼
-┌─────────────────────────────┐
-│   HTML Cleaner & Parser     │  (extract content)
-└─────────┬───────────────────┘
-          │
-          ▼
-┌─────────────────────────────┐
-│  Markdown Converter         │  (HTML → Markdown)
-└─────────┬───────────────────┘
-          │
-          ▼
-┌─────────────────────────────┐
-│  Metadata Extractor (LLM)   │  (title, category, tags...)
-└─────────┬───────────────────┘
-          │
-          ▼
-┌─────────────────────────────┐
-│  OKF Schema Validator       │  (validate frontmatter)
-└─────────┬───────────────────┘
-          │
-          ▼
-     knowledge/<category>/*.md
-          │
-          ▼
-┌─────────────────────────────┐
-│  Indexer (LlamaIndex)       │  (chunk + embed)
-└─────────┬───────────────────┘
-          │
-          ▼
-       Qdrant
+The model provider is external to the Compose stack. `AI_PROVIDER` selects the
+Gemini Developer API or Vertex AI implementation.
+
+## Storage model
+
+```text
+cache/                         disposable input and processing state
+├── .state/                    crawl, processing, and vector-state records
+├── <source>/                  cached pages grouped by crawl source
+└── <uploaded files>           raw user uploads
+
+knowledge/                     durable source of truth
+└── <category>/<concept>.md    validated OKF concepts
+
+qdrant_storage/                generated local vector index
 ```
 
-### 2. Query Flow
+- `cache/` can be removed, but doing so discards downloads and incremental
+  ingestion state.
+- `knowledge/` should be preserved and versioned. Regeneration can require
+  network access and paid model calls.
+- `qdrant_storage/` is operational data. If it is lost or the embedding model
+  changes, rebuild it from `knowledge/`.
 
-```
-User Question
-     │
-     ▼
-┌─────────────────────────────┐
-│   Query Engine              │
-└─────────┬───────────────────┘
-          │
-      ┌───┴───┐
-      ▼       ▼
-  Semantic  Keyword
-   Search    Search
-   (Qdrant) (Filesystem)
-      │       │
-      └───┬───┘
-          │
-          ▼
-┌─────────────────────────────┐
-│  Context Builder            │  (retrieve concept texts)
-└─────────┬───────────────────┘
-          │
-          ▼
-┌─────────────────────────────┐
-│  LLM (Answer Generation)    │  (grounded prompting)
-└─────────┬───────────────────┘
-          │
-          ▼
-   Answer + Citations
+## Ingestion
+
+```mermaid
+flowchart TD
+    Start[Ingestion request] --> Job[Tracked background job]
+    Job --> Mode{Input mode}
+    Mode -->|Configured sources| Discover[Discover and crawl URLs]
+    Mode -->|Upload| Save[Validate and save selected files]
+    Discover --> Cache[(cache/)]
+    Save --> Cache
+    Cache --> Load[Load PDF, Markdown, text, JSON, or HTML]
+    Load --> Convert[Clean and convert content]
+    Convert --> Metadata[Extract or infer metadata]
+    Metadata --> Validate[Validate and format OKF concepts]
+    Validate --> Repo[(knowledge/)]
+    Repo --> Changed[Select changed or missing documents]
+    Changed --> Embed[Chunk and embed]
+    Embed --> Index[(Qdrant)]
 ```
 
-## Module Organization
+Configured crawls read `config/sources.yaml`. Upload jobs run in upload-only
+mode so an upload does not unexpectedly process unrelated cached files.
 
-### `app/core/`
-- **config.py**: Central configuration (paths, models, API keys)
-- **gemini_llm.py**: Gemini API wrapper with retry logic
+The job manager serializes ingestion work, exposes progress, and checks for
+cancellation between documents. State files and content hashes support
+incremental processing. Before re-indexing a source file, its previous Qdrant
+points are removed so repeated ingestion remains idempotent.
 
-### `app/storage/`
-- **state_manager.py**: Processing state, crawler state, file tracking
-- Handles incremental ingestion (only process changed files)
+Metadata extraction prefers the selected model provider and can infer basic
+metadata when model-backed extraction is unavailable. Indexing requires a
+working embedding provider and Qdrant.
 
-### `app/ingestion/`
-- **crawler.py**: Web crawler with sitemap discovery and caching
-- **loaders.py**: Local file loader (PDF, Markdown, TXT, JSON)
-- **pipeline.py**: Orchestrates the ingestion process
-- **metadata_extractor.py**: LLM-powered metadata extraction
-- **status.py**: Shared ingestion status for UI progress
+## Retrieval and answer generation
 
-### `app/parser/`
-- **sitemap.py**: Sitemap.xml parsing and URL discovery
-- **cleaner.py**: HTML cleaning (remove nav, ads, scripts)
+```mermaid
+sequenceDiagram
+    actor User
+    participant API as FastAPI
+    participant Search as Search service
+    participant FS as knowledge/
+    participant Q as Qdrant
+    participant LLM as Configured LLM
 
-### `app/converter/`
-- **markdown.py**: HTML → Markdown conversion, concept splitting
-
-### `app/okf/`
-- **schema.py**: Pydantic models for OKF frontmatter validation
-- **parser.py**: Parse .md files into (metadata, content) tuples
-- **formatter.py**: Format and save OKF Markdown files
-- **repository.py**: Filesystem-based knowledge repository
-  - Load/list/search concepts from `knowledge/`
-  - Source of truth for the knowledge base
-
-### `app/indexing/`
-- **indexer.py**: Convert concepts to LlamaIndex Documents, index into Qdrant
-
-### `app/retrieval/`
-- **hybrid_search.py**: Qdrant integration (dense + sparse vectors)
-- **query_engine.py**: LLM configuration and retrieval setup
-
-### `app/query/`
-- **search.py**: Unified search (keyword, semantic, auto)
-- **engine.py**: AI answer generation with citation enforcement
-
-### `app/api/`
-- **main.py**: FastAPI application entry point
-- **routers/ingest.py**: Ingestion API endpoints
-- **routers/query.py**: Query/ask API endpoints
-- **routers/concepts.py**: Concept browsing API
-
-### `app/ui/`
-- **app.py**: Streamlit frontend
-
-## State Management
-
-### Crawler State (`cache/.state/<source>.json`)
-
-Tracks HTTP ETags, Last-Modified headers, and content hashes for each crawled URL:
-
-```json
-{
-  "version": 1,
-  "source": "kubernetes-docs",
-  "pages": {
-    "https://kubernetes.io/docs/concepts/": {
-      "raw_file": "kubernetes-docs/abc123.html",
-      "content_hash": "sha256...",
-      "etag": "\"abc123\"",
-      "last_modified": "Tue, 01 Jan 2024 00:00:00 GMT"
-    }
-  }
-}
+    User->>API: Search or ask
+    API->>Search: Query, category, mode, top_k
+    Search->>Q: Dense semantic search
+    Search->>FS: Keyword search / result hydration
+    Search-->>API: Ranked concepts and source metadata
+    alt Search request
+        API-->>User: Matching concepts
+    else Answer request
+        API->>LLM: Question plus bounded source context
+        LLM-->>API: Grounded answer with citations
+        API-->>User: Answer, sources, and retrieval mode
+    end
 ```
 
-### Processing State (`cache/.state/processing.json`)
+Search mode `auto` uses semantic retrieval when available and falls back to
+filesystem keyword search when it is not. Retrieved previews are hydrated from
+the authoritative concept files before answer generation. The prompt requires
+the model to use only supplied context and cite source titles.
 
-Tracks local raw files to enable incremental ingestion:
+Qdrant currently uses dense vectors. Sparse vectors are disabled because the
+pinned FastEmbed, Qdrant client, and LlamaIndex integration versions have an
+incompatible sparse-metadata API. “Hybrid” behavior at the application layer
+therefore means semantic retrieval with keyword fallback, not simultaneous
+dense/sparse fusion inside Qdrant.
 
-```json
-{
-  "files": {
-    "docker-tutorial.pdf": {
-      "content_hash": "sha256...",
-      "okf_file": "docker-tutorial_0.md"
-    }
-  }
-}
-```
+## OKF concept format
 
-## OKF Concept Schema
-
-Every knowledge concept is a Markdown file with validated YAML frontmatter:
-
-```markdown
----
-id: k8s-deployment
-type: concept
-title: Kubernetes Deployment
-description: Declarative controller for managing Pods
-category: kubernetes
-tags: [deployment, workload, controller]
-source:
-  name: Kubernetes Documentation
-  url: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
-created_at: 2026-08-05
-updated_at: 2026-08-05
-aliases: [Deployment, K8s Deployment]
-related: [k8s-replicaset, k8s-pod]
----
-
-# Kubernetes Deployment
-
-A Deployment provides declarative updates for Pods and ReplicaSets...
-```
-
-### Required Fields
-- `id`: Unique identifier (slug)
-- `title`: Human-readable title
-- `category`: Knowledge category
-- `type`: Concept type (concept, tutorial, reference...)
-
-### Optional Fields
-- `description`: One-sentence summary
-- `tags`: Searchable keywords
-- `source`: Official documentation provenance
-- `aliases`: Alternative names for lookup
-- `related`: Links to related concepts
-- `created_at`, `updated_at`: ISO date strings
-
-## Configuration
-
-### Environment Variables (`.env`)
-
-```env
-# Required
-GEMINI_API_KEY=your_key_here
-
-# Optional - Paths
-CACHE_DIR=cache
-KNOWLEDGE_DIR=knowledge
-SOURCES_CONFIG=config/sources.yaml
-
-# Optional - Qdrant
-QDRANT_URL=http://localhost:6333
-QDRANT_CONCEPTS_COLLECTION=okf_concepts
-
-# Optional - Models
-LLM_MODEL=gemini-flash-lite-latest
-EMBEDDING_MODEL=models/gemini-embedding-001
-TEMPERATURE=0.1
-
-# Optional - RAG
-TOP_K=5
-CHUNK_SIZE=512
-CHUNK_OVERLAP=50
-```
-
-### Source Configuration (`config/sources.yaml`)
+Each concept is a Markdown body with YAML frontmatter. The core fields are:
 
 ```yaml
-crawler:
-  delay: 0.5  # seconds between requests
-  timeout: 30
-  max_urls_per_source: 500
-  user_agent: "OKF-Crawler/1.0"
-
-sources:
-  - name: kubernetes-docs
-    base_url: https://kubernetes.io
-    sitemap_url: https://kubernetes.io/sitemap.xml
-    url_filter: "^https://kubernetes.io/docs/"
-    enabled: true
-
-  - name: docker-docs
-    base_url: https://docs.docker.com
-    enabled: true
+---
+id: kubernetes-deployment
+type: concept
+title: Kubernetes Deployment
+description: A controller that manages replicated Pods.
+category: kubernetes
+tags:
+  - deployment
+  - workload
+source:
+  name: Kubernetes documentation
+  url: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+---
 ```
 
-## Design Decisions
+The schema and parsing rules are defined in `app/okf/`. Source metadata flows
+through the index and query response so answers can cite original material.
 
-### Why Filesystem as Source of Truth?
+## Component map
 
-1. **Portability**: Knowledge base is just a folder of Markdown files
-2. **Reviewability**: Diffs show exactly what changed
-3. **Editability**: Concepts can be manually refined
-4. **Resilience**: No database corruption can destroy the knowledge base
-5. **Simplicity**: No complex database schema to maintain
+| Package | Responsibility |
+| --- | --- |
+| `app/api/` | FastAPI setup and ingestion, job, query, and concept routes |
+| `app/core/` | Settings, provider clients, authentication, and retry policy |
+| `app/ingestion/` | Crawling, loading, metadata extraction, status, and orchestration |
+| `app/jobs/` | In-process job queue, lifecycle, progress, and cancellation |
+| `app/parser/` | Sitemap discovery and HTML cleanup |
+| `app/converter/` | Markdown conversion and concept splitting |
+| `app/okf/` | Schema, parsing, formatting, and filesystem repository |
+| `app/indexing/` | Document conversion, vector-state tracking, and indexing |
+| `app/query/` | Search coordination and grounded answer generation |
+| `app/retrieval/` | Qdrant and LlamaIndex integration |
+| `app/storage/` | Persistent ingestion state |
+| `app/ui/` | Streamlit application and visual components |
 
-### Why Separate Cache and Knowledge?
+## Runtime and failure behavior
 
-1. **Cost**: Metadata extraction requires LLM API calls (expensive)
-2. **Versioning**: Knowledge should be version-controlled, cache should not
-3. **Clarity**: Disposable data vs. valuable assets clearly separated
-4. **Rebuilds**: Can re-crawl without losing curated knowledge
+- API dependency health is reported by `GET /health`; a degraded dependency
+  does not make the liveness endpoint itself fail.
+- Model calls retry quota and rate-limit failures with exponential backoff.
+- A failed document does not abort the entire indexing batch; failures are
+  reported and processing continues.
+- Search can fall back to the filesystem when semantic retrieval is
+  unavailable. Generating an answer still requires a configured LLM.
+- Jobs and live progress are in-process state. Restarting the API interrupts
+  active jobs, while filesystem and Qdrant data remain persistent.
 
-### Why Incremental State Tracking?
+## Configuration boundaries
 
-1. **Efficiency**: Don't re-process unchanged documents
-2. **Speed**: Only extract metadata for new/modified files
-3. **Cost**: Avoid unnecessary LLM API calls
-4. **UX**: Faster ingestion means better user experience
+Runtime settings are defined in `app/core/config.py` and loaded from environment
+variables or `.env`. Crawl definitions live in `config/sources.yaml`. Small,
+explicitly sourced context additions used during answer generation live in
+`config/context_supplements.yaml`.
 
-## Error Handling
-
-### Graceful Degradation
-
-- **No API key**: Ingestion stores raw documents, skips metadata extraction
-- **Qdrant down**: Keyword search still works via filesystem
-- **LLM timeout**: Retry with exponential backoff, then skip document
-
-### Validation
-
-- **OKF Schema**: Pydantic validates frontmatter before saving
-- **Unusable Concepts**: Documents with placeholder titles are skipped
-- **File Hash**: Prevents duplicate processing of identical files
-
-## Performance Considerations
-
-### Indexing
-
-- **Batch Size**: 10 documents per Qdrant batch (avoid timeouts)
-- **Parallel Metadata**: ThreadPoolExecutor for LLM calls (3 workers)
-- **Caching**: Repository caches loaded concepts (invalidate on mtime change)
-
-### Search
-
-- **Hybrid**: Combines dense (semantic) and sparse (keyword) retrieval
-- **Fallback**: Keyword search always available, even without embeddings
-- **Top-K**: Default 5 results to balance relevance and context size
-
-### Crawler
-
-- **Rate Limiting**: Configurable delay between requests
-- **Conditional Requests**: Uses ETags and Last-Modified headers
-- **Incremental**: Only downloads changed pages
-
-## Future Enhancements
-
-1. **Service Layer**: Extract services for crawler, converter, indexer
-2. **Validation Layer**: Comprehensive input/output validation
-3. **Async Pipeline**: Full async/await for ingestion
-4. **Graph Relations**: Index `related` field for concept graph
-5. **Versioning**: Track concept history and changes over time
-6. **Multi-tenancy**: Support multiple knowledge bases
-7. **Plugin System**: Pluggable converters for new document types
+Secrets belong only in `.env` or the provider's credential mechanism. They must
+not be stored in source configuration, knowledge files, or documentation.

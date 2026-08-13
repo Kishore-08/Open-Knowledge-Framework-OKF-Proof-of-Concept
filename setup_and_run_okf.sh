@@ -1,254 +1,185 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Exit immediately on errors, undefined variables, and pipe failures
-set -euo pipefail
+set -Eeuo pipefail
 
-# Colors for terminal output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly NC='\033[0m'
 
-echo -e "${BLUE}====================================================${NC}"
-echo -e "${GREEN}🚀 Starting OKF PoC Docker Setup${NC}"
-echo -e "${BLUE}====================================================${NC}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
-PROJECT_DIR="okf-poc"
-
-# -------------------------------------------------------
-# Check Required Tools
-# -------------------------------------------------------
-echo -e "\n${BLUE}🔍 Checking prerequisites...${NC}"
-
-if ! command -v docker >/dev/null 2>&1; then
-    echo -e "${RED}❌ Docker is not installed.${NC}"
-    echo "Please install Docker Desktop or Docker Engine."
-    exit 1
-fi
-echo -e "${GREEN}✅ Docker found${NC}"
-
-if ! docker compose version >/dev/null 2>&1; then
-    echo -e "${RED}❌ Docker Compose is not installed.${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✅ Docker Compose found${NC}"
-
-if ! command -v curl >/dev/null 2>&1; then
-    echo -e "${RED}❌ curl is required but not installed.${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✅ curl found${NC}"
-
-# -------------------------------------------------------
-# Move into Project
-# -------------------------------------------------------
-if [ ! -d "$PROJECT_DIR" ]; then
-    echo -e "\n${RED}❌ Project directory '${PROJECT_DIR}' not found.${NC}"
-    echo "Run the project scaffold script first."
+if [[ -f "${SCRIPT_DIR}/okf-poc/docker-compose.yml" ]]; then
+    PROJECT_DIR="${SCRIPT_DIR}/okf-poc"
+elif [[ -f "${SCRIPT_DIR}/docker-compose.yml" ]]; then
+    PROJECT_DIR="${SCRIPT_DIR}"
+else
+    printf '%bError: could not find okf-poc/docker-compose.yml.%b\n' "$RED" "$NC" >&2
     exit 1
 fi
 
 cd "$PROJECT_DIR"
-echo -e "${GREEN}✅ Project directory found${NC}"
 
-# -------------------------------------------------------
-# Create / Sync / Validate .env
-# -------------------------------------------------------
-echo -e "\n${BLUE}🔍 Syncing and Validating .env file...${NC}"
+info() { printf '%b%s%b\n' "$BLUE" "$1" "$NC"; }
+success() { printf '%b%s%b\n' "$GREEN" "$1" "$NC"; }
+warn() { printf '%b%s%b\n' "$YELLOW" "$1" "$NC"; }
+fail() { printf '%b%s%b\n' "$RED" "$1" "$NC" >&2; exit 1; }
 
-if [ ! -f ".env.example" ]; then
-    echo -e "${RED}❌ .env.example not found. Cannot validate configurations.${NC}"
-    exit 1
-fi
+get_env_value() {
+    local key="$1"
+    awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, ""); print; exit }' .env
+}
 
-if [ ! -f ".env" ]; then
-    cp .env.example .env
-    echo -e "${GREEN}✅ .env created from .env.example${NC}"
-else
-    grep -Ev '^[[:space:]]*(#|$)' .env.example | while IFS='=' read -r key value; do
-
-        key=$(echo "$key" | xargs)
-
-        if [ -n "$key" ]; then
-            if ! grep -Eq "^${key}=" .env; then
-                echo "${key}=${value}" >> .env
-                echo -e "${YELLOW}➕ Added missing config: ${key}${NC}"
-            fi
-        fi
-
-    done
-
-    echo -e "${GREEN}✅ .env structure is up to date.${NC}"
-fi
-
-# -------------------------------------------------------
-# Helper functions
-# -------------------------------------------------------
-
-update_env_file() {
-    local key=$1
-    local val=$2
+set_env_value() {
+    local key="$1"
+    local value="$2"
     local temp_file
-    temp_file=$(mktemp)
-    
-    # awk safely updates values even if they contain special chars like / or &
-    awk -v k="$key" -v v="$val" '
-    BEGIN { FS=OFS="=" }
-    $1 == k { $2=v; found=1 }
-    { print }
-    END { if (!found) print k "=" v }
-    ' .env > "$temp_file" && mv "$temp_file" .env
+    temp_file="$(mktemp)"
+
+    awk -v key="$key" -v value="$value" '
+        BEGIN { updated = 0 }
+        index($0, key "=") == 1 {
+            if (!updated) print key "=" value
+            updated = 1
+            next
+        }
+        { print }
+        END { if (!updated) print key "=" value }
+    ' .env > "$temp_file"
+    mv "$temp_file" .env
 }
 
-prompt_for_value() {
-    local VAR_NAME="$1"
-    local SECRET="$2"
-    local NEW_VALUE=""
+is_placeholder() {
+    local value="$1"
+    [[ -z "$value" || "$value" == your_* || "$value" == \$\{*\} ]]
+}
 
-    while [ -z "$NEW_VALUE" ]; do
-        if [ "$SECRET" = "true" ]; then
-            read -s -p "Enter new value for ${VAR_NAME}: " NEW_VALUE
-            echo ""
+prompt_value() {
+    local key="$1"
+    local secret="${2:-false}"
+    local value=""
+
+    while [[ -z "$value" ]]; do
+        if [[ "$secret" == true ]]; then
+            read -r -s -p "Enter ${key}: " value
+            printf '\n'
         else
-            read -p "Enter new value for ${VAR_NAME}: " NEW_VALUE
+            read -r -p "Enter ${key}: " value
         fi
-
-        if [ -z "$NEW_VALUE" ]; then
-            echo -e "${RED}❌ ${VAR_NAME} cannot be empty.${NC}"
-        fi
+        [[ -n "$value" ]] || warn "${key} cannot be empty."
     done
 
-    update_env_file "$VAR_NAME" "$NEW_VALUE"
-    echo -e "${GREEN}✅ ${VAR_NAME} updated successfully in .env${NC}"
+    set_env_value "$key" "$value"
+    success "Updated ${key} in .env."
 }
 
-check_and_update() {
-    local VAR_NAME="$1"
-    local PLACEHOLDER="$2"
-    local SECRET="$3"
+require_config() {
+    local key="$1"
+    local secret="${2:-false}"
+    local value
+    value="$(get_env_value "$key")"
 
-    local CURRENT_VALUE=""
-
-    # Read current value only if .env exists
-    if [ -f ".env" ]; then
-        CURRENT_VALUE=$(grep -E "^${VAR_NAME}=" .env | head -n1 | cut -d'=' -f2-)
-    fi
-
-    # Remove leading/trailing spaces
-    CURRENT_VALUE=$(echo "$CURRENT_VALUE" | xargs)
-
-    # -------------------------------------------------------
-    # Case 1: Missing or Placeholder -> Force user input
-    # -------------------------------------------------------
-    if [ -z "$CURRENT_VALUE" ] || [ "$CURRENT_VALUE" = "$PLACEHOLDER" ]; then
-        echo
-        echo -e "${YELLOW}⚠️  ${VAR_NAME} is not configured.${NC}"
-        echo -e "${YELLOW}Please enter a valid ${VAR_NAME} to continue.${NC}"
-
-        prompt_for_value "$VAR_NAME" "$SECRET"
-        return
-    fi
-
-    # -------------------------------------------------------
-    # Case 2: Existing key found
-    # -------------------------------------------------------
-    local MASKED_VAL
-
-    if [ ${#CURRENT_VALUE} -gt 8 ]; then
-        MASKED_VAL="${CURRENT_VALUE:0:4}****${CURRENT_VALUE: -4}"
+    if is_placeholder "$value"; then
+        warn "${key} is not configured."
+        prompt_value "$key" "$secret"
     else
-        MASKED_VAL="********"
+        success "${key} is configured."
     fi
-
-    echo
-    echo -e "${GREEN}✅ ${VAR_NAME} is already configured.${NC}"
-    echo -e "${BLUE}Current Value : ${MASKED_VAL}${NC}"
-
-    while true; do
-        read -rp "Do you want to update it? (y/N): " UPDATE_CHOICE
-
-        case "$UPDATE_CHOICE" in
-            y|Y)
-                prompt_for_value "$VAR_NAME" "$SECRET"
-                break
-                ;;
-            n|N|"")
-                echo -e "${GREEN}✅ Keeping existing ${VAR_NAME}.${NC}"
-                break
-                ;;
-            *)
-                echo "Please enter y or n."
-                ;;
-        esac
-    done
 }
 
-# -------------------------------------------------------
-# Required Variables to Check Interactively
-# -------------------------------------------------------
-check_and_update "GEMINI_API_KEY" "your_gemini_api_key_here" true
+wait_for_url() {
+    local name="$1"
+    local url="$2"
+    local service="$3"
+    local max_attempts="${4:-30}"
+    local attempt
 
-echo -e "\n${GREEN}🎉 .env validation completed.${NC}"
+    info "Waiting for ${name}..."
+    for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+        if curl --fail --silent --show-error --max-time 3 "$url" >/dev/null 2>&1; then
+            success "${name} is ready."
+            return 0
+        fi
+        sleep 2
+    done
 
-# -------------------------------------------------------
-# Build & Start Containers
-# -------------------------------------------------------
-echo -e "\n${BLUE}🐳 Building Docker images...${NC}"
-docker compose build
+    printf '%b%s failed to become ready. Recent logs:%b\n' "$RED" "$name" "$NC" >&2
+    docker compose logs --tail=100 "$service" >&2 || true
+    return 1
+}
 
-echo -e "\n${BLUE}🚀 Starting containers...${NC}"
-docker compose up -d
+printf '%b====================================================%b\n' "$BLUE" "$NC"
+success "Starting OKF PoC Docker setup"
+printf '%b====================================================%b\n' "$BLUE" "$NC"
 
-# -------------------------------------------------------
-# Wait for Qdrant
-# -------------------------------------------------------
-echo -e "\n${YELLOW}⏳ Waiting for Qdrant to be ready...${NC}"
+info "Checking prerequisites..."
+command -v docker >/dev/null 2>&1 || fail "Docker is not installed."
+docker compose version >/dev/null 2>&1 || fail "Docker Compose v2 is not available."
+command -v curl >/dev/null 2>&1 || fail "curl is not installed."
+docker info >/dev/null 2>&1 || fail "The Docker daemon is not running or is not accessible."
+success "Docker, Docker Compose, and curl are available."
 
-ATTEMPTS=0
-MAX_ATTEMPTS=30
+info "Preparing environment configuration..."
+[[ -f .env.example ]] || fail ".env.example was not found in ${PROJECT_DIR}."
 
-until curl -fs http://localhost:6333/collections >/dev/null 2>&1
-do
-    ATTEMPTS=$((ATTEMPTS + 1))
-    
-    if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
-        echo -e "\n${RED}❌ Qdrant failed to start.${NC}\n"
-        docker compose logs qdrant
-        exit 1
-    fi
-    sleep 2
-done
+if [[ ! -f .env ]]; then
+    cp .env.example .env
+    success "Created .env from .env.example."
+else
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ "$line" =~ ^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)= ]] || continue
+        key="${BASH_REMATCH[1]}"
+        if ! grep -qE "^${key}=" .env; then
+            printf '%s\n' "$line" >> .env
+            warn "Added missing setting ${key} from .env.example."
+        fi
+    done < .env.example
+fi
 
-echo -e "${GREEN}✅ Qdrant is ready.${NC}"
+provider="$(get_env_value AI_PROVIDER)"
+provider="${provider,,}"
+if [[ "$provider" != gemini && "$provider" != vertex ]]; then
+    warn "AI_PROVIDER must be either 'gemini' or 'vertex'."
+    while [[ "$provider" != gemini && "$provider" != vertex ]]; do
+        read -r -p "Choose AI provider (gemini/vertex): " provider
+        provider="${provider,,}"
+    done
+    set_env_value AI_PROVIDER "$provider"
+fi
 
-# -------------------------------------------------------
-# Show Running Containers
-# -------------------------------------------------------
-echo -e "\n${BLUE}📦 Running Containers${NC}"
-echo "----------------------------------------------------"
+if [[ "$provider" == gemini ]]; then
+    info "Validating Gemini Developer API configuration..."
+    require_config GEMINI_API_KEY true
+else
+    info "Validating Vertex AI configuration..."
+    require_config VERTEX_AI_PROJECT_ID false
+    require_config VERTEX_AI_LOCATION false
+    require_config VERTEX_ACCESS_TOKEN true
+    warn "VERTEX_ACCESS_TOKEN is short-lived and may need to be refreshed before a later run."
+fi
+
+success "Environment configuration is ready (${provider})."
+
+info "Validating Docker Compose configuration..."
+docker compose config --quiet
+success "Docker Compose configuration is valid."
+
+info "Building and starting api, ui, and qdrant..."
+docker compose up --build --detach --remove-orphans
+
+wait_for_url "Qdrant" "http://localhost:6333/collections" qdrant 30
+wait_for_url "FastAPI" "http://localhost:8000/health" api 45
+wait_for_url "Streamlit" "http://localhost:8501/_stcore/health" ui 45
+
+printf '\n'
 docker compose ps
-echo "----------------------------------------------------"
 
-# -------------------------------------------------------
-# Show URLs
-# -------------------------------------------------------
-echo -e "\n${GREEN}====================================================${NC}"
-echo -e "${GREEN}🎉 OKF PoC Started Successfully${NC}"
-echo -e "${GREEN}====================================================${NC}"
-
-echo -e "\n🌐 ${YELLOW}Streamlit UI${NC}"
-echo "http://localhost:8501"
-
-echo -e "\n📘 ${YELLOW}FastAPI Docs${NC}"
-echo "http://localhost:8000/docs"
-
-echo -e "\n🧠 ${YELLOW}Qdrant Dashboard${NC}"
-echo "http://localhost:6333/dashboard"
-
-echo -e "\n🔍 ${YELLOW}Qdrant API${NC}"
-echo "http://localhost:6333"
-
-echo -e "\n${BLUE}====================================================${NC}"
-echo -e "${BLUE}✅ Setup Complete${NC}"
-echo -e "${BLUE}====================================================${NC}"
+printf '\n%b====================================================%b\n' "$GREEN" "$NC"
+success "OKF PoC started successfully"
+printf '%b====================================================%b\n' "$GREEN" "$NC"
+printf 'Streamlit UI:     http://localhost:8501\n'
+printf 'FastAPI docs:     http://localhost:8000/docs\n'
+printf 'API health:       http://localhost:8000/health\n'
+printf 'Qdrant dashboard: http://localhost:6333/dashboard\n'
+printf '\nView logs with: cd %q && docker compose logs -f api ui qdrant\n' "$PROJECT_DIR"

@@ -1,0 +1,338 @@
+{
+    "timestamp": "20260813_165846",
+    "model": "gemini-3.5-flash",
+    "embedding_model": "gemini-embedding-001",
+    "total_questions": 20,
+    "overall_scores": {
+        "faithfulness_score": 0.8761904761904763,
+        "hallucination_rate": 0.1238095238095237,
+        "answer_correctness_score": 0.7195681768694467,
+        "context_precision_score": 0.6830555555254538,
+        "context_recall_score": 0.9083333333333332,
+        "answer_relevancy_score": 0.7372686160600173,
+        "citation_quality_score": 0.39,
+        "average_cited_sources": 1.95,
+        "average_citable_sources": 4.9
+    },
+    "retrieval_quality": {
+        "context_precision_score": 0.6830555555254538,
+        "context_recall_score": 0.9083333333333332,
+        "answer_relevancy_score": 0.7372686160600173
+    },
+    "answer_correctness": {
+        "answer_correctness_score": 0.7195681768694467
+    },
+    "hallucination": {
+        "faithfulness_score": 0.8761904761904763,
+        "hallucination_rate": 0.1238095238095237
+    },
+    "source_citation_quality": {
+        "citation_quality_score": 0.39,
+        "average_cited_sources": 1.95,
+        "average_citable_sources": 4.9
+    },
+    "document_observations": {
+        "https://kubernetes.io/docs/concepts/workloads/pods/": {
+            "title": "Pods",
+            "source_url": "https://kubernetes.io/docs/concepts/workloads/pods/",
+            "category": "kubernetes",
+            "times_retrieved": 5,
+            "times_cited": 2
+        },
+        "https://kubernetes.io/docs/concepts/overview/": {
+            "title": "Overview",
+            "source_url": "https://kubernetes.io/docs/concepts/overview/",
+            "category": "kubernetes",
+            "times_retrieved": 6,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/workloads/pods/pod-condition/": {
+            "title": "DisruptionTarget",
+            "source_url": "https://kubernetes.io/docs/concepts/workloads/pods/pod-condition/",
+            "category": "kubernetes",
+            "times_retrieved": 2,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/": {
+            "title": "StatefulSets",
+            "source_url": "https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/",
+            "category": "kubernetes",
+            "times_retrieved": 2,
+            "times_cited": 1
+        },
+        "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/": {
+            "title": "Updating a Deployment",
+            "source_url": "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/",
+            "category": "kubernetes",
+            "times_retrieved": 3,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/": {
+            "title": "Deployments",
+            "source_url": "https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/",
+            "category": "kubernetes",
+            "times_retrieved": 6,
+            "times_cited": 2
+        },
+        "https://kubernetes.io/docs/concepts/architecture/": {
+            "title": "kubelet",
+            "source_url": "https://kubernetes.io/docs/concepts/architecture/",
+            "category": "kubernetes",
+            "times_retrieved": 6,
+            "times_cited": 5
+        },
+        "https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/": {
+            "title": "`GetAllocatableResources` gRPC endpoint",
+            "source_url": "https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/overview/components/": {
+            "title": "Node Components",
+            "source_url": "https://kubernetes.io/docs/concepts/overview/components/",
+            "category": "kubernetes",
+            "times_retrieved": 4,
+            "times_cited": 3
+        },
+        "https://kubernetes.io/docs/concepts/cluster-administration/logging/": {
+            "title": "Log locations",
+            "source_url": "https://kubernetes.io/docs/concepts/cluster-administration/logging/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/": {
+            "title": "API server to kubelet",
+            "source_url": "https://kubernetes.io/docs/concepts/architecture/control-plane-node-communication/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/services-networking/service/": {
+            "title": "Services in Kubernetes",
+            "source_url": "https://kubernetes.io/docs/concepts/services-networking/service/",
+            "category": "kubernetes",
+            "times_retrieved": 4,
+            "times_cited": 3
+        },
+        "https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/": {
+            "title": "Third party ingress controllers",
+            "source_url": "https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/",
+            "category": "kubernetes",
+            "times_retrieved": 3,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/services-networking/ingress/": {
+            "title": "Ingress",
+            "source_url": "https://kubernetes.io/docs/concepts/services-networking/ingress/",
+            "category": "kubernetes",
+            "times_retrieved": 3,
+            "times_cited": 2
+        },
+        "https://kubernetes.io/docs/concepts/workloads/pods/probes/": {
+            "title": "Probe results",
+            "source_url": "https://kubernetes.io/docs/concepts/workloads/pods/probes/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 1
+        },
+        "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/": {
+            "title": "Liveness probe",
+            "source_url": "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+            "category": "kubernetes",
+            "times_retrieved": 5,
+            "times_cited": 2
+        },
+        "https://kubernetes.io/docs/concepts/storage/projected-volumes/": {
+            "title": "podCertificate projected volumes",
+            "source_url": "https://kubernetes.io/docs/concepts/storage/projected-volumes/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "https://man7.org/linux/man-pages/man1/abidiff.1.html": {
+            "title": "RETURN VALUES \u00a0 \u00a0 \u00a0 \u00a0 [top](https://man7.org/linux/man-pages/man1/abidiff.1.html#top_of_page)",
+            "source_url": "https://man7.org/linux/man-pages/man1/abidiff.1.html",
+            "category": "linux-man-pages",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/configuration/configmap/": {
+            "title": "ConfigMaps",
+            "source_url": "https://kubernetes.io/docs/concepts/configuration/configmap/",
+            "category": "kubernetes",
+            "times_retrieved": 4,
+            "times_cited": 2
+        },
+        "https://kubernetes.io/docs/concepts/storage/volumes/": {
+            "title": "configMap",
+            "source_url": "https://kubernetes.io/docs/concepts/storage/volumes/",
+            "category": "kubernetes",
+            "times_retrieved": 2,
+            "times_cited": 2
+        },
+        "https://kubernetes.io/docs/concepts/architecture/controller/": {
+            "title": "Ways of running controllers",
+            "source_url": "https://kubernetes.io/docs/concepts/architecture/controller/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/": {
+            "title": "Concepts",
+            "source_url": "https://kubernetes.io/docs/concepts/",
+            "category": "kubernetes",
+            "times_retrieved": 2,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/extend-kubernetes/operator/": {
+            "title": "An example operator",
+            "source_url": "https://kubernetes.io/docs/concepts/extend-kubernetes/operator/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/overview/kubernetes-api/": {
+            "title": "The Kubernetes API",
+            "source_url": "https://kubernetes.io/docs/concepts/overview/kubernetes-api/",
+            "category": "kubernetes",
+            "times_retrieved": 3,
+            "times_cited": 1
+        },
+        "https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/": {
+            "title": "Overview",
+            "source_url": "https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/",
+            "category": "kubernetes",
+            "times_retrieved": 2,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/storage/persistent-volumes/": {
+            "title": "Unused PVC tracking",
+            "source_url": "https://kubernetes.io/docs/concepts/storage/persistent-volumes/",
+            "category": "kubernetes",
+            "times_retrieved": 6,
+            "times_cited": 1
+        },
+        "https://kubernetes.io/docs/concepts/services-networking/network-policies/": {
+            "title": "Network Policies",
+            "source_url": "https://kubernetes.io/docs/concepts/services-networking/network-policies/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 1
+        },
+        "https://kubernetes.io/docs/concepts/security/cloud-native-security/": {
+            "title": "Networking and security",
+            "source_url": "https://kubernetes.io/docs/concepts/security/cloud-native-security/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 1
+        },
+        "https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/": {
+            "title": "Configuring graceful node shutdown",
+            "source_url": "https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/": {
+            "title": "DaemonSet",
+            "source_url": "https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/",
+            "category": "kubernetes",
+            "times_retrieved": 2,
+            "times_cited": 1
+        },
+        "https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/": {
+            "title": "kube-scheduler",
+            "source_url": "https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/",
+            "category": "kubernetes",
+            "times_retrieved": 3,
+            "times_cited": 2
+        },
+        "https://kubernetes.io/docs/concepts/workloads/podgroup-api/": {
+            "title": "What is a PodGroup?",
+            "source_url": "https://kubernetes.io/docs/concepts/workloads/podgroup-api/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/workloads/autoscaling/": {
+            "title": "Scaling workloads horizontally",
+            "source_url": "https://kubernetes.io/docs/concepts/workloads/autoscaling/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 1
+        },
+        "https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/": {
+            "title": "How does a HorizontalPodAutoscaler work?",
+            "source_url": "https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/",
+            "category": "kubernetes",
+            "times_retrieved": 2,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/cluster-administration/node-autoscaling/": {
+            "title": "Horizontal workload autoscaling",
+            "source_url": "https://kubernetes.io/docs/concepts/cluster-administration/node-autoscaling/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 1
+        },
+        "Data Ingestion Task Status and Metrics": {
+            "title": "Data Ingestion Task Status and Metrics",
+            "source_url": "",
+            "category": "api-spec",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "Ingestion Pipeline Status JSON": {
+            "title": "Ingestion Pipeline Status JSON",
+            "source_url": "",
+            "category": "api-spec",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/security/pod-security-standards/": {
+            "title": "Baseline",
+            "source_url": "https://kubernetes.io/docs/concepts/security/pod-security-standards/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/architecture/nodes/": {
+            "title": "Manual Node administration",
+            "source_url": "https://kubernetes.io/docs/concepts/architecture/nodes/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/security/service-accounts/": {
+            "title": "Grant permissions to a ServiceAccount",
+            "source_url": "https://kubernetes.io/docs/concepts/security/service-accounts/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/": {
+            "title": "Namespaces",
+            "source_url": "https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/",
+            "category": "kubernetes",
+            "times_retrieved": 2,
+            "times_cited": 2
+        },
+        "https://kubernetes.io/docs/concepts/policy/resource-quotas/": {
+            "title": "Cross-namespace pod affinity scope",
+            "source_url": "https://kubernetes.io/docs/concepts/policy/resource-quotas/",
+            "category": "kubernetes",
+            "times_retrieved": 1,
+            "times_cited": 0
+        },
+        "https://kubernetes.io/docs/concepts/configuration/secret/": {
+            "title": "Information security for Secrets",
+            "source_url": "https://kubernetes.io/docs/concepts/configuration/secret/",
+            "category": "kubernetes",
+            "times_retrieved": 3,
+            "times_cited": 3
+        }
+    },
+    "success_rate_estimate": 71.95681768694467
+}
