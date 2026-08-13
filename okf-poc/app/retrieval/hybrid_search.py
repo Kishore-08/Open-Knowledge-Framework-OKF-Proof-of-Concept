@@ -217,7 +217,13 @@ def index_documents(
     """
     from app.jobs.manager import JobCancelledError
     collection_name = collection_name or settings.QDRANT_CONCEPTS_COLLECTION
-    source_files = source_files or []
+    source_files = list(dict.fromkeys(source_files or []))
+
+    # LlamaIndex assigns fresh UUIDs to chunks on every run, so Qdrant cannot
+    # naturally upsert/replace the previous chunks. Remove points belonging to
+    # the sources being re-indexed before inserting their new chunks.
+    if source_files:
+        delete_points_by_field(collection_name, "source_file", source_files)
 
     vector_store = get_qdrant_vector_store(collection_name)
     

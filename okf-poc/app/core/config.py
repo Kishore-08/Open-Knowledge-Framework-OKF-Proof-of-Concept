@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
 
     # External APIs
-     # NOTE: The current llama-index Gemini integrations read GOOGLE_API_KEY by default,
+    # NOTE: The current llama-index Gemini integrations read GOOGLE_API_KEY by default,
     # so we support both GEMINI_API_KEY and GOOGLE_API_KEY for maximum compatibility.
     GEMINI_API_KEY: Optional[str] = None
     GOOGLE_API_KEY: Optional[str] = None
@@ -22,10 +22,10 @@ class Settings(BaseSettings):
     # Data Directories
     # Cache: Disposable data (crawled HTML, processing state) - can be deleted and rebuilt
     CACHE_DIR: str = "cache"
-    
+
     # Knowledge: Source of truth (generated OKF Markdown files) - must be preserved
     KNOWLEDGE_DIR: str = "knowledge"
-    
+
     # Configuration
     SOURCES_CONFIG: str = "config/sources.yaml"
 
@@ -38,20 +38,27 @@ class Settings(BaseSettings):
     CONCEPT_MIN_CHARS: int = 200
     CONCEPT_MAX_CHARS: int = 4000
 
+    # AI Provider
+    AI_PROVIDER: str = "vertex"
+
+    # Vertex AI
+    VERTEX_AI_PROJECT_ID: Optional[str] = None
+    VERTEX_AI_LOCATION: str = "global"
+
+    VERTEX_LLM_MODEL: str = "gemini-3.5-flash"
+    VERTEX_EMBEDDING_MODEL: str = "gemini-embedding-001"
+    VERTEX_ACCESS_TOKEN: Optional[str] = None
+
+    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
+
+
+
     # Models
-     # gemini-3.5-flash is the current default answer-generation model. The
-    # free-tier quota for it is tighter than gemini-flash-lite-latest, so you
-    # may want to fall back to the latter if you hit 429 quota exhaustion often.
     LLM_MODEL: str = "gemini-3.5-flash"
-    # If LLM_MODEL fails (400 unknown model / 429 quota exhausted), fall back to
-    # this model. It must be a DIFFERENT model from LLM_MODEL - each Gemini model
-    # has its own quota pool, so falling back to the same model provides no
-    # resilience at all (app/core/gemini_llm.complete() also de-dupes identical
-    # model names, so a matching fallback is silently skipped).
-    # NOTE: plain `gemini-3.5` does NOT exist in the API - use
+
     # `gemini-3.5-flash-lite` as the alternate-quota fallback.
     LLM_FALLBACK_MODEL: str = "gemini-3.5-flash-lite"
-    # gemini-embedding-001's free-tier quota (1000 req/day) is easily exhausted;
+
     # gemini-embedding-2 has a separate quota pool and produces 3072-dim vectors.
     EMBEDDING_MODEL: str = "models/gemini-embedding-1"
     TEMPERATURE: float = 0.0
@@ -62,14 +69,33 @@ class Settings(BaseSettings):
     # Per-call timeout for Gemini REST calls. Kept short so a stalled request
     # cannot hold the query thread for a minute or more.
     LLM_TIMEOUT_SECONDS: float = 30.0
- 
+
     model_config = SettingsConfigDict(
         # Tells Pydantic to look for a .env file in the root directory
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",  # Ignore extra env vars not defined here
     )
- 
+
+    def is_vertex_enabled(self) -> bool:
+        return self.AI_PROVIDER.lower() == "vertex"
+
+
+    def is_gemini_enabled(self) -> bool:
+        return self.AI_PROVIDER.lower() == "gemini"
+
+
+    def validate_vertex_config(self) -> None:
+        if not self.VERTEX_AI_PROJECT_ID:
+            raise ValueError(
+                "VERTEX_AI_PROJECT_ID is required when AI_PROVIDER=vertex"
+            )
+
+        if not self.VERTEX_AI_LOCATION:
+            raise ValueError(
+                "VERTEX_AI_LOCATION is required when AI_PROVIDER=vertex"
+            )
+
     def has_gemini_api_key(self) -> bool:
         """
         Returns True only when a real (non-placeholder) Gemini API key is set.
@@ -92,7 +118,7 @@ class Settings(BaseSettings):
                 "GEMINI_API_KEY=AIza... before running the application."
             )
         return key
-    
+
 # Instantiate the settings object to be imported across the app
 
 settings = Settings()

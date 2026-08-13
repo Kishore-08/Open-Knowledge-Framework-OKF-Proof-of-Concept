@@ -1,0 +1,29 @@
+---
+id: kubernetes-background-50610b7d
+type: concept
+title: Background
+description: The implementation of dynamic volume provisioning is based on the API
+  object `StorageClass`
+category: kubernetes
+tags: []
+source:
+  name: kubernetes
+  url: https://kubernetes.io/docs/concepts/storage/dynamic-provisioning/
+updated_at: '2026-08-13'
+created_at: '2026-08-13'
+---
+
+## Background
+
+The implementation of dynamic volume provisioning is based on the API object `StorageClass`
+from the API group `storage.k8s.io`. A cluster administrator can define as many
+`StorageClass` objects as needed, each specifying a *volume plugin* (aka
+*provisioner*) that provisions a volume and the set of parameters to pass to
+that provisioner when provisioning.
+A cluster administrator can define and expose multiple flavors of storage (from
+the same or different storage systems) within a cluster, each with a custom set
+of parameters. This design also ensures that end users don't have to worry
+about the complexity and nuances of how storage is provisioned, but still
+have the ability to select from multiple storage options.
+
+For more details, see the [Storage Classes](https://kubernetes.io/docs/concepts/storage/storage-classes/) concept.

@@ -46,6 +46,17 @@ def generate_answer(
     # 1. Retrieval (works without an API key)
     retrieved = search(query, category=category, mode="auto", top_k=top_k)
     results = retrieved["results"]
+
+    # Search results intentionally carry short previews, and semantic results
+    # may represent a chunk from the middle of a concept. Answer generation
+    # needs the complete authoritative concept; otherwise a relevant hit can
+    # omit the exact list or definition the user asked for. Keep the context
+    # bounded by the existing per-concept size setting.
+    for result in results:
+        concept = get_concept_dict(result.get("id") or "")
+        if concept and concept.get("content"):
+            result["snippet"] = concept["content"][: settings.CONCEPT_MAX_CHARS]
+
     sources = [
         {
             "id": r.get("id"),
@@ -82,8 +93,8 @@ def generate_answer(
     except Exception as exc:  # noqa: BLE001
         answer = (
             "The knowledge base returned the following relevant concepts, but answer "
-            f"generation is currently unavailable: {exc}. Check your GEMINI_API_KEY "
-            "and Gemini quota, then try again.\n\n"
+            f"generation is currently unavailable: {exc}. Check the configured "
+            "AI provider credentials and quota, then try again.\n\n"
             + "\n".join(f"- {r.get('title')} ({r.get('source_url')})" for r in results)
         )
 
@@ -92,7 +103,10 @@ def generate_answer(
 
 def _call_llm(query: str, context_block: str) -> str:
     """Call the Gemini LLM with a strict grounding prompt."""
-    from app.core.gemini_llm import complete as gemini_complete
+    if settings.AI_PROVIDER.lower() == "vertex":
+        from app.core.vertex_llm import complete as llm_complete
+    else:
+        from app.core.gemini_llm import complete as llm_complete
 
     prompt_text = (
         "You are an enterprise AI assistant powered by the Open Knowledge Framework (OKF).\n"
@@ -120,7 +134,7 @@ def _call_llm(query: str, context_block: str) -> str:
         )
 
     return retry_with_backoff(
-        lambda: gemini_complete(prompt_text, temperature=settings.TEMPERATURE),
+        lambda: llm_complete(prompt_text, temperature=settings.TEMPERATURE),
         max_retries=settings.LLM_MAX_RETRIES,
         base_delay=settings.LLM_RETRY_BASE_DELAY,
         sleep=time.sleep,

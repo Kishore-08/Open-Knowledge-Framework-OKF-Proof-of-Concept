@@ -186,7 +186,7 @@ def simulated_typing_effect(text):
 # ---------------------------------------------------------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "assistant", "content": "Hello! I am your Enterprise OKF Knowledge Assistant. How can I help you today?", "citations": []}
+        {"role": "assistant", "content": "Hello! I am your Enterprise OKF Knowledge Assistant. How can I help you today?", "citations": [], "retrieval_mode": ""}
     ]
 
 if "ingestion_running" not in st.session_state:
@@ -600,23 +600,17 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
         if message.get("citations"):
-            st.markdown("<div style='margin-top: 10px; font-weight: 600; font-size: 0.9rem;'>📚 Sources Cited:</div>", unsafe_allow_html=True)
+            mode = message.get("retrieval_mode") or "retrieved"
+            st.markdown(f"📚 **Knowledge-base results ({mode} search):**")
             for citation in message["citations"]:
-                st.markdown(f"""
-                <div class="citation-card" title="Click to read full context">
-                    <div class="citation-title">
-                        <span>📄 {citation.get('title', 'Unknown OKF Source')}</span>
-                        <span class="citation-score">Relevance: {citation.get('score', 0.0)}</span>
-                    </div>
-                    <div class="citation-content">
-                        {citation.get('content', '')}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                title = citation.get("title", "Unknown OKF Source")
+                score = citation.get("score", 0.0)
+                with st.expander(f"📄 {title} · relevance {score:.3f}"):
+                    st.markdown(citation.get("content", "No preview available."))
 
 if prompt := st.chat_input("Ask a question about your documents...", disabled=not is_healthy):
 
-    st.session_state.messages.append({"role": "user", "content": prompt, "citations": []})
+    st.session_state.messages.append({"role": "user", "content": prompt, "citations": [], "retrieval_mode": ""})
     with st.chat_message("user"):
         st.markdown(prompt)
 
@@ -635,6 +629,7 @@ if prompt := st.chat_input("Ask a question about your documents...", disabled=no
                 data = response.json()
                 answer = data.get("answer", "No answer generated.")
                 citations = data.get("citations", [])
+                retrieval_mode = data.get("retrieval_mode", "")
 
                 message_placeholder.write_stream(simulated_typing_effect(answer))
 
@@ -642,6 +637,7 @@ if prompt := st.chat_input("Ask a question about your documents...", disabled=no
                     "role": "assistant",
                     "content": answer,
                     "citations": citations,
+                    "retrieval_mode": retrieval_mode,
                 })
                 st.rerun()
             else:

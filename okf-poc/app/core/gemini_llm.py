@@ -4,8 +4,6 @@ from google import genai
 from google.genai import types
 
 from app.core.config import settings
-
-
 def _client() -> genai.Client:
     api_key = settings.get_gemini_api_key()
 

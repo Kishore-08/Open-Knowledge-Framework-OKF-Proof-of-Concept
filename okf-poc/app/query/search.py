@@ -39,23 +39,42 @@ def search(
         results = _semantic_search(query, category=category, top_k=top_k)
         return {"mode": "semantic", "results": results}
 
-    # auto: merge keyword and semantic, preferring keyword for incomplete indices
-    # If semantic search returns results with low relevance or wrong category,
-    # keyword search provides better fallback
+    # Auto mode combines both independent rankings. Scores from filesystem
+    # keyword matching and vector similarity are not directly comparable, so
+    # interleave by rank instead of applying one shared score threshold. This
+    # also lets semantic retrieval recover misspellings that have zero keyword
+    # matches (for example, "kubernets").
     semantic_results = _semantic_search(query, category=category, top_k=top_k)
-    
-    # Start with keyword results (always accurate)
-    merged = list(keyword_results[: (top_k or settings.TOP_K)])
-    seen = {r["id"] for r in merged}
-    
-    # Add high-quality semantic results that aren't already present
-    for r in semantic_results:
-        if r["id"] not in seen and r.get("score", 0) > 0.8:  # Only high-confidence semantic results
-            merged.append(r)
-            if len(merged) >= (top_k or settings.TOP_K):
+
+    limit = top_k or settings.TOP_K
+    merged = []
+    seen = set()
+    for rank in range(max(len(semantic_results), len(keyword_results))):
+        # Semantic first ensures intent-focused concepts are included even when
+        # broad query terms produce many high-scoring keyword matches.
+        for ranked_results in (semantic_results, keyword_results):
+            if rank >= len(ranked_results):
+                continue
+            result = ranked_results[rank]
+            result_id = result.get("id")
+            if result_id in seen:
+                continue
+            merged.append(result)
+            seen.add(result_id)
+            if len(merged) >= limit:
                 break
-    
-    return {"mode": "auto", "results": merged[: (top_k or settings.TOP_K)]}
+        if len(merged) >= limit:
+            break
+
+    # Report what actually served the request so callers can make the fallback
+    # visible instead of presenting keyword-only results as hybrid search.
+    if semantic_results and keyword_results:
+        retrieval_mode = "hybrid"
+    elif semantic_results:
+        retrieval_mode = "semantic"
+    else:
+        retrieval_mode = "keyword"
+    return {"mode": retrieval_mode, "results": merged}
 
 
 def _semantic_search(query: str, *, category: Optional[str] = None, top_k: Optional[int] = None) -> List[dict]:

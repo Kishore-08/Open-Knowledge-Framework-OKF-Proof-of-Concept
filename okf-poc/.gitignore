@@ -33,3 +33,6 @@ ENV/
 # IDEs
 .vscode/
 .idea/
+
+credentials/*
+!credentials/.gitkeep

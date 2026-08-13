@@ -1,0 +1,57 @@
+---
+id: kubernetes-syntax-and-character-set-0cf968e6
+type: concept
+title: Syntax and character set
+description: '*Labels* are key/value pairs. Valid label keys have two segments: an
+  optional'
+category: kubernetes
+tags: []
+source:
+  name: kubernetes
+  url: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+updated_at: '2026-08-13'
+created_at: '2026-08-13'
+---
+
+## Syntax and character set
+
+*Labels* are key/value pairs. Valid label keys have two segments: an optional
+prefix and name, separated by a slash (`/`). The name segment is required and
+must be 63 characters or less, beginning and ending with an alphanumeric
+character (`[a-z0-9A-Z]`) with dashes (`-`), underscores (`_`), dots (`.`),
+and alphanumerics between. The prefix is optional. If specified, the prefix
+must be a DNS subdomain: a series of DNS labels separated by dots (`.`),
+not longer than 253 characters in total, followed by a slash (`/`).
+
+If the prefix is omitted, the label Key is presumed to be private to the user.
+Automated system components (e.g. `kube-scheduler`, `kube-controller-manager`,
+`kube-apiserver`, `kubectl`, or other third-party automation) which add labels
+to end-user objects must specify a prefix.
+
+The `kubernetes.io/` and `k8s.io/` prefixes are
+[reserved](https://kubernetes.io/docs/reference/labels-annotations-taints/) for Kubernetes core components.
+
+Valid label value:
+
+- must be 63 characters or less (can be empty),
+- unless empty, must begin and end with an alphanumeric character (`[a-z0-9A-Z]`),
+- could contain dashes (`-`), underscores (`_`), dots (`.`), and alphanumerics between.
+
+For example, here's a manifest for a Pod that has two labels
+`environment: production` and `app: nginx`:
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: label-demo
+  labels:
+    environment: production
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.14.2
+    ports:
+    - containerPort: 80
+```

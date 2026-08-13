@@ -16,8 +16,15 @@ import re
 from typing import Optional
 from pydantic import BaseModel, Field
 from app.core.config import settings
-from app.core.gemini_llm import complete as gemini_complete
 from app.ingestion.status import update_status
+
+
+def _llm_complete(prompt: str, **kwargs) -> str:
+    if settings.is_vertex_enabled():
+        from app.core.vertex_llm import complete
+    else:
+        from app.core.gemini_llm import complete
+    return complete(prompt, **kwargs)
 
 
 class OKFMetadata(BaseModel):
@@ -165,11 +172,12 @@ def generate_okf_metadata(
         print("⚠️ Empty document text — skipping metadata extraction.")
         return None
 
-    try:
-        settings.get_gemini_api_key()
-    except ValueError:
-        print("⚠️ No API key — using heuristic metadata extraction.")
-        return _heuristic_fallback(text, source_name)
+    if settings.is_gemini_enabled():
+        try:
+            settings.get_gemini_api_key()
+        except ValueError:
+            print("⚠️ No API key — using heuristic metadata extraction.")
+            return _heuristic_fallback(text, source_name)
 
     # Only send the first 3000 characters to save tokens and time
     text_preview = text[:3000]
@@ -192,7 +200,7 @@ def generate_okf_metadata(
     for attempt in range(1, max_retries + 1):
         try:
             print(f"🧠 Calling LLM to extract metadata (attempt {attempt}/{max_retries})...")
-            response_text = gemini_complete(prompt, temperature=settings.TEMPERATURE)
+            response_text = _llm_complete(prompt, temperature=settings.TEMPERATURE)
             token_estimate = _estimate_token_counts(prompt, response_text)
             update_status(**token_estimate)
             parsed = _parse_json_response(response_text)

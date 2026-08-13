@@ -556,8 +556,9 @@ def run_ingestion_pipeline(
 
     if upload_only:
         # Only the files that were just uploaded are eligible. Never fall back to
-        # the whole cache tree or to changed-file detection, otherwise other
-        # cached documents would be (re)processed alongside the upload.
+        # the whole cache tree. Still compare the selected files with processing
+        # state: uploading an identical file twice must not repeat metadata LLM
+        # calls or embedding work.
         local_files = []
         for filename in only_files or []:
             path = filename if os.path.isabs(filename) else os.path.join(cache_dir, filename)
@@ -565,8 +566,17 @@ def run_ingestion_pipeline(
                 local_files.append(path)
             else:
                 print(f"⚠️ Uploaded file not found in cache: {path}")
-        changed_local_files = list(local_files)
-        print(f"📂 Upload-only files: {len(local_files)}")
+        changed_local_files = []
+        previous_files = processing_state.setdefault("files", {})
+        for path in local_files:
+            relative_path = os.path.relpath(path, cache_dir)
+            if previous_files.get(relative_path, {}).get("content_hash") != _file_hash(path):
+                changed_local_files.append(path)
+        print(
+            f"📂 Upload-only files: selected={len(local_files)} "
+            f"changed/new={len(changed_local_files)} "
+            f"unchanged={len(local_files) - len(changed_local_files)}"
+        )
     else:
         changed_local_files, processing_state = state_manager.get_changed_files( processing_state )
 
@@ -780,22 +790,56 @@ def run_ingestion_pipeline(
             "message": "No valid changed OKF concepts were produced.",
         }
 
+    # Conversion state and vector state are separate on purpose. A crawler or
+    # upload may produce an OKF path that already has the same successfully
+    # indexed content (for example after state recovery or a repeated upload).
+    # Check both Qdrant presence and the last successful content hash before any
+    # embedding call so those documents consume no embedding quota.
+    docs_to_index, skipped = filter_documents_for_indexing(
+        docs,
+        cache_dir=cache_dir,
+    )
+
+    if skipped:
+        print(
+            f"♻️ Reusing {skipped} unchanged concept(s) already present "
+            "in Qdrant; no embeddings requested."
+        )
+
+    if not docs_to_index:
+        update_status(
+            status="completed",
+            stage="completed",
+            stage_message="All changed candidates are already indexed",
+            message="Existing Qdrant index reused",
+            processed=crawled_count + saved_count,
+            indexed=0,
+            failed=crawl_result["failed"],
+            current_source="",
+        )
+        return {
+            "status": "success",
+            "indexed_documents": 0,
+            "skipped_documents": skipped,
+            "message": "All candidate concepts were unchanged; existing Qdrant vectors reused.",
+        }
+
 
     source_files = [
         d.metadata["source_file"]
-        for d in docs
+        for d in docs_to_index
         if d.metadata.get("source_file")
     ]
 
 
     print(
-        f"🧠 Sending only {len(docs)} changed "
+        f"🧠 Sending only {len(docs_to_index)} new/changed "
         f"concept(s) for embedding."
     )
 
 
     _index, failed_ids = index_documents(
-        docs,
+        docs_to_index,
         collection_name=settings.QDRANT_CONCEPTS_COLLECTION,
         source_files=source_files,
         show_progress=True,
@@ -804,7 +848,7 @@ def run_ingestion_pipeline(
     )
     if failed_ids:
             print(
-            f"⚠️ {len(failed_ids)}/{len(docs)} document(s) were not indexed into Qdrant "
+            f"⚠️ {len(failed_ids)}/{len(docs_to_index)} document(s) were not indexed into Qdrant "
             "after retries (see log above). Filesystem knowledge/ still has them, so "
             "keyword search will find them; re-run ingestion to retry indexing."
         )
@@ -815,10 +859,15 @@ def run_ingestion_pipeline(
         stage_message="Ingestion completed — knowledge is stored in OKF format and indexed",
         message="Ingestion completed",
         processed=crawled_count + saved_count,
-        indexed=len(docs) - len(failed_ids),
+        indexed=len(docs_to_index) - len(failed_ids),
         failed=crawl_result["failed"] + len(failed_ids),
         current_source="",
     )
 
     print("✅ Ingestion Pipeline Complete!")
-    return {"status": "success", "indexed_documents": len(docs)}
+    return {
+        "status": "success",
+        "indexed_documents": len(docs_to_index) - len(failed_ids),
+        "skipped_documents": skipped,
+        "failed_documents": len(failed_ids),
+    }

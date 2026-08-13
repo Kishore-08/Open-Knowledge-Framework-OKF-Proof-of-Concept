@@ -43,6 +43,10 @@ class Citation(BaseModel):
 
 class QueryResponse(BaseModel):
     answer: str = Field(description="The generated answer from the LLM")
+    retrieval_mode: str = Field(
+        default="",
+        description="Retrieval path that produced the citations (keyword or hybrid)",
+    )
     citations: List[Citation] = Field(description="List of OKF sources used to construct the answer")
 
 
@@ -58,6 +62,7 @@ async def query_knowledge_base(request: QueryRequest):
         result = await asyncio.to_thread(generate_answer, request.query)
         return QueryResponse(
             answer=result.answer,
+            retrieval_mode=result.retrieval_mode,
             citations=[
                 Citation(
                     title=s.get("title") or "Unknown OKF Source",

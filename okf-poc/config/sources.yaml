@@ -17,7 +17,6 @@ sources:
   url_filter: man7.org/linux/man-pages/man
   category: linux
   enabled: false
-  max_urls: 60
 - name: python
   base_url: https://docs.python.org/3/library/
   index_url: https://docs.python.org/3/library/index.html
@@ -52,5 +51,5 @@ sources:
 crawler:
   delay: 0.05
   timeout: 30
-  max_urls_per_source: 50
+  max_urls_per_source: 100
   user_agent: OKF-Crawler/1.0

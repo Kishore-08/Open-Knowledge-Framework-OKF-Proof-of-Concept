@@ -93,7 +93,10 @@ def build_concepts_index(
 
     configured = _embedding_model_configured()
     if not configured:
-        return {"indexed": 0, "error": "Gemini API key required for embeddings. Set GEMINI_API_KEY."}
+        return {
+            "indexed": 0,
+            "error": "AI embedding provider is not configured; check AI_PROVIDER and its credentials.",
+        }
 
     docs_to_index, skipped = filter_documents_for_indexing(docs, force_full=force_full)
     if not docs_to_index:
@@ -111,7 +114,7 @@ def build_concepts_index(
     _index, failed_ids = index_documents(
         docs_to_index,
         collection_name=collection_name,
-        source_files=[],
+        source_files=source_files,
         show_progress=True,
     )
     result = {
