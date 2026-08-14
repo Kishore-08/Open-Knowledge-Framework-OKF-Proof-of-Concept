@@ -4,7 +4,7 @@ sources:
   sitemap_url: https://kubernetes.io/sitemap.xml
   url_filter: /docs/concepts/
   category: kubernetes
-  enabled: true
+  enabled: false
 - name: apache-httpd
   base_url: https://httpd.apache.org
   sitemap_url: https://httpd.apache.org/sitemap.xml
@@ -41,7 +41,7 @@ sources:
   sitemap_url: https://fastapi.tiangolo.com/sitemap.xml
   url_filter: fastapi.tiangolo.com/tutorial/
   category: fastapi
-  enabled: false
+  enabled: true
 - name: langchain
   base_url: https://python.langchain.com
   sitemap_url: https://python.langchain.com/sitemap.xml

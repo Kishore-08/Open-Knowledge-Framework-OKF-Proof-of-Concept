@@ -176,9 +176,12 @@ class StateManager:
         if not os.path.isdir(self.cache_dir):
             return files
 
-        for root, _, filenames in os.walk(self.cache_dir):
-            # Skip state directory and crawler HTML subdirectories
-            if ".state" in Path(root).parts:
+        for root, dirnames, filenames in os.walk(self.cache_dir):
+            # Internal cache directories contain crawler/processing/job state,
+            # never user knowledge. Prune every hidden directory before os.walk
+            # descends so `.jobs/*.json` cannot be ingested as documents.
+            dirnames[:] = [name for name in dirnames if not name.startswith(".")]
+            if any(part.startswith(".") for part in Path(root).parts):
                 continue
 
             for filename in filenames:

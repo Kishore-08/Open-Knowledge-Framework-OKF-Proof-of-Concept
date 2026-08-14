@@ -355,7 +355,26 @@ with st.sidebar:
 
     # Navigation
     st.subheader("Navigation")
-    page = st.radio("View", ["💬 Chat Assistant", "📚 Knowledge Base"], index=0)
+    if "page" not in st.session_state:
+        st.session_state.page = "💬 Chat Assistant"
+
+    if st.button(
+        "💬 Chat Assistant",
+        use_container_width=True,
+        type="primary" if st.session_state.page == "💬 Chat Assistant" else "secondary",
+        key="nav_chat_assistant",
+    ):
+        st.session_state.page = "💬 Chat Assistant"
+
+    if st.button(
+        "📚 Knowledge Base",
+        use_container_width=True,
+        type="primary" if st.session_state.page == "📚 Knowledge Base" else "secondary",
+        key="nav_knowledge_base",
+    ):
+        st.session_state.page = "📚 Knowledge Base"
+
+    page = st.session_state.page
 
     st.divider()
 

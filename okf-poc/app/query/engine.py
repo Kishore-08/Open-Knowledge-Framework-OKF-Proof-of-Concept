@@ -55,6 +55,24 @@ def _matching_supplements(query: str) -> List[dict]:
     ]
 
 
+def _taxonomy_clarification(query: str) -> Optional[str]:
+    """Stop ambiguous taxonomy questions from turning examples into a list."""
+    normalized = " ".join(query.lower().replace("?", " ").split())
+    asks_for_types = any(
+        phrase in normalized
+        for phrase in ("types of", "different types", "kinds of", "categories of")
+    )
+    if asks_for_types and "python package" in normalized:
+        return (
+            "The current OKF knowledge base does not contain an authoritative "
+            "classification of Python package types. The retrieved FastAPI page only "
+            "shows a sample package and subpackage directory structure, so it should "
+            "not be presented as an exhaustive list. Please clarify whether you mean "
+            "Python import-package structures or installable distribution formats."
+        )
+    return None
+
+
 def generate_answer(
     query: str,
     *,
@@ -68,20 +86,23 @@ def generate_answer(
     2. Prompting: give the LLM only the retrieved concept texts + source URLs.
     3. Answering: the LLM must answer from context and cite its sources.
     """
-    top_k = top_k or settings.TOP_K
+    # The assistant contract exposes at most five strong citations, even when
+    # an API caller requests a larger retrieval window.
+    top_k = min(top_k or settings.TOP_K, 5)
 
-    # 1. Retrieval (works without an API key)
-    retrieved = search(query, category=category, mode="auto", top_k=top_k)
-    results = retrieved["results"]
+    clarification = _taxonomy_clarification(query)
+    if clarification:
+        return QueryResult(answer=clarification, sources=[], retrieval_mode="clarification")
 
-    # Some upstream pages are split into narrow concepts, so a definition and
-    # its key behavioral sentence can fall outside the top-k window. Merge
-    # small, explicitly sourced supplements before truncating the context.
+    # 1. Exact, explicitly sourced supplements are already complete grounding
+    # for their matched question. Bypass remote query embedding/Qdrant for this
+    # high-confidence path, improving both precision and latency.
     supplements = _matching_supplements(query)
     if supplements:
-        supplement_ids = {item["id"] for item in supplements}
-        results = supplements + [r for r in results if r.get("id") not in supplement_ids]
-        results = results[:top_k]
+        retrieved = {"mode": "curated", "results": supplements[:top_k]}
+    else:
+        retrieved = search(query, category=category, mode="auto", top_k=top_k)
+    results = retrieved["results"]
 
     # Search results intentionally carry short previews, and semantic results
     # may represent a chunk from the middle of a concept. Answer generation
@@ -168,7 +189,12 @@ def _call_llm(query: str, context_block: str) -> str:
         "but do not add examples, implementation details, caveats, recommendations, or related "
         "facts unless the question explicitly asks for them.\n"
         "7. Prefer a close paraphrase of the shortest, most directly relevant source passages. "
-        "Do not replace a precise source definition with a broader description.\n\n"
+        "Do not replace a precise source definition with a broader description.\n"
+        "8. When the user asks for types, kinds, categories, or an exhaustive list, only answer "
+        "when the context explicitly says that it enumerates those types. Do not turn items from "
+        "an example, sample application, directory tree, or incidental mention into a taxonomy. "
+        "If the requested classification is not explicitly present, say that it is not available "
+        "in the OKF knowledge base and ask the user to clarify the intended classification.\n\n"
         f"Query: {query}\n"
         "Answer: "
     )

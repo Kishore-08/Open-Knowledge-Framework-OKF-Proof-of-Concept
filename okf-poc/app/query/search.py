@@ -9,10 +9,53 @@ Offers two complementary access paths over the knowledge base:
     vector store or API key is unavailable.
 """
 
+import re
 from typing import List, Optional
 
 from app.core.config import settings
 from app.okf.repository import list_concepts, search_concepts
+
+
+_JOB_STATUS_MARKERS = (
+    '"progress_percent"',
+    '"stage_message"',
+    '"indexed_documents"',
+    '"rate_limit_hits"',
+)
+
+
+def _is_internal_job_record(result: dict) -> bool:
+    """Return true for ingestion status JSON accidentally indexed as knowledge."""
+    title = str(result.get("title") or "").strip()
+    text = " ".join(
+        str(result.get(field) or "")
+        for field in ("title", "description", "snippet")
+    ).lower()
+    marker_count = sum(marker in text for marker in _JOB_STATUS_MARKERS)
+    return (
+        marker_count >= 2
+        or "knowledge ingestion job status" in text
+        or bool(re.fullmatch(r"[0-9a-f]{12}", title, re.IGNORECASE))
+    )
+
+
+def _rank_and_filter(results: List[dict], limit: int) -> List[dict]:
+    """Deduplicate, order, and remove weak/non-citable retrieval results."""
+    best_by_id: dict[str, dict] = {}
+    for result in results:
+        if _is_internal_job_record(result):
+            continue
+        key = str(result.get("id") or result.get("source_file") or result.get("title") or "")
+        score = float(result.get("score") or 0.0)
+        if key and (key not in best_by_id or score > float(best_by_id[key].get("score") or 0.0)):
+            best_by_id[key] = result
+
+    ranked = sorted(best_by_id.values(), key=lambda item: float(item.get("score") or 0.0), reverse=True)
+    if not ranked:
+        return []
+    best_score = float(ranked[0].get("score") or 0.0)
+    cutoff = max(settings.CITATION_MIN_SCORE, best_score * settings.CITATION_RELATIVE_SCORE)
+    return [item for item in ranked if float(item.get("score") or 0.0) >= cutoff][: min(limit, 5)]
 
 
 def search(
@@ -33,10 +76,13 @@ def search(
     """
     keyword_results = search_concepts(query, category=category, tag=tag)
     if mode == "keyword":
-        return {"mode": "keyword", "results": keyword_results[: (top_k or settings.TOP_K)]}
+        limit = min(top_k or settings.TOP_K, 5)
+        return {"mode": "keyword", "results": _rank_and_filter(keyword_results, limit)}
 
     if mode == "semantic":
-        results = _semantic_search(query, category=category, top_k=top_k)
+        limit = min(top_k or settings.TOP_K, 5)
+        results = _semantic_search(query, category=category, top_k=limit)
+        results = _rank_and_filter(results, limit)
         return {"mode": "semantic", "results": results}
 
     # Auto mode combines both independent rankings. Scores from filesystem
@@ -44,27 +90,12 @@ def search(
     # interleave by rank instead of applying one shared score threshold. This
     # also lets semantic retrieval recover misspellings that have zero keyword
     # matches (for example, "kubernets").
-    semantic_results = _semantic_search(query, category=category, top_k=top_k)
+    limit = min(top_k or settings.TOP_K, 5)
+    # Ask Qdrant for extra candidates because legacy internal records may be
+    # discarded before the final five citations are selected.
+    semantic_results = _semantic_search(query, category=category, top_k=max(limit * 3, limit))
 
-    limit = top_k or settings.TOP_K
-    merged = []
-    seen = set()
-    for rank in range(max(len(semantic_results), len(keyword_results))):
-        # Semantic first ensures intent-focused concepts are included even when
-        # broad query terms produce many high-scoring keyword matches.
-        for ranked_results in (semantic_results, keyword_results):
-            if rank >= len(ranked_results):
-                continue
-            result = ranked_results[rank]
-            result_id = result.get("id")
-            if result_id in seen:
-                continue
-            merged.append(result)
-            seen.add(result_id)
-            if len(merged) >= limit:
-                break
-        if len(merged) >= limit:
-            break
+    merged = _rank_and_filter(semantic_results + keyword_results, limit)
 
     # Report what actually served the request so callers can make the fallback
     # visible instead of presenting keyword-only results as hybrid search.

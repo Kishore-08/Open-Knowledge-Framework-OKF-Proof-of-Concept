@@ -29,3 +29,32 @@ supplements:
       When a liveness probe reaches its configured failure threshold, the
       kubelet kills the container. The container is then subjected to its
       configured restart policy.
+
+  - id: kubernetes-service-types
+    title: Kubernetes Service types
+    category: kubernetes
+    source_url: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+    match_terms: [types of services, service types, different types of service]
+    content: >-
+      Kubernetes has four Service types. ClusterIP exposes the Service on a
+      cluster-internal IP and is the default. NodePort exposes it on each
+      Node's IP at a static port. LoadBalancer exposes it externally through
+      an external load balancer. ExternalName maps the Service to an external
+      DNS name by returning a CNAME record; it does not set up proxying.
+
+  - id: linux-distribution-examples
+    title: Linux distributions
+    category: linux
+    source_url: https://github.com/opencontainers/runc/blob/main/docs/cgroup-v2.md
+    match_terms:
+      - types of linux os
+      - types of linux operating system
+      - linux os types
+      - linux distributions
+      - differnt types of linux os
+    content: >-
+      Linux is a kernel rather than one single operating-system edition.
+      Complete operating systems built around it are called Linux
+      distributions. Examples represented in the knowledge base include
+      Ubuntu, Debian GNU/Linux, Fedora, and Arch Linux. These are examples of
+      Linux distributions, not different Linux kernels.

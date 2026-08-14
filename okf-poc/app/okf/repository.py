@@ -297,7 +297,18 @@ def search_concepts(
         score = 0.0
         for field in _SEARCHABLE:
             text = _field_text(concept, field).lower()
-            hits = sum(text.count(t) for t in tokens)
+            # Count complete terms only.  The old substring count made short
+            # queries such as "Linux OS" treat the `os` inside words like
+            # "host" and "autoscaler" as relevant matches.
+            hits = sum(
+                len(
+                    re.findall(
+                        rf"(?<![a-z0-9_-]){re.escape(token)}(?![a-z0-9_-])",
+                        text,
+                    )
+                )
+                for token in tokens
+            )
             if hits:
                 matched_fields.append(field)
                 weight = 2.0 if field in ("title", "aliases", "tags") else 1.0

@@ -1,9 +1,11 @@
+from functools import lru_cache
 from typing import Optional
 
 from google import genai
 from google.genai import types
 
 from app.core.config import settings
+@lru_cache(maxsize=1)
 def _client() -> genai.Client:
     api_key = settings.get_gemini_api_key()
 
@@ -40,6 +42,8 @@ def complete(
                 model=model_name,
                 contents=prompt,
                 config=types.GenerateContentConfig(
+                    temperature=(settings.TEMPERATURE if temperature is None else temperature),
+                    max_output_tokens=settings.LLM_MAX_OUTPUT_TOKENS,
                     thinking_config=types.ThinkingConfig(
                         thinking_level="minimal"
                     )
@@ -50,6 +54,14 @@ def complete(
                 raise RuntimeError(
                     f"Gemini returned an empty response for {model_name}"
                 )
+
+            usage = response.usage_metadata
+
+            print("Input/context tokens:", usage.prompt_token_count)
+            print("Visible output tokens:", usage.candidates_token_count)
+            print("Thinking tokens:", usage.thoughts_token_count or 0)
+            print("Tool-result tokens:", usage.tool_use_prompt_token_count or 0)
+            print("Total tokens:", usage.total_token_count)
 
             return response.text
 

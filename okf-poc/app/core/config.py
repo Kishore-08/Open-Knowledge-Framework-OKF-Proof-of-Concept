@@ -31,6 +31,10 @@ class Settings(BaseSettings):
 
     # RAG Configuration Settings
     TOP_K: int = 5
+    # Citations below this score, or far below the best result for the same
+    # query, are omitted.  This keeps weak vector neighbours out of the UI.
+    CITATION_MIN_SCORE: float = 0.20
+    CITATION_RELATIVE_SCORE: float = 0.75
     CHUNK_SIZE: int = 512
     CHUNK_OVERLAP: int = 50
 
@@ -69,6 +73,9 @@ class Settings(BaseSettings):
     # Per-call timeout for Gemini REST calls. Kept short so a stalled request
     # cannot hold the query thread for a minute or more.
     LLM_TIMEOUT_SECONDS: float = 30.0
+    # Answers are intentionally concise; bounding generation and disabling
+    # extended thinking substantially reduces interactive query latency.
+    LLM_MAX_OUTPUT_TOKENS: int = 512
 
     model_config = SettingsConfigDict(
         # Tells Pydantic to look for a .env file in the root directory
