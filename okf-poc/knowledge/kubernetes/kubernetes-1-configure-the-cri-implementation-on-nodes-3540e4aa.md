@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/containers/runtime-class/
-updated_at: '2026-08-13'
-created_at: '2026-08-13'
+updated_at: '2026-08-18'
+created_at: '2026-08-18'
 ---
 
 ### 1. Configure the CRI implementation on nodes

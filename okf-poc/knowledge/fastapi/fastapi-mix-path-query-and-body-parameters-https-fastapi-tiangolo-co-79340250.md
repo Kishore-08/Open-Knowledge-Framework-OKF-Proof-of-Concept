@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/body-multiple-params/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Mix `Path`, `Query` and body parameters[¶](https://fastapi.tiangolo.com/tutorial/body-multiple-params/#mix-path-query-and-body-parameters "Permanent link")

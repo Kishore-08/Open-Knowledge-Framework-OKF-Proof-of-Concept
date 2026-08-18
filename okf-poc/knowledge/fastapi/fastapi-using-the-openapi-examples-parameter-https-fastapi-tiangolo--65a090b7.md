@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/schema-extra-example/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### Using the `openapi_examples` Parameter[¶](https://fastapi.tiangolo.com/tutorial/schema-extra-example/#using-the-openapi-examples-parameter "Permanent link")

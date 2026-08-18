@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/query-params/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Multiple path and query parameters[¶](https://fastapi.tiangolo.com/tutorial/query-params/#multiple-path-and-query-parameters "Permanent link")

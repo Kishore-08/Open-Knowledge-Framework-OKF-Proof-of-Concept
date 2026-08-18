@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/query-params-str-validations/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### `Query` as the default value or in `Annotated`[¶](https://fastapi.tiangolo.com/tutorial/query-params-str-validations/#query-as-the-default-value-or-in-annotated "Permanent link")

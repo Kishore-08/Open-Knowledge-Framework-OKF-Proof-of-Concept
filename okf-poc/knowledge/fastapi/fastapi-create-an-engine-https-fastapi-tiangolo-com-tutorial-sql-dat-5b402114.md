@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/sql-databases/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### Create an Engine[¶](https://fastapi.tiangolo.com/tutorial/sql-databases/#create-an-engine "Permanent link")

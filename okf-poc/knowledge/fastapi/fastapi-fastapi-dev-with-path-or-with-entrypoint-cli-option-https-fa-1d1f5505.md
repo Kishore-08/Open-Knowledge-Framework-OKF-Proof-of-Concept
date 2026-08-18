@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/first-steps/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### `fastapi dev` with path or with `--entrypoint` CLI option[¶](https://fastapi.tiangolo.com/tutorial/first-steps/#fastapi-dev-with-path-or-with-entrypoint-cli-option "Permanent link")

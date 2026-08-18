@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/handling-errors/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Add custom headers[¶](https://fastapi.tiangolo.com/tutorial/handling-errors/#add-custom-headers "Permanent link")

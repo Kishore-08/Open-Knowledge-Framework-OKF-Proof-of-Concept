@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/body-nested-models/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### Declare a `list` with a type parameter[¶](https://fastapi.tiangolo.com/tutorial/body-nested-models/#declare-a-list-with-a-type-parameter "Permanent link")

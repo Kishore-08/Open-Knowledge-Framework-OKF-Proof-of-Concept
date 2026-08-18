@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/body/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Create your data model[¶](https://fastapi.tiangolo.com/tutorial/body/#create-your-data-model "Permanent link")

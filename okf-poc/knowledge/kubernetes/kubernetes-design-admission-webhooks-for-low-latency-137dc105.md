@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/cluster-administration/admission-webhooks-good-practices/
-updated_at: '2026-08-13'
-created_at: '2026-08-13'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### Design admission webhooks for low latency

@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/security/simple-oauth2/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### `scope`[¶](https://fastapi.tiangolo.com/tutorial/security/simple-oauth2/#scope "Permanent link")

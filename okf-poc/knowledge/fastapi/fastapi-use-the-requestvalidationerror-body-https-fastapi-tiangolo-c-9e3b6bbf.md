@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/handling-errors/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### Use the `RequestValidationError` body[¶](https://fastapi.tiangolo.com/tutorial/handling-errors/#use-the-requestvalidationerror-body "Permanent link")

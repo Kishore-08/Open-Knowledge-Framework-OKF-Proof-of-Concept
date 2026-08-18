@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/server-sent-events/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### Non-async *path operation functions*[¶](https://fastapi.tiangolo.com/tutorial/server-sent-events/#non-async-path-operation-functions "Permanent link")

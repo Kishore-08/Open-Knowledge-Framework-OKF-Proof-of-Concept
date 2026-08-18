@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/services-networking/service/
-updated_at: '2026-08-12'
-created_at: '2026-08-12'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Virtual IP addressing mechanism

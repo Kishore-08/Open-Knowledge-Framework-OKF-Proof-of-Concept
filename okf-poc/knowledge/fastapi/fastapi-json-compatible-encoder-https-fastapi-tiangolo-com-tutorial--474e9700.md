@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/encoder/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 # JSON Compatible Encoder[¶](https://fastapi.tiangolo.com/tutorial/encoder/#json-compatible-encoder "Permanent link")

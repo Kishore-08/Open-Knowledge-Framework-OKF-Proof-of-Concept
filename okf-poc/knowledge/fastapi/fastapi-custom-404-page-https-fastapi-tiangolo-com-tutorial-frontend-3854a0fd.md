@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/frontend/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Custom 404 Page[¶](https://fastapi.tiangolo.com/tutorial/frontend/#custom-404-page "Permanent link")

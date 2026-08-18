@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/handling-errors/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### Override request validation exceptions[¶](https://fastapi.tiangolo.com/tutorial/handling-errors/#override-request-validation-exceptions "Permanent link")

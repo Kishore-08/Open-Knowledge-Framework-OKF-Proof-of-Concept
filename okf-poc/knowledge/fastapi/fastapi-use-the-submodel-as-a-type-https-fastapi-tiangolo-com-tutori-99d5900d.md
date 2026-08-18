@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/body-nested-models/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### Use the submodel as a type[¶](https://fastapi.tiangolo.com/tutorial/body-nested-models/#use-the-submodel-as-a-type "Permanent link")

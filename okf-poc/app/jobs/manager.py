@@ -226,6 +226,17 @@ class JobManager:
             self._sync_derived_fields(job)
             self._persist(job)
 
+    def add_active_token_usage(self, prompt_tokens: int, completion_tokens: int) -> None:
+        """Atomically add one LLM call's estimated usage to the active run."""
+        with self._lock:
+            job = self._jobs.get(self._active_job_id) if self._active_job_id else None
+            if job is None or job.status not in ACTIVE_STATUSES:
+                return
+            job.prompt_tokens_estimate += max(0, int(prompt_tokens or 0))
+            job.completion_tokens_estimate += max(0, int(completion_tokens or 0))
+            self._sync_derived_fields(job)
+            self._persist(job)
+
     @staticmethod
     def _sync_derived_fields(job: Job) -> None:
         if "indexed_documents" in vars(job):

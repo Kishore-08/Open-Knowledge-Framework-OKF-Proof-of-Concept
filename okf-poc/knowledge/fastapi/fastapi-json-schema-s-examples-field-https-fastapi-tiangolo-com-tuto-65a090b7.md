@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/schema-extra-example/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### JSON Schema's `examples` field[¶](https://fastapi.tiangolo.com/tutorial/schema-extra-example/#json-schemas-examples-field "Permanent link")

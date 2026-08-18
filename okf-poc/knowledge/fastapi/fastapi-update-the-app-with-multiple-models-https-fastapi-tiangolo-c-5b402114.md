@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/sql-databases/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Update the App with Multiple Models[¶](https://fastapi.tiangolo.com/tutorial/sql-databases/#update-the-app-with-multiple-models "Permanent link")

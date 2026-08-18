@@ -484,7 +484,6 @@ with st.sidebar:
                 "cancelled",
             }:
                 st.session_state.ingestion_running = False
-                st.session_state.ingestion_overlay_open = False
         stage = (running_status or {}).get("stage", "")
         stage_labels = {
             "starting": "Starting pipeline…",
@@ -555,7 +554,7 @@ def _dismiss_ingestion_overlay() -> None:
     Close only the popup.
     The ingestion job continues running in the background.
     """
-    st.session_state.ingestion_running = False
+    st.session_state.ingestion_overlay_open = False
 
 
 @st.dialog(
@@ -607,10 +606,7 @@ def ingestion_overlay() -> None:
         st.rerun()
 
 
-if (
-    st.session_state.ingestion_running
-    and st.session_state.ingestion_overlay_open
-):
+if st.session_state.ingestion_overlay_open:
     ingestion_overlay()
 
 # Display Chat History

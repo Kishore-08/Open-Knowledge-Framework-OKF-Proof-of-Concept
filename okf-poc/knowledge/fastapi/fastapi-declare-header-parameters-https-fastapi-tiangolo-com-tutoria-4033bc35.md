@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/header-params/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Declare `Header` parameters[¶](https://fastapi.tiangolo.com/tutorial/header-params/#declare-header-parameters "Permanent link")

@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/request-forms/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## About "Form Fields"[¶](https://fastapi.tiangolo.com/tutorial/request-forms/#about-form-fields "Permanent link")

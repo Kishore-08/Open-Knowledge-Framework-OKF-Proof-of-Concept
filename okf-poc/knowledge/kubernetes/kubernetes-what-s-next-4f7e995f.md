@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
-updated_at: '2026-08-13'
-created_at: '2026-08-13'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## What's next

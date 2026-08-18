@@ -16,7 +16,7 @@ import re
 from typing import Optional
 from pydantic import BaseModel, Field
 from app.core.config import settings
-from app.ingestion.status import update_status
+from app.ingestion.status import add_token_usage
 
 
 def _llm_complete(prompt: str, **kwargs) -> str:
@@ -202,7 +202,10 @@ def generate_okf_metadata(
             print(f"🧠 Calling LLM to extract metadata (attempt {attempt}/{max_retries})...")
             response_text = _llm_complete(prompt, temperature=settings.TEMPERATURE)
             token_estimate = _estimate_token_counts(prompt, response_text)
-            update_status(**token_estimate)
+            add_token_usage(
+                token_estimate["prompt_tokens_estimate"],
+                token_estimate["completion_tokens_estimate"],
+            )
             parsed = _parse_json_response(response_text)
             if parsed is None:
                 print("⚠️ LLM response was not valid JSON — falling back to heuristic.")

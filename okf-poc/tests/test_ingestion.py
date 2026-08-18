@@ -1,7 +1,7 @@
 import pytest
 from app.okf.formatter import format_okf_string
 from app.okf.parser import parse_okf_string
-from app.ingestion.pipeline import _process_crawled_html
+from app.ingestion.pipeline import _process_crawled_html, run_ingestion_pipeline
 
 # --- Test OKF Core Logic ---
 # These tests ensure that our custom OKF formatting never corrupts data 
@@ -107,7 +107,7 @@ def test_process_crawled_html_filters_by_source_names(tmp_path, monkeypatch):
         ),
     )
 
-    processed = _process_crawled_html(
+    processed, _paths = _process_crawled_html(
         cache_dir=str(tmp_path / "cache"),
         knowledge_dir=str(tmp_path / "knowledge"),
         changed_pages=[kube_page, lang_page],
@@ -143,7 +143,7 @@ def test_process_crawled_html_empty_source_names_skips_all(tmp_path, monkeypatch
         ),
     )
 
-    processed = _process_crawled_html(
+    processed, _paths = _process_crawled_html(
         cache_dir=str(tmp_path / "cache"),
         knowledge_dir=str(tmp_path / "knowledge"),
         changed_pages=[page],
@@ -209,7 +209,7 @@ def test_process_crawled_html_explicit_source_ignores_cached_pages(tmp_path, mon
         lambda urls, knowledge_dir: None,
     )
 
-    processed = _process_crawled_html(
+    processed, _paths = _process_crawled_html(
         cache_dir=str(tmp_path / "cache"),
         knowledge_dir=str(tmp_path / "knowledge"),
         changed_pages=[fresh_page],
@@ -219,3 +219,90 @@ def test_process_crawled_html_explicit_source_ignores_cached_pages(tmp_path, mon
     # Only the freshly downloaded page is processed; the cached page is ignored.
     assert processed == 1
     assert processed_urls == [("kubernetes", "concept-kubernetes")]
+
+
+def test_process_crawled_html_bootstraps_selected_source_from_cache(tmp_path, monkeypatch):
+    """A 304-only crawl can rebuild missing knowledge from selected cached HTML."""
+    import json
+    import os
+
+    state_dir = tmp_path / "cache" / ".state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    cached_path = _write_raw_html(tmp_path, "kubernetes", "cached", "Cached concept")
+    (state_dir / "kubernetes.json").write_text(
+        json.dumps({
+            "source": "kubernetes",
+            "pages": {
+                "https://kubernetes.io/docs/cached": {
+                    "raw_file": os.path.relpath(cached_path, str(tmp_path / "cache")),
+                }
+            },
+        }),
+        encoding="utf-8",
+    )
+
+    processed_urls = []
+    monkeypatch.setattr("app.ingestion.pipeline.clean_html", lambda html, base_url=None: html)
+    monkeypatch.setattr("app.ingestion.pipeline.html_to_markdown", lambda cleaned: "# Cached")
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.split_into_concepts",
+        lambda markdown, category, source_name, source_url: [("cached", "Cached", markdown)],
+    )
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.write_concept_file",
+        lambda knowledge_dir, category, concept_id, content: processed_urls.append(category),
+    )
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.delete_concepts_by_source_urls",
+        lambda urls, knowledge_dir: None,
+    )
+
+    processed, _paths = _process_crawled_html(
+        cache_dir=str(tmp_path / "cache"),
+        knowledge_dir=str(tmp_path / "knowledge"),
+        changed_pages=[],
+        source_names=["kubernetes"],
+    )
+
+    assert processed == 1
+    assert processed_urls == ["kubernetes"]
+
+
+def test_source_run_with_no_local_documents_completes(tmp_path, monkeypatch):
+    """A normal source crawl must not build a zero-worker metadata pool."""
+    async def fake_crawl(**_kwargs):
+        return {
+            "sources": 1,
+            "discovered": 4,
+            "fetched": 0,
+            "changed": 0,
+            "unchanged": 4,
+            "deleted": 0,
+            "failed": 0,
+            "changed_urls": [],
+            "changed_pages": [],
+            "deleted_urls": [],
+        }
+
+    monkeypatch.setattr("app.ingestion.pipeline.crawl_configured_sources", fake_crawl)
+    monkeypatch.setattr(
+        "app.ingestion.pipeline._process_crawled_html",
+        lambda **_kwargs: (0, []),
+    )
+    monkeypatch.setattr("app.ingestion.pipeline.configure_llm_settings", lambda: None)
+    monkeypatch.setattr("app.ingestion.pipeline.update_status", lambda **_kwargs: None)
+    monkeypatch.setattr(
+        "app.ingestion.pipeline.StateManager.get_changed_files",
+        lambda *_args, **_kwargs: pytest.fail(
+            "source-only ingestion must not scan unrelated manual cache files"
+        ),
+    )
+
+    result = run_ingestion_pipeline(
+        cache_dir=str(tmp_path / "cache"),
+        knowledge_dir=str(tmp_path / "knowledge"),
+        source_names=["fastapi"],
+    )
+
+    assert result["status"] == "success"
+    assert result["indexed_documents"] == 0

@@ -52,6 +52,13 @@ class Settings(BaseSettings):
     VERTEX_LLM_MODEL: str = "gemini-3.5-flash"
     VERTEX_EMBEDDING_MODEL: str = "gemini-embedding-001"
     VERTEX_ACCESS_TOKEN: Optional[str] = None
+    # Optional keyless local-development authentication. When set, the app
+    # asks the already-authenticated gcloud CLI for short-lived impersonated
+    # tokens and refreshes them in memory.
+    VERTEX_SERVICE_ACCOUNT_EMAIL: Optional[str] = None
+    # A two-line file containing token creation epoch and token. The Docker
+    # gcloud sidecar writes this file into a private shared volume.
+    VERTEX_ACCESS_TOKEN_FILE: Optional[str] = None
 
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
 

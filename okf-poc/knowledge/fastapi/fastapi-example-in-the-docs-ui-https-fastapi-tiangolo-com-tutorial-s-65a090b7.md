@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/schema-extra-example/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### Example in the docs UI[¶](https://fastapi.tiangolo.com/tutorial/schema-extra-example/#example-in-the-docs-ui "Permanent link")

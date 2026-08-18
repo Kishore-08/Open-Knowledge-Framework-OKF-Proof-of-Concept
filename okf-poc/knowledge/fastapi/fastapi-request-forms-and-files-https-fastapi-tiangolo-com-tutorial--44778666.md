@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/request-forms-and-files/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 # Request Forms and Files[¶](https://fastapi.tiangolo.com/tutorial/request-forms-and-files/#request-forms-and-files "Permanent link")

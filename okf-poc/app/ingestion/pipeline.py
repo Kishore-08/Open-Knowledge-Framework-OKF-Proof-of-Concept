@@ -299,7 +299,7 @@ def _process_crawled_html(
         if changed_pages:
             pages_to_process = changed_pages
         elif not _knowledge_has_concepts(knowledge_dir):
-            pages_to_process = changed_pages or []
+            pages_to_process = _discover_cached_crawl_pages(cache_dir)
         else:
             pages_to_process = []
     else:
@@ -310,8 +310,11 @@ def _process_crawled_html(
             pages_to_process = []
         else:
             selected = {s.lower() for s in source_names}
+            candidates = changed_pages or []
+            if not candidates and not _knowledge_has_concepts(knowledge_dir):
+                candidates = _discover_cached_crawl_pages(cache_dir)
             pages_to_process = [
-                p for p in (changed_pages or [])
+                p for p in candidates
                 if (p.get("source_name") or "").lower() in selected
             ]
 
@@ -463,6 +466,9 @@ def run_ingestion_pipeline(
         indexed=0,
         indexed_documents=0,
         rate_limit_hits=0,
+        prompt_tokens_estimate=0,
+        completion_tokens_estimate=0,
+        total_tokens_estimate=0,
         current_source="",
     )
 
@@ -577,6 +583,12 @@ def run_ingestion_pipeline(
             f"changed/new={len(changed_local_files)} "
             f"unchanged={len(local_files) - len(changed_local_files)}"
         )
+    elif source_names:
+        # A source-triggered crawl must remain scoped to those documentation
+        # sources.  Manual files sitting at the cache root belong to the
+        # cached/upload flow and otherwise make `processed` exceed `fetched`
+        # in the monitoring UI (and unexpectedly ingest unrelated content).
+        changed_local_files = []
     else:
         changed_local_files, processing_state = state_manager.get_changed_files( processing_state )
 
@@ -603,15 +615,21 @@ def run_ingestion_pipeline(
         f"📄 Loading {len(raw_docs)} local documents for processing."
     )
 
+    # `fetched` represents inputs successfully made available in cache for this
+    # run. Include local/uploaded document units once they have been loaded so
+    # the dashboard compares like-for-like counters and never reports more
+    # processed inputs than fetched inputs.
+    fetched_inputs = crawl_result.get("fetched", 0) + len(raw_docs)
+
     update_status(
         status="running",
         stage="formatting",
         stage_message="Extracting metadata and writing OKF knowledge files",
         message="Preparing local document conversion",
-        total_documents=len(raw_docs),
+        total_documents=crawled_count + len(raw_docs),
         processed=crawled_count,
         discovered=crawl_result.get("discovered", 0),
-        fetched=crawl_result.get("fetched", 0),
+        fetched=fetched_inputs,
         failed=crawl_result.get("failed", 0),
     )
 
@@ -633,7 +651,11 @@ def run_ingestion_pipeline(
         raw_meta["source_file"] = source_name
         return i, doc, raw_meta
 
-    with ThreadPoolExecutor(max_workers=min(3, len(raw_docs))) as pool:
+    # ThreadPoolExecutor rejects max_workers=0.  Zero local documents is normal
+    # for source-only crawls and unchanged-cache runs, so simply skip this
+    # optional phase and continue to indexing/reuse.
+    if raw_docs:
+        pool = ThreadPoolExecutor(max_workers=min(3, len(raw_docs)))
         futures = [pool.submit(_extract, item) for item in enumerate(raw_docs)]
         for future in as_completed(futures):
             try:
@@ -714,6 +736,7 @@ def run_ingestion_pipeline(
                         break
 
             state_manager.save_processing_state(processing_state)
+        pool.shutdown(wait=True)
 
     print(
     f"💾 Local ingestion saved {saved_count} OKF documents. "

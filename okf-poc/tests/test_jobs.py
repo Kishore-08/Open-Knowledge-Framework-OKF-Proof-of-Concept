@@ -132,6 +132,22 @@ def test_update_active_status_mirrors_progress(manager):
     assert job.indexed_documents == 7
 
 
+def test_token_usage_accumulates_and_survives_job_completion(manager):
+    def handler(job):
+        manager.add_active_token_usage(100, 20)
+        manager.add_active_token_usage(50, 10)
+        return "ok"
+
+    manager.register_handler("ingest", handler)
+    job = manager.submit("ingest")
+    _wait_terminal(job)
+
+    assert job.prompt_tokens_estimate == 150
+    assert job.completion_tokens_estimate == 30
+    assert job.total_tokens_estimate == 180
+    assert manager.get_job(job.id).total_tokens_estimate == 180
+
+
 def test_list_jobs_newest_first(manager):
     manager.register_handler("ingest", lambda job: None)
     first = manager.submit("ingest")

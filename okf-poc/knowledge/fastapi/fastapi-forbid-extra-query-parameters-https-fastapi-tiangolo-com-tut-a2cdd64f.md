@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/query-param-models/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Forbid Extra Query Parameters[¶](https://fastapi.tiangolo.com/tutorial/query-param-models/#forbid-extra-query-parameters "Permanent link")

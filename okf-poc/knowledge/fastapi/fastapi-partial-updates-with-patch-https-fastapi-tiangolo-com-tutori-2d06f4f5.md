@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/body-updates/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Partial updates with `PATCH`[¶](https://fastapi.tiangolo.com/tutorial/body-updates/#partial-updates-with-patch "Permanent link")

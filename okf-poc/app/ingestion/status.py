@@ -61,6 +61,21 @@ def update_status(**kwargs):
             _status["total_tokens_estimate"] = prompt_tokens + completion_tokens
 
 
+def add_token_usage(prompt_tokens: int = 0, completion_tokens: int = 0) -> None:
+    """Accumulate one metadata LLM call's estimated usage for the current run."""
+    prompt_tokens = max(0, int(prompt_tokens or 0))
+    completion_tokens = max(0, int(completion_tokens or 0))
+    job_manager.add_active_token_usage(prompt_tokens, completion_tokens)
+
+    with _lock:
+        _status["prompt_tokens_estimate"] += prompt_tokens
+        _status["completion_tokens_estimate"] += completion_tokens
+        _status["total_tokens_estimate"] = (
+            _status["prompt_tokens_estimate"]
+            + _status["completion_tokens_estimate"]
+        )
+
+
 def get_status():
     # Prefer the live job when one exists so the legacy endpoint reports the
     # same progress as the new /jobs endpoints.

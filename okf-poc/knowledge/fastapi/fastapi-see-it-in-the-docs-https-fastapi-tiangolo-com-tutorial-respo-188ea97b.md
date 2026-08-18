@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/response-model/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## See it in the docs[¶](https://fastapi.tiangolo.com/tutorial/response-model/#see-it-in-the-docs "Permanent link")

@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/request-forms/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Define `Form` parameters[¶](https://fastapi.tiangolo.com/tutorial/request-forms/#define-form-parameters "Permanent link")

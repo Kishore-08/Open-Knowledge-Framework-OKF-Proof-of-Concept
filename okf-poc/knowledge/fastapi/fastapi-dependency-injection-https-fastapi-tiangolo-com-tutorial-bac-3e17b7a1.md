@@ -11,8 +11,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/background-tasks/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Dependency Injection[¶](https://fastapi.tiangolo.com/tutorial/background-tasks/#dependency-injection "Permanent link")

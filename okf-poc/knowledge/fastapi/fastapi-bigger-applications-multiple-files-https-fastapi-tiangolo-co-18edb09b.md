@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/bigger-applications/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 # Bigger Applications - Multiple Files[¶](https://fastapi.tiangolo.com/tutorial/bigger-applications/#bigger-applications-multiple-files "Permanent link")

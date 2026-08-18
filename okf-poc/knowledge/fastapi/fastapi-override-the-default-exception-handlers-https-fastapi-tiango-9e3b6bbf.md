@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/handling-errors/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Override the default exception handlers[¶](https://fastapi.tiangolo.com/tutorial/handling-errors/#override-the-default-exception-handlers "Permanent link")

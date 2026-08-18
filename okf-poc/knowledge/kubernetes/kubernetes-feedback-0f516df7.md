@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/
-updated_at: '2026-08-12'
-created_at: '2026-08-12'
+updated_at: '2026-08-18'
+created_at: '2026-08-18'
 ---
 
 ## Feedback
@@ -23,4 +23,4 @@ Open an issue in the [GitHub Repository](https://www.github.com/kubernetes/websi
 or
 [suggest an improvement](https://github.com/kubernetes/website/issues/new?title=Improvement%20for%20k8s.io).
 
-Last modified October 24, 2025 at 9:19 PM PST: [Add SVM beta docs (45ef04af70)](https://github.com/kubernetes/website/commit/45ef04af707f44ed6753ed343728bfb7bea15eec)
+Last modified August 08, 2026 at 6:55 PM PST: [fix Custom Resources extensions (f4c302c981)](https://github.com/kubernetes/website/commit/f4c302c9812d384e28ec6972be800a62d1b3bf60)

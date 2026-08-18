@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
-updated_at: '2026-08-13'
-created_at: '2026-08-13'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## When to Use Multiple Namespaces

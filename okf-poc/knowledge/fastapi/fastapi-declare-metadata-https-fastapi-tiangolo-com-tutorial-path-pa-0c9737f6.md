@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/path-params-numeric-validations/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Declare metadata[¶](https://fastapi.tiangolo.com/tutorial/path-params-numeric-validations/#declare-metadata "Permanent link")

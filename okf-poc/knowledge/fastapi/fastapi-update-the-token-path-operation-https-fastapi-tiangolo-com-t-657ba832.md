@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Update the `/token` *path operation*[¶](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/#update-the-token-path-operation "Permanent link")

@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/security/first-steps/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## **FastAPI**'s `OAuth2PasswordBearer`[¶](https://fastapi.tiangolo.com/tutorial/security/first-steps/#fastapis-oauth2passwordbearer "Permanent link")

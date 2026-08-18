@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/header-param-models/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Header Parameters with a Pydantic Model[¶](https://fastapi.tiangolo.com/tutorial/header-param-models/#header-parameters-with-a-pydantic-model "Permanent link")

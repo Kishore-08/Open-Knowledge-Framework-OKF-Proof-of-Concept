@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/first-steps/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### Step 6: Deploy it[¶](https://fastapi.tiangolo.com/tutorial/first-steps/#step-6-deploy-it "Permanent link")

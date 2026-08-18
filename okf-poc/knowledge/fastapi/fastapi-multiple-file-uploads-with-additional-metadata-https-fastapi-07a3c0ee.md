@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/request-files/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### Multiple File Uploads with Additional Metadata[¶](https://fastapi.tiangolo.com/tutorial/request-files/#multiple-file-uploads-with-additional-metadata "Permanent link")

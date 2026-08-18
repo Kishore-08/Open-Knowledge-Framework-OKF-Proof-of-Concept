@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/static-files/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Use `StaticFiles`[¶](https://fastapi.tiangolo.com/tutorial/static-files/#use-staticfiles "Permanent link")

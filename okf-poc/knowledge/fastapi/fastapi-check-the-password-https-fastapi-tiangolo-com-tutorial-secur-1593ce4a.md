@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/security/simple-oauth2/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### Check the password[¶](https://fastapi.tiangolo.com/tutorial/security/simple-oauth2/#check-the-password "Permanent link")

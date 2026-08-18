@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/security/get-current-user/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Create a `get_current_user` dependency[¶](https://fastapi.tiangolo.com/tutorial/security/get-current-user/#create-a-get-current-user-dependency "Permanent link")

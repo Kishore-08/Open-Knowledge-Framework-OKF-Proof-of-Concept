@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/sql-databases/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### Create a Hero[¶](https://fastapi.tiangolo.com/tutorial/sql-databases/#create-a-hero "Permanent link")

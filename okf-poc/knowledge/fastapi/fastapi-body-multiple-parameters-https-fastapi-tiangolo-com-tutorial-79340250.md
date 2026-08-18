@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/body-multiple-params/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 # Body - Multiple Parameters[¶](https://fastapi.tiangolo.com/tutorial/body-multiple-params/#body-multiple-parameters "Permanent link")

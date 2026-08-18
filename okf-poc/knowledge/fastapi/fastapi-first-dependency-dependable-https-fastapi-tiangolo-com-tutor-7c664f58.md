@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/dependencies/sub-dependencies/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## First dependency "dependable"[¶](https://fastapi.tiangolo.com/tutorial/dependencies/sub-dependencies/#first-dependency-dependable "Permanent link")

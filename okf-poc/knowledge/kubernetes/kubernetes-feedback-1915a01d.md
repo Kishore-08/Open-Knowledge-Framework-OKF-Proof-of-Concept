@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/storage/storage-classes/
-updated_at: '2026-08-13'
-created_at: '2026-08-13'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Feedback
@@ -23,4 +23,4 @@ Open an issue in the [GitHub Repository](https://www.github.com/kubernetes/websi
 or
 [suggest an improvement](https://github.com/kubernetes/website/issues/new?title=Improvement%20for%20k8s.io).
 
-Last modified October 31, 2025 at 7:49 AM PST: [remove broken links to examples (11f3b78e37)](https://github.com/kubernetes/website/commit/11f3b78e37973bb00bb01014c1295c0c2d78b519)
+Last modified August 11, 2026 at 5:45 PM PST: [docs: fix volume-provisioning design proposal link (2bd65cc47e)](https://github.com/kubernetes/website/commit/2bd65cc47ed52dd7b429b03ff3b5db37873dbf4a)

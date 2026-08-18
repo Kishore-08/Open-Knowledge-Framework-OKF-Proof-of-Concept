@@ -2,6 +2,45 @@
 name: okf-poc
 
 services:
+  vertex-token:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:stable
+    environment:
+      VERTEX_SERVICE_ACCOUNT_EMAIL: ${VERTEX_SERVICE_ACCOUNT_EMAIL:-}
+    volumes:
+      # gcloud needs its existing authenticated user session to impersonate the
+      # service account. This is for local development only.
+      - ${HOME}/.config/gcloud:/root/.config/gcloud
+      - vertex_tokens:/tokens
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -z "$${VERTEX_SERVICE_ACCOUNT_EMAIL}" ]; then
+          echo "VERTEX_SERVICE_ACCOUNT_EMAIL is not configured" >&2
+          exit 1
+        fi
+        while true; do
+          if token="$$(gcloud auth print-access-token --impersonate-service-account="$${VERTEX_SERVICE_ACCOUNT_EMAIL}" --quiet)"; then
+            {
+              date +%s
+              printf '%s\n' "$${token}"
+            } > /tokens/credentials.tmp
+            chmod 600 /tokens/credentials.tmp
+            mv /tokens/credentials.tmp /tokens/credentials
+            unset token
+            sleep 2700
+          else
+            echo "Vertex token refresh failed; retrying in 60 seconds" >&2
+            rm -f /tokens/credentials.tmp
+            sleep 60
+          fi
+        done
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /tokens/credentials"]
+      interval: 5s
+      timeout: 2s
+      retries: 12
+    restart: unless-stopped
+
   api:
     build:
       context: .
@@ -14,10 +53,16 @@ services:
       - ./cache:/app/cache
       - ./config:/app/config
       - ./scripts:/app/scripts
+      - vertex_tokens:/var/run/vertex-token:ro
+    environment:
+      VERTEX_ACCESS_TOKEN_FILE: /var/run/vertex-token/credentials
     env_file:
       - .env
     depends_on:
-      - qdrant
+      qdrant:
+        condition: service_started
+      vertex-token:
+        condition: service_healthy
 
   ui:
     build:
@@ -46,3 +91,5 @@ services:
 volumes:
   qdrant_data:
     name: okf_qdrant_data
+  vertex_tokens:
+    name: okf_vertex_tokens

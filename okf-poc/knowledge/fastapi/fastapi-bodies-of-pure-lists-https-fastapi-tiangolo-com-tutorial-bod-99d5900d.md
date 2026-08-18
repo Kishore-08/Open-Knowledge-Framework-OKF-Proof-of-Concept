@@ -11,8 +11,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/body-nested-models/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Bodies of pure lists[¶](https://fastapi.tiangolo.com/tutorial/body-nested-models/#bodies-of-pure-lists "Permanent link")

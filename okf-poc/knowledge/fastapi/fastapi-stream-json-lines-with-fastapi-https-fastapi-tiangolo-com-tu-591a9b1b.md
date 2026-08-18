@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/stream-json-lines/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Stream JSON Lines with FastAPI[¶](https://fastapi.tiangolo.com/tutorial/stream-json-lines/#stream-json-lines-with-fastapi "Permanent link")

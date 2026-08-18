@@ -11,8 +11,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/query-params-str-validations/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Exclude parameters from OpenAPI[¶](https://fastapi.tiangolo.com/tutorial/query-params-str-validations/#exclude-parameters-from-openapi "Permanent link")

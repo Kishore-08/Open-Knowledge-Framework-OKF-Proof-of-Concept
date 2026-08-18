@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/encoder/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Using the `jsonable_encoder`[¶](https://fastapi.tiangolo.com/tutorial/encoder/#using-the-jsonable-encoder "Permanent link")

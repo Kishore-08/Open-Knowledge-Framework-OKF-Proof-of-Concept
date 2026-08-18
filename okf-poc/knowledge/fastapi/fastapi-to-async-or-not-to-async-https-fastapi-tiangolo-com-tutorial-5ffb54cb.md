@@ -10,8 +10,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/dependencies/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## To `async` or not to `async`[¶](https://fastapi.tiangolo.com/tutorial/dependencies/#to-async-or-not-to-async "Permanent link")

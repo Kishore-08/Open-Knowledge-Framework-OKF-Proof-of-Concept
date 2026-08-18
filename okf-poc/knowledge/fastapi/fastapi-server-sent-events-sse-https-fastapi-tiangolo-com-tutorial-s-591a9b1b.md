@@ -11,8 +11,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/stream-json-lines/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ## Server-Sent Events (SSE)[¶](https://fastapi.tiangolo.com/tutorial/stream-json-lines/#server-sent-events-sse "Permanent link")

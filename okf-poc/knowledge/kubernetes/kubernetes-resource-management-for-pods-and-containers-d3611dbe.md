@@ -10,8 +10,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-updated_at: '2026-08-13'
-created_at: '2026-08-13'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 # Resource Management for Pods and Containers

@@ -9,8 +9,8 @@ tags: []
 source:
   name: fastapi
   url: https://fastapi.tiangolo.com/tutorial/extra-models/
-updated_at: '2026-08-14'
-created_at: '2026-08-14'
+updated_at: '2026-08-17'
+created_at: '2026-08-17'
 ---
 
 ### About `**user_in.model_dump()`[¶](https://fastapi.tiangolo.com/tutorial/extra-models/#about-user-in-model-dump "Permanent link")
