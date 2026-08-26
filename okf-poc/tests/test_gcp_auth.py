@@ -64,3 +64,17 @@ def test_token_file_takes_precedence_over_stale_explicit_token(tmp_path):
             credentials = gcp_auth.get_vertex_credentials()
 
     assert isinstance(credentials, TokenFileCredentials)
+
+
+def test_token_file_credentials_adopts_sidecar_rotation_before_expiry(tmp_path):
+    token_file = tmp_path / "credentials"
+    token_file.write_text("100\nold-token\n", encoding="utf-8")
+    credentials = TokenFileCredentials(str(token_file))
+    credentials.refresh(request=None)
+
+    token_file.write_text("200\nnew-token\n", encoding="utf-8")
+    headers = {}
+    credentials.before_request(None, "POST", "https://example.test", headers)
+
+    assert credentials.token == "new-token"
+    assert headers["authorization"] == "Bearer new-token"

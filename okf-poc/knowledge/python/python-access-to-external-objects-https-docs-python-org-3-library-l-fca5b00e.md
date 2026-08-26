@@ -1,0 +1,37 @@
+---
+id: python-access-to-external-objects-https-docs-python-org-3-library-l-fca5b00e
+type: concept
+title: Access to external objects[¶](https://docs.python.org/3/library/logging.config.html#access-to-external-objects
+  "Link to this heading")
+description: There are times where a configuration needs to refer to objects
+category: python
+tags: []
+source:
+  name: python
+  url: https://docs.python.org/3/library/logging.config.html
+updated_at: '2026-08-20'
+created_at: '2026-08-20'
+---
+
+### Access to external objects[¶](https://docs.python.org/3/library/logging.config.html#access-to-external-objects "Link to this heading")
+
+There are times where a configuration needs to refer to objects
+external to the configuration, for example `sys.stderr`. If the
+configuration dict is constructed using Python code, this is
+straightforward, but a problem arises when the configuration is
+provided via a text file (e.g. JSON, YAML). In a text file, there is
+no standard way to distinguish `sys.stderr` from the literal string
+`'sys.stderr'`. To facilitate this distinction, the configuration
+system looks for certain special prefixes in string values and
+treat them specially. For example, if the literal string
+`'ext://sys.stderr'` is provided as a value in the configuration,
+then the `ext://` will be stripped off and the remainder of the
+value processed using normal import mechanisms.
+
+The handling of such prefixes is done in a way analogous to protocol
+handling: there is a generic mechanism to look for prefixes which
+match the regular expression `^(?P<prefix>[a-z]+)://(?P<suffix>.*)$`
+whereby, if the `prefix` is recognised, the `suffix` is processed
+in a prefix-dependent manner and the result of the processing replaces
+the string value. If the prefix is not recognised, then the string
+value will be left as-is.

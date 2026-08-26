@@ -181,7 +181,7 @@ class DocsCrawler:
         robots_url = base_url.rstrip("/") + "/robots.txt"
         try:
             body = await self._fetch(robots_url)
-        except Exception as exc:  # noqa: BLE001 - no robots.txt is fine
+        except Exception as exc:  # no robots.txt
             print(f"ℹ️ No robots.txt at {robots_url}: {exc}")
             return []
         return parse_robots_txt(body.decode("utf-8", errors="ignore"))

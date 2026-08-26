@@ -1,0 +1,27 @@
+---
+id: python-thread-safety-https-docs-python-org-3-library-logging-html-t-025d6e6b
+type: concept
+title: Thread Safety[¶](https://docs.python.org/3/library/logging.html#thread-safety
+  "Link to this heading")
+description: The logging module is intended to be thread-safe without any special
+  work
+category: python
+tags: []
+source:
+  name: python
+  url: https://docs.python.org/3/library/logging.html
+updated_at: '2026-08-20'
+created_at: '2026-08-20'
+---
+
+## Thread Safety[¶](https://docs.python.org/3/library/logging.html#thread-safety "Link to this heading")
+
+The logging module is intended to be thread-safe without any special work
+needing to be done by its clients. It achieves this through using threading
+locks; there is one lock to serialize access to the module’s shared data, and
+each handler also creates a lock to serialize access to its underlying I/O.
+
+If you are implementing asynchronous signal handlers using the [`signal`](https://docs.python.org/3/library/signal.html#module-signal "signal: Set handlers for asynchronous events.")
+module, you may not be able to use logging from within such handlers. This is
+because lock implementations in the [`threading`](https://docs.python.org/3/library/threading.html#module-threading "threading: Thread-based parallelism.") module are not always
+re-entrant, and so cannot be invoked from such signal handlers.

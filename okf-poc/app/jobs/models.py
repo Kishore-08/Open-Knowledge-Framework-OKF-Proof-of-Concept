@@ -52,6 +52,10 @@ class Job:
     failed: int = 0
     indexed: int = 0
     indexed_documents: int = 0
+    # Input pages/files have a different denominator from generated OKF
+    # concepts. Keep it stable when total_documents switches to the indexing
+    # denominator.
+    total_processed_documents: int = 0
     total_documents: int = 0
     progress_percent: int = 0
     prompt_tokens_estimate: int = 0
@@ -94,6 +98,7 @@ class Job:
             "failed": self.failed,
             "indexed": self.indexed,
             "indexed_documents": self.indexed_documents,
+            "total_processed_documents": self.total_processed_documents,
             "total_documents": self.total_documents,
             "progress_percent": self.progress_percent,
             "prompt_tokens_estimate": self.prompt_tokens_estimate,
@@ -117,6 +122,7 @@ class Job:
             "failed": self.failed,
             "indexed": self.indexed,
             "indexed_documents": self.indexed_documents,
+            "total_processed_documents": self.total_processed_documents,
             "total_documents": self.total_documents,
             "progress_percent": self.progress_percent,
             "prompt_tokens_estimate": self.prompt_tokens_estimate,

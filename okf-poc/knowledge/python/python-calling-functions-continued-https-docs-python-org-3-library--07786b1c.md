@@ -1,0 +1,49 @@
+---
+id: python-calling-functions-continued-https-docs-python-org-3-library--07786b1c
+type: concept
+title: Calling functions, continued[¶](https://docs.python.org/3/library/ctypes.html#calling-functions-continued
+  "Link to this heading")
+description: Note that printf prints to the real standard output channel, *not* to
+category: python
+tags: []
+source:
+  name: python
+  url: https://docs.python.org/3/library/ctypes.html
+updated_at: '2026-08-20'
+created_at: '2026-08-20'
+---
+
+### Calling functions, continued[¶](https://docs.python.org/3/library/ctypes.html#calling-functions-continued "Link to this heading")
+
+Note that printf prints to the real standard output channel, *not* to
+[`sys.stdout`](https://docs.python.org/3/library/sys.html#sys.stdout "sys.stdout"), so these examples will only work at the console prompt, not
+from within *IDLE* or *PythonWin*:
+
+```
+>>> printf = libc.printf
+>>> printf(b"Hello, %s\n", b"World!")
+Hello, World!
+14
+>>> printf(b"Hello, %S\n", "World!")
+Hello, World!
+14
+>>> printf(b"%d bottles of beer\n", 42)
+42 bottles of beer
+19
+>>> printf(b"%f bottles of beer\n", 42.5)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ctypes.ArgumentError: argument 2: TypeError: Don't know how to convert parameter 2
+>>>
+```
+
+As has been mentioned before, all Python types except integers, strings, and
+bytes objects have to be wrapped in their corresponding `ctypes` type, so
+that they can be converted to the required C data type:
+
+```
+>>> printf(b"An int %d, a double %f\n", 1234, c_double(3.14))
+An int 1234, a double 3.140000
+31
+>>>
+```

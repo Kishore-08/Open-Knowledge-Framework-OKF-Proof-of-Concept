@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/security/pod-security-standards/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-25'
+created_at: '2026-08-25'
 ---
 
 ## Feedback
@@ -23,7 +23,7 @@ Open an issue in the [GitHub Repository](https://www.github.com/kubernetes/websi
 or
 [suggest an improvement](https://github.com/kubernetes/website/issues/new?title=Improvement%20for%20k8s.io).
 
-Last modified August 06, 2025 at 6:48 PM PST: [nit-fix: Add empty value for host field in probes PSA (a0fb9cc6b3)](https://github.com/kubernetes/website/commit/a0fb9cc6b3bdc96b6df50a6ab6778140150ea484)
+Last modified August 02, 2026 at 11:18 PM PST: [docs: fix broken Kyverno link in Pod Security Standards (2c1aa11ce2)](https://github.com/kubernetes/website/commit/2c1aa11ce24c0b3e8ab81a04bc4ac088a5fae5e4)
 
 Items on this page refer to third party products or projects that provide functionality required by Kubernetes. The Kubernetes project authors aren't responsible for those third-party products or projects. See the [CNCF website guidelines](https://github.com/cncf/foundation/blob/main/policies-guidance/website-guidelines.md) for more details.
 

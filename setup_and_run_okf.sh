@@ -155,8 +155,13 @@ else
     info "Validating Vertex AI configuration..."
     require_config VERTEX_AI_PROJECT_ID false
     require_config VERTEX_AI_LOCATION false
-    require_config VERTEX_ACCESS_TOKEN true
-    warn "VERTEX_ACCESS_TOKEN is short-lived and may need to be refreshed before a later run."
+    require_config VERTEX_SERVICE_ACCOUNT_EMAIL false
+    command -v gcloud >/dev/null 2>&1 || fail "gcloud is required for Vertex service-account impersonation."
+    gcloud auth print-access-token \
+        --impersonate-service-account="$(get_env_value VERTEX_SERVICE_ACCOUNT_EMAIL)" \
+        --quiet >/dev/null || fail "gcloud could not impersonate the configured Vertex service account."
+    set_env_value VERTEX_ACCESS_TOKEN ""
+    success "Service-account impersonation is available; tokens will refresh automatically."
 fi
 
 success "Environment configuration is ready (${provider})."

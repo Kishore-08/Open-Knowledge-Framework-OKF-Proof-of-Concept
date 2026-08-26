@@ -1,0 +1,87 @@
+---
+id: python-process-parameters-https-docs-python-org-3-library-os-html-p-e86233c0
+type: concept
+title: Process Parameters[¶](https://docs.python.org/3/library/os.html#process-parameters
+  "Link to this heading")
+description: These functions and data items provide information and operate on the
+  current
+category: python
+tags: []
+source:
+  name: python
+  url: https://docs.python.org/3/library/os.html
+updated_at: '2026-08-20'
+created_at: '2026-08-20'
+---
+
+## Process Parameters[¶](https://docs.python.org/3/library/os.html#process-parameters "Link to this heading")
+
+These functions and data items provide information and operate on the current
+process and user.
+
+os.ctermid()[¶](https://docs.python.org/3/library/os.html#os.ctermid "Link to this definition")
+:   Return the filename corresponding to the controlling terminal of the process.
+
+    [Availability](https://docs.python.org/3/library/intro.html#availability): Unix, not WASI.
+
+os.environ[¶](https://docs.python.org/3/library/os.html#os.environ "Link to this definition")
+:   A [mapping](https://docs.python.org/3/glossary.html#term-mapping) object where keys and values are strings that represent
+    the process environment. For example, `environ['HOME']` is the pathname
+    of your home directory (on some platforms), and is equivalent to
+    `getenv("HOME")` in C.
+
+    This mapping is captured the first time the `os` module is imported,
+    typically during Python startup as part of processing `site.py`. Changes
+    to the environment made after this time are not reflected in `os.environ`,
+    except for changes made by modifying `os.environ` directly.
+
+    This mapping may be used to modify the environment as well as query the
+    environment. [`putenv()`](https://docs.python.org/3/library/os.html#os.putenv "os.putenv") will be called automatically when the mapping
+    is modified.
+
+    On Unix, keys and values use [`sys.getfilesystemencoding()`](https://docs.python.org/3/library/sys.html#sys.getfilesystemencoding "sys.getfilesystemencoding") and
+    `'surrogateescape'` error handler. Use [`environb`](https://docs.python.org/3/library/os.html#os.environb "os.environb") if you would like
+    to use a different encoding.
+
+    On Windows, the keys are converted to uppercase. This also applies when
+    getting, setting, or deleting an item. For example,
+    `environ['monty'] = 'python'` maps the key `'MONTY'` to the value
+    `'python'`.
+
+    Note
+
+    Calling [`putenv()`](https://docs.python.org/3/library/os.html#os.putenv "os.putenv") directly does not change `os.environ`, so it’s better
+    to modify `os.environ`.
+
+    Note
+
+    On some platforms, including FreeBSD and macOS, setting `environ` may
+    cause memory leaks. Refer to the system documentation for
+    `putenv()`.
+
+    You can delete items in this mapping to unset environment variables.
+    [`unsetenv()`](https://docs.python.org/3/library/os.html#os.unsetenv "os.unsetenv") will be called automatically when an item is deleted from
+    `os.environ`, and when one of the `pop()` or `clear()` methods is
+    called.
+
+    See also
+
+    The [`os.reload_environ()`](https://docs.python.org/3/library/os.html#os.reload_environ "os.reload_environ") function.
+
+    Changed in version 3.9: Updated to support [**PEP 584**](https://peps.python.org/pep-0584/)’s merge (`|`) and update (`|=`) operators.
+
+os.environb[¶](https://docs.python.org/3/library/os.html#os.environb "Link to this definition")
+:   Bytes version of [`environ`](https://docs.python.org/3/library/os.html#os.environ "os.environ"): a [mapping](https://docs.python.org/3/glossary.html#term-mapping) object where both keys
+    and values are [`bytes`](https://docs.python.org/3/library/stdtypes.html#bytes "bytes") objects representing the process environment.
+    `environ` and `environb` are synchronized (modifying
+    `environb` updates `environ`, and vice versa).
+
+    `environb` is only available if [`supports_bytes_environ`](https://docs.python.org/3/library/os.html#os.supports_bytes_environ "os.supports_bytes_environ") is
+    `True`.
+
+    Added in version 3.2.
+
+    Changed in version 3.9: Updated to support [**PEP 584**](https://peps.python.org/pep-0584/)’s merge (`|`) and update (`|=`) operators.
+
+os.reload\_environ()[¶](https://docs.python.org/3/library/os.html#os.reload_environ "Link to this definition")
+:   The [`os.environ`](https://docs.python.org/3/library/os.html#os.environ "os.environ") and [`os.environb`](https://d

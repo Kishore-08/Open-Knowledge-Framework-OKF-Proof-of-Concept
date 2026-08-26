@@ -326,6 +326,7 @@ def _process_crawled_html(
         stage_message="Starting the ingestion pipeline from the cache folder",
         message="Processing crawled documentation",
         discovered=len(pages_to_process) if pages_to_process else 0,
+        total_processed_documents=max(0, len(pages_to_process)),
         total_documents=max(0, len(pages_to_process)),
         processed=0,
     )
@@ -627,6 +628,7 @@ def run_ingestion_pipeline(
         stage_message="Extracting metadata and writing OKF knowledge files",
         message="Preparing local document conversion",
         total_documents=crawled_count + len(raw_docs),
+        total_processed_documents=crawled_count + len(raw_docs),
         processed=crawled_count,
         discovered=crawl_result.get("discovered", 0),
         fetched=fetched_inputs,
@@ -714,6 +716,7 @@ def run_ingestion_pipeline(
                 stage_message="Extracting metadata and writing OKF knowledge files",
                 message=f"Saving OKF file {saved_count}/{len(raw_docs)}",
                 processed=crawled_count + saved_count,
+                total_processed_documents=len(raw_docs) + max(0, crawled_count),
                 total_documents=len(raw_docs) + max(0, crawled_count),
                 indexed_documents=0,
             )

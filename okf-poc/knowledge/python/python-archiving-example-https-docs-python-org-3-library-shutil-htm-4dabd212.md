@@ -1,0 +1,43 @@
+---
+id: python-archiving-example-https-docs-python-org-3-library-shutil-htm-4dabd212
+type: concept
+title: Archiving example[¶](https://docs.python.org/3/library/shutil.html#archiving-example
+  "Link to this heading")
+description: In this example, we create a gzip’ed tar-file archive containing all
+  files
+category: python
+tags: []
+source:
+  name: python
+  url: https://docs.python.org/3/library/shutil.html
+updated_at: '2026-08-20'
+created_at: '2026-08-20'
+---
+
+### Archiving example[¶](https://docs.python.org/3/library/shutil.html#archiving-example "Link to this heading")
+
+In this example, we create a gzip’ed tar-file archive containing all files
+found in the `.ssh` directory of the user:
+
+```
+>>> from shutil import make_archive
+>>> import os
+>>> archive_name = os.path.expanduser(os.path.join('~', 'myarchive'))
+>>> root_dir = os.path.expanduser(os.path.join('~', '.ssh'))
+>>> make_archive(archive_name, 'gztar', root_dir)
+'/Users/tarek/myarchive.tar.gz'
+```
+
+The resulting archive contains:
+
+```
+$ tar -tzvf /Users/tarek/myarchive.tar.gz
+drwx------ tarek/staff       0 2010-02-01 16:23:40 ./
+-rw-r--r-- tarek/staff     609 2008-06-09 13:26:54 ./authorized_keys
+-rwxr-xr-x tarek/staff      65 2008-06-09 13:26:54 ./config
+-rwx------ tarek/staff     668 2008-06-09 13:26:54 ./id_dsa
+-rwxr-xr-x tarek/staff     609 2008-06-09 13:26:54 ./id_dsa.pub
+-rw------- tarek/staff    1675 2008-06-09 13:26:54 ./id_rsa
+-rw-r--r-- tarek/staff     397 2008-06-09 13:26:54 ./id_rsa.pub
+-rw-r--r-- tarek/staff   37192 2010-02-06 18:23:10 ./known_hosts
+```

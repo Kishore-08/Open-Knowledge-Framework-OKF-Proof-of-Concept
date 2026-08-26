@@ -115,6 +115,7 @@ def test_update_active_status_mirrors_progress(manager):
     def handler(job):
         manager.update_active_status(
             processed=4,
+            total_processed_documents=5,
             total_documents=10,
             indexed=7,
         )
@@ -125,6 +126,8 @@ def test_update_active_status_mirrors_progress(manager):
     _wait_terminal(job)
     # Derived fields computed on the job.
     assert job.processed == 4
+    assert job.total_processed_documents == 5
+    assert job.to_status_dict()["total_processed_documents"] == 5
     # While a job is running the progress is stage/counter-derived, but a
     # terminal (completed) job always reports 100% so the UI progress bar
     # reaches the end when the pipeline finishes.

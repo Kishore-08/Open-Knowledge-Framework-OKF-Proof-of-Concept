@@ -9,6 +9,7 @@ Offers two complementary access paths over the knowledge base:
     vector store or API key is unavailable.
 """
 
+from concurrent.futures import ThreadPoolExecutor
 import re
 from typing import List, Optional
 
@@ -74,8 +75,8 @@ def search(
       - "semantic": Qdrant vector search
       - "auto"    : keyword results augmented with semantic results when possible
     """
-    keyword_results = search_concepts(query, category=category, tag=tag)
     if mode == "keyword":
+        keyword_results = search_concepts(query, category=category, tag=tag)
         limit = min(top_k or settings.TOP_K, 5)
         return {"mode": "keyword", "results": _rank_and_filter(keyword_results, limit)}
 
@@ -93,7 +94,24 @@ def search(
     limit = min(top_k or settings.TOP_K, 5)
     # Ask Qdrant for extra candidates because legacy internal records may be
     # discarded before the final five citations are selected.
-    semantic_results = _semantic_search(query, category=category, top_k=max(limit * 3, limit))
+    # Keyword ranking is local CPU/filesystem work while semantic retrieval is
+    # mostly remote embedding + Qdrant I/O. Starting both together removes the
+    # keyword scan from the hybrid request's critical path.
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="okf-search") as executor:
+        keyword_future = executor.submit(
+            search_concepts,
+            query,
+            category=category,
+            tag=tag,
+        )
+        semantic_future = executor.submit(
+            _semantic_search,
+            query,
+            category=category,
+            top_k=max(limit * 3, limit),
+        )
+        keyword_results = keyword_future.result()
+        semantic_results = semantic_future.result()
 
     merged = _rank_and_filter(semantic_results + keyword_results, limit)
 

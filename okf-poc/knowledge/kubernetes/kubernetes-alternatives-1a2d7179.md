@@ -10,8 +10,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/security/pod-security-standards/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-25'
+created_at: '2026-08-25'
 ---
 
 ### Alternatives
@@ -21,5 +21,5 @@ created_at: '2026-08-17'
 Other alternatives for enforcing policies are being developed in the Kubernetes ecosystem, such as:
 
 - [Kubewarden](https://github.com/kubewarden)
-- [Kyverno](https://kyverno.io/policies/pod-security/)
+- [Kyverno](https://kyverno.io/policies)
 - [OPA Gatekeeper](https://github.com/open-policy-agent/gatekeeper)

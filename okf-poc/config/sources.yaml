@@ -49,9 +49,8 @@ sources:
   category: langchain
   enabled: false
 - name: aws
-  base_url: https://docs.aws.amazon.com/whitepapers/latest/aws-overview/
-  sitemap_url: https://docs.aws.amazon.com/whitepapers/latest/aws-overview/sitemap.xml
-  url_filter: /whitepapers/latest/aws-overview/
+  base_url: https://docs.aws.amazon.com
+  sitemap_url: https://docs.aws.amazon.com/sitemap_index.xml
   category: aws
   enabled: false
 - name: docker

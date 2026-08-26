@@ -11,6 +11,7 @@ step that requires `GEMINI_API_KEY`.
 
 from dataclasses import dataclass, field
 from pathlib import Path
+import re
 import time
 from typing import List, Optional
 
@@ -148,14 +149,47 @@ def generate_answer(
     try:
         answer = _call_llm(query, context_block)
     except Exception as exc:  # noqa: BLE001
-        answer = (
-            "The knowledge base returned the following relevant concepts, but answer "
-            f"generation is currently unavailable: {exc}. Check the configured "
-            "AI provider credentials and quota, then try again.\n\n"
-            + "\n".join(f"- {r.get('title')} ({r.get('source_url')})" for r in results)
-        )
+        # Retrieval is independent of the LLM.  Return useful keyword content
+        # instead of replacing successful search output with a raw provider
+        # exception (which can be very long and misleading in the chat UI).
+        print(f"LLM answer generation unavailable; returning search results: {exc}")
+        answer = _format_search_fallback(results)
+        # Only the best result was used to construct the deterministic answer.
+        # Do not present unrelated lower-ranked matches as supporting evidence.
+        sources = sources[:1]
 
     return QueryResult(answer=answer, sources=sources, retrieval_mode=retrieved.get("mode", ""))
+
+
+def _format_search_fallback(results: List[dict]) -> str:
+    """Return a concise extractive answer from the strongest search result."""
+    best = results[0]
+    title = str(best.get("title") or best.get("id") or "").strip()
+    raw = str(best.get("snippet") or best.get("description") or "")
+
+    # Prefer the first substantive paragraph, skipping a repeated Markdown
+    # heading. This gives definition questions the source's own definition
+    # without requiring an LLM or including unrelated lower-ranked matches.
+    paragraphs = [part.strip() for part in re.split(r"\n\s*\n", raw) if part.strip()]
+    selected = ""
+    for paragraph in paragraphs:
+        plain = re.sub(r"!\[([^]]*)\]\([^)]*\)", r"\1", paragraph)
+        plain = re.sub(r"\[([^]]+)\]\([^)]*\)", r"\1", plain)
+        plain = re.sub(r"^#{1,6}\s*", "", plain)
+        plain = plain.replace("`", "")
+        plain = " ".join(plain.split())
+        if plain.lower().rstrip("?.:") == title.lower().rstrip("?.:"):
+            continue
+        if len(plain) >= 40:
+            selected = plain
+            break
+
+    if not selected:
+        selected = " ".join(raw.split()) or f"The best matching result is {title}."
+    if len(selected) > 600:
+        selected = selected[:597].rsplit(" ", 1)[0] + "..."
+
+    return f"{selected}\n\n_Retrieved directly from the knowledge base; AI generation is unavailable._"
 
 
 def _call_llm(query: str, context_block: str) -> str:

@@ -1,0 +1,58 @@
+---
+id: python-rotatingfilehandler-https-docs-python-org-3-library-logging--41e6f1c2
+type: concept
+title: RotatingFileHandler[¶](https://docs.python.org/3/library/logging.handlers.html#rotatingfilehandler
+  "Link to this heading")
+description: The [`RotatingFileHandler`](https://docs.python.org/3/library/logging.handlers.html#logging.handlers.RotatingFileHandler
+  "logging.handlers.RotatingFileHandler") class, located in the `logging.handlers
+category: python
+tags: []
+source:
+  name: python
+  url: https://docs.python.org/3/library/logging.handlers.html
+updated_at: '2026-08-20'
+created_at: '2026-08-20'
+---
+
+## RotatingFileHandler[¶](https://docs.python.org/3/library/logging.handlers.html#rotatingfilehandler "Link to this heading")
+
+The [`RotatingFileHandler`](https://docs.python.org/3/library/logging.handlers.html#logging.handlers.RotatingFileHandler "logging.handlers.RotatingFileHandler") class, located in the `logging.handlers`
+module, supports rotation of disk log files.
+
+*class* logging.handlers.RotatingFileHandler(*filename*, *mode='a'*, *maxBytes=0*, *backupCount=0*, *encoding=None*, *delay=False*, *errors=None*)[¶](https://docs.python.org/3/library/logging.handlers.html#logging.handlers.RotatingFileHandler "Link to this definition")
+:   Returns a new instance of the `RotatingFileHandler` class. The specified
+    file is opened and used as the stream for logging. If *mode* is not specified,
+    `'a'` is used. If *encoding* is not `None`, it is used to open the file
+    with that encoding. If *delay* is true, then file opening is deferred until the
+    first call to [`emit()`](https://docs.python.org/3/library/logging.handlers.html#logging.handlers.RotatingFileHandler.emit "logging.handlers.RotatingFileHandler.emit"). By default, the file grows indefinitely. If
+    *errors* is provided, it determines how encoding errors are handled.
+
+    You can use the *maxBytes* and *backupCount* values to allow the file to
+    *rollover* at a predetermined size. When the size is about to be exceeded,
+    the file is closed and a new file is silently opened for output. Rollover occurs
+    whenever the current log file is nearly *maxBytes* in length; but if either of
+    *maxBytes* or *backupCount* is zero, rollover never occurs, so you generally want
+    to set *backupCount* to at least 1, and have a non-zero *maxBytes*.
+    When *backupCount* is non-zero, the system will save old log files by appending
+    the extensions ‘.1’, ‘.2’ etc., to the filename. For example, with a *backupCount*
+    of 5 and a base file name of `app.log`, you would get `app.log`,
+    `app.log.1`, `app.log.2`, up to `app.log.5`. The file being
+    written to is always `app.log`. When this file is filled, it is closed
+    and renamed to `app.log.1`, and if files `app.log.1`,
+    `app.log.2`, etc. exist, then they are renamed to `app.log.2`,
+    `app.log.3` etc. respectively.
+
+    Changed in version 3.6: As well as string values, [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path "pathlib.Path") objects are also accepted
+    for the *filename* argument.
+
+    Changed in version 3.9: The *errors* parameter was added.
+
+    doRollover()[¶](https://docs.python.org/3/library/logging.handlers.html#logging.handlers.RotatingFileHandler.doRollover "Link to this definition")
+    :   Does a rollover, as described above.
+
+    emit(*record*)[¶](https://docs.python.org/3/library/logging.handlers.html#logging.handlers.RotatingFileHandler.emit "Link to this definition")
+    :   Outputs the record to the file, catering for rollover as described
+        previously.
+
+    shouldRollover(*record*)[¶](https://docs.python.org/3/library/logging.handlers.html#logging.handlers.RotatingFileHandler.shouldRollover "Link to this definition")
+    :   See if the supplied record would cause the file to exceed the configured size limit.

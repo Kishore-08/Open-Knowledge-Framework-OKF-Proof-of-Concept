@@ -1,0 +1,72 @@
+---
+id: python-classes-https-docs-python-org-3-library-struct-html-classes--16930738
+type: concept
+title: Classes[¶](https://docs.python.org/3/library/struct.html#classes "Link to this
+  heading")
+description: 'The `struct` module also defines the following type:'
+category: python
+tags: []
+source:
+  name: python
+  url: https://docs.python.org/3/library/struct.html
+updated_at: '2026-08-20'
+created_at: '2026-08-20'
+---
+
+## Classes[¶](https://docs.python.org/3/library/struct.html#classes "Link to this heading")
+
+The `struct` module also defines the following type:
+
+*class* struct.Struct(*format*)[¶](https://docs.python.org/3/library/struct.html#struct.Struct "Link to this definition")
+:   Return a new Struct object which writes and reads binary data according to
+    the format string *format*. Creating a `Struct` object once and calling its
+    methods is more efficient than calling module-level functions with the
+    same format since the format string is only compiled once.
+
+    Note
+
+    The compiled versions of the most recent format strings passed to
+    the module-level functions are cached, so programs that use only a few
+    format strings needn’t worry about reusing a single `Struct`
+    instance.
+
+    Compiled Struct objects support the following methods and attributes:
+
+    pack(*v1*, *v2*, *...*)[¶](https://docs.python.org/3/library/struct.html#struct.Struct.pack "Link to this definition")
+    :   Identical to the [`pack()`](https://docs.python.org/3/library/struct.html#struct.pack "struct.pack") function, using the compiled format.
+        (`len(result)` will equal [`size`](https://docs.python.org/3/library/struct.html#struct.Struct.size "struct.Struct.size").)
+
+    pack\_into(*buffer*, *offset*, *v1*, *v2*, *...*)[¶](https://docs.python.org/3/library/struct.html#struct.Struct.pack_into "Link to this definition")
+    :   Identical to the [`pack_into()`](https://docs.python.org/3/library/struct.html#struct.pack_into "struct.pack_into") function, using the compiled format.
+
+    unpack(*buffer*)[¶](https://docs.python.org/3/library/struct.html#struct.Struct.unpack "Link to this definition")
+    :   Identical to the [`unpack()`](https://docs.python.org/3/library/struct.html#struct.unpack "struct.unpack") function, using the compiled format.
+        The buffer’s size in bytes must equal [`size`](https://docs.python.org/3/library/struct.html#struct.Struct.size "struct.Struct.size").
+
+    unpack\_from(*buffer*, *offset=0*)[¶](https://docs.python.org/3/library/struct.html#struct.Struct.unpack_from "Link to this definition")
+    :   Identical to the [`unpack_from()`](https://docs.python.org/3/library/struct.html#struct.unpack_from "struct.unpack_from") function, using the compiled format.
+        The buffer’s size in bytes, starting at position *offset*, must be at least
+        [`size`](https://docs.python.org/3/library/struct.html#struct.Struct.size "struct.Struct.size").
+
+    iter\_unpack(*buffer*)[¶](https://docs.python.org/3/library/struct.html#struct.Struct.iter_unpack "Link to this definition")
+    :   Identical to the [`iter_unpack()`](https://docs.python.org/3/library/struct.html#struct.iter_unpack "struct.iter_unpack") function, using the compiled format.
+        The buffer’s size in bytes must be a multiple of [`size`](https://docs.python.org/3/library/struct.html#struct.Struct.size "struct.Struct.size").
+
+        Added in version 3.4.
+
+    format[¶](https://docs.python.org/3/library/struct.html#struct.Struct.format "Link to this definition")
+    :   The format string used to construct this Struct object.
+
+        Changed in version 3.7: The format string type is now [`str`](https://docs.python.org/3/library/stdtypes.html#str "str") instead of [`bytes`](https://docs.python.org/3/library/stdtypes.html#bytes "bytes").
+
+    size[¶](https://docs.python.org/3/library/struct.html#struct.Struct.size "Link to this definition")
+    :   The calculated size of the struct (and hence of the bytes object produced
+        by the [`pack()`](https://docs.python.org/3/library/struct.html#struct.pack "struct.pack") method) corresponding to [`format`](https://docs.python.org/3/library/functions.html#format "format").
+
+    Changed in version 3.13: The *repr()* of structs has changed. It
+    is now:
+
+    ```
+    >>> Struct('i')
+    Struct('i')
+    ```

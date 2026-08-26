@@ -50,3 +50,65 @@ def test_ambiguous_python_package_taxonomy_does_not_cite_app_example(monkeypatch
     assert result.retrieval_mode == "clarification"
     assert result.sources == []
     assert "does not contain an authoritative classification" in result.answer
+
+
+def test_llm_failure_returns_keyword_content_without_raw_provider_error(monkeypatch):
+    monkeypatch.setattr(
+        engine,
+        "search",
+        lambda *args, **kwargs: {
+            "mode": "keyword",
+            "results": [{
+                "id": "pod",
+                "title": "What is a Pod?",
+                "description": "A Pod is the smallest deployable Kubernetes object.",
+                "source_url": "https://kubernetes.io/docs/concepts/workloads/pods/",
+                "score": 0.9,
+            }],
+        },
+    )
+    monkeypatch.setattr(engine, "get_concept_dict", lambda concept_id: None)
+    monkeypatch.setattr(
+        engine,
+        "_call_llm",
+        lambda *args: (_ for _ in ()).throw(Exception("401 secret provider detail")),
+    )
+
+    result = engine.generate_answer("what is a pod")
+
+    assert result.retrieval_mode == "keyword"
+    assert "smallest deployable Kubernetes object" in result.answer
+    assert "secret provider detail" not in result.answer
+    assert len(result.sources) == 1
+
+
+def test_llm_failure_uses_only_best_definition_and_citation(monkeypatch):
+    monkeypatch.setattr(
+        engine,
+        "search",
+        lambda *args, **kwargs: {
+            "mode": "keyword",
+            "results": [
+                {
+                    "id": "overview",
+                    "title": "Overview",
+                    "snippet": "# Overview\n\nKubernetes is a portable, extensible, open source platform for managing containerized workloads and services.",
+                    "score": 0.95,
+                },
+                {
+                    "id": "pod",
+                    "title": "What is a Pod?",
+                    "snippet": "A Pod is a group of one or more containers.",
+                    "score": 0.80,
+                },
+            ],
+        },
+    )
+    monkeypatch.setattr(engine, "get_concept_dict", lambda concept_id: None)
+    monkeypatch.setattr(engine, "_call_llm", lambda *args: (_ for _ in ()).throw(Exception("401")))
+
+    result = engine.generate_answer("what is kubernetes")
+
+    assert result.answer.startswith("Kubernetes is a portable, extensible")
+    assert "Pod is" not in result.answer
+    assert [source["id"] for source in result.sources] == ["overview"]

@@ -1,0 +1,92 @@
+---
+id: python-restricting-globals-https-docs-python-org-3-library-pickle-h-f2bc33b8
+type: concept
+title: Restricting Globals[¶](https://docs.python.org/3/library/pickle.html#restricting-globals
+  "Link to this heading")
+description: By default, unpickling will import any class or function that it finds
+  in the
+category: python
+tags: []
+source:
+  name: python
+  url: https://docs.python.org/3/library/pickle.html
+updated_at: '2026-08-20'
+created_at: '2026-08-20'
+---
+
+## Restricting Globals[¶](https://docs.python.org/3/library/pickle.html#restricting-globals "Link to this heading")
+
+By default, unpickling will import any class or function that it finds in the
+pickle data. For many applications, this behaviour is unacceptable as it
+permits the unpickler to import and invoke arbitrary code. Just consider what
+this hand-crafted pickle data stream does when loaded:
+
+```
+>>> import pickle
+>>> pickle.loads(b"cos\nsystem\n(S'echo hello world'\ntR.")
+hello world
+0
+```
+
+In this example, the unpickler imports the [`os.system()`](https://docs.python.org/3/library/os.html#os.system "os.system") function and then
+apply the string argument “echo hello world”. Although this example is
+inoffensive, it is not difficult to imagine one that could damage your system.
+
+For this reason, you may want to control what gets unpickled by customizing
+[`Unpickler.find_class()`](https://docs.python.org/3/library/pickle.html#pickle.Unpickler.find_class "pickle.Unpickler.find_class"). Unlike its name suggests,
+`Unpickler.find_class()` is called whenever a global (i.e., a class or
+a function) is requested. Thus it is possible to either completely forbid
+globals or restrict them to a safe subset.
+
+Here is an example of an unpickler allowing only few safe classes from the
+[`builtins`](https://docs.python.org/3/library/builtins.html#module-builtins "builtins: The module that provides the built-in namespace.") module to be loaded:
+
+```
+import builtins
+import io
+import pickle
+
+safe_builtins = {
+    'range',
+    'complex',
+    'set',
+    'frozenset',
+    'slice',
+}
+
+class RestrictedUnpickler(pickle.Unpickler):
+
+    def find_class(self, module, name):
+        # Only allow safe classes from builtins.
+        if module == "builtins" and name in safe_builtins:
+            return getattr(builtins, name)
+        # Forbid everything else.
+        raise pickle.UnpicklingError("global '%s.%s' is forbidden" %
+                                     (module, name))
+
+def restricted_loads(s):
+    """Helper function analogous to pickle.loads()."""
+    return RestrictedUnpickler(io.BytesIO(s)).load()
+```
+
+A sample usage of our unpickler working as intended:
+
+```
+>>> restricted_loads(pickle.dumps([1, 2, range(15)]))
+[1, 2, range(0, 15)]
+>>> restricted_loads(b"cos\nsystem\n(S'echo hello world'\ntR.")
+Traceback (most recent call last):
+  ...
+pickle.UnpicklingError: global 'os.system' is forbidden
+>>> restricted_loads(b'cbuiltins\neval\n'
+...                  b'(S\'getattr(__import__("os"), "system")'
+...                  b'("echo hello world")\'\ntR.')
+Traceback (most recent call last):
+  ...
+pickle.UnpicklingError: global 'builtins.eval' is forbidden
+```
+
+As our examples shows, you have to be careful with what you allow to be
+unpickled. Therefore if security is a concern, you may want to consider
+alternatives such as the marshalling API in [`xmlrpc.client`](https://docs.python.org/3/library/xmlrpc.client.html#module-xmlrpc.client "xmlrpc.client: XML-RPC client access.") or
+third-party solutions.

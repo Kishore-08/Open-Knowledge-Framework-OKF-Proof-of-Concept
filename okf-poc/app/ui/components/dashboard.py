@@ -147,12 +147,12 @@ __DASHBOARD_CSS__
         <div class="stat glass" style="--c:#10b981;">
             <div class="ico">&#9881;&#65039;</div>
             <div class="num" id="processed">0</div>
-            <div class="lbl">Processed</div>
+            <div class="lbl">Source Pages</div>
         </div>
         <div class="stat glass" style="--c:#f59e0b;">
             <div class="ico">&#128451;</div>
             <div class="num" id="indexed">0</div>
-            <div class="lbl">Indexed</div>
+            <div class="lbl">OKF Concepts</div>
         </div>
         <div class="stat glass" style="--c:#ef4444;">
             <div class="ico">&#9888;&#65039;</div>
@@ -252,6 +252,7 @@ __DASHBOARD_CSS__
             tokenHistory: [],
             running: true,
             total: 0,
+            processedTotal: 0,
             stage: "starting",
             currentSource: "",
             message: "",
@@ -385,9 +386,14 @@ __DASHBOARD_CSS__
         if (fill) fill.style.width = Math.min(100, Math.max(0, pct)) + "%";
         const sub = $("progressSub");
         if (sub) {
-            const total = state.total || Math.max(1, state.tgt.processed || 1);
+            const processedTotal = state.processedTotal || Math.max(1, state.tgt.processed || 1);
+            const indexedTotal = state.total || Math.max(1, state.tgt.indexed || 1);
+            const processedText = Math.round(state.cur.processed) + " / " + fmt(processedTotal) + " source pages processed";
+            const indexedText = Math.round(state.cur.indexed) + " / " + fmt(indexedTotal) + " OKF concepts indexed";
             sub.textContent = state.running
-                ? Math.round(state.cur.processed) + " / " + fmt(total) + " documents processed"
+                ? (["indexing", "completed"].includes(deriveStage(state))
+                    ? processedText + " \u2022 " + indexedText
+                    : processedText)
                 : (state.lastStatus === "completed"
                     ? "Completed \u2014 all documents indexed."
                     : state.lastStatus === "failed"
@@ -699,6 +705,12 @@ __DASHBOARD_CSS__
         state.tgt.failed = Number(s.failed || 0);
         state.tgt.progress = Number(s.progress_percent || (isDone ? 100 : 0));
         state.total = Number(s.total_documents || 0);
+        const explicitProcessedTotal = Number(s.total_processed_documents || 0);
+        const statusStage = deriveStage(s);
+        state.processedTotal = explicitProcessedTotal ||
+            (["indexing", "completed"].includes(statusStage)
+                ? Number(s.processed || 0)
+                : Number(s.total_documents || 0));
         // The backend resets rate_limit_hits to 0 at the start of every new
         // run (see app.ingestion.pipeline's initial update_status call), so
         // trusting it directly here is enough - no client-side reset logic

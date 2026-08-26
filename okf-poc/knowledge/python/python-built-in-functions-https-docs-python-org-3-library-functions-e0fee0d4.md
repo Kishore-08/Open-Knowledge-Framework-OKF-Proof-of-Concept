@@ -1,0 +1,23 @@
+---
+id: python-built-in-functions-https-docs-python-org-3-library-functions-e0fee0d4
+type: concept
+title: Built-in Functions[¶](https://docs.python.org/3/library/functions.html#built-in-
+description: The Python interpreter has a number of functions and types built into
+  it that
+category: python
+tags: []
+source:
+  name: python
+  url: https://docs.python.org/3/library/functions.html
+updated_at: '2026-08-20'
+created_at: '2026-08-20'
+---
+
+# Built-in Functions[¶](https://docs.python.org/3/library/functions.html#built-in-functions "Link to this heading")
+
+The Python interpreter has a number of functions and types built into it that
+are always available. They are listed here in alphabetical order.
+
+| Built-in Functions | | | |
+| --- | --- | --- | --- |
+| **A**  [`abs()`](https://docs.python.org/3/library/functions.html#abs "abs")  [`aiter()`](https://docs.python.org/3/library/functions.html#aiter "aiter")  [`all()`](https://docs.python.org/3/library/functions.html#all "all")  [`anext()`](https://docs.python.org/3/library/functions.html#anext "anext")  [`any()`](https://docs.python.org/3/library/functions.html#any "any")  [`ascii()`](https://docs.python.org/3/library/functions.html#ascii "ascii")  **B**  [`bin()`](https://docs.python.org/3/library/functions.html#bin "bin")  [`bool()`](https://docs.python.org/3/library/functions.html#bool "bool")  [`breakpoint()`](https://docs.python.org/3/library/functions.html#breakpoint "breakpoint")  [`bytearray()`](https://docs.python.org/3/library/functions.html#func-bytearray)  [`bytes()`](https://docs.python.org/3/library/functions.html#func-bytes)  **C**  [`callable()`](https://docs.python.org/3/library/functions.html#callable "callable")  [`chr()`](https://docs.python.org/3/library/functions.html#chr "chr")  [`classmethod()`](https://docs.python.org/3/library/functions.html#classmethod "classmethod")  [`compile()`](https://docs.python.org/3/library/functions.html#compile "compile")  [`complex()`](https://docs.python.org/3/library/functions.html#complex "complex")  **D**  [`delattr()`](https://docs.python.org/3/library/functions.html#delattr "delattr")  [`dict()`](https://docs.python.org/3/library/functions.html#func-dict)  [`dir()`](https://docs.python.org/3/library/functions.html#dir "dir")  [`divmod()`](https://docs.python.org/3/library/functions.html#divmod "divmod") | **E**  [`enumerate()`](https://docs.python.org/3/library/functions.html#enumerate "enumerate")  [`eval()`](https://docs.python.org/3/library/functions.html#eval "eval")  [`exec()`](https://docs.python.org/3/library/functions.html#exec "exec")  **F**  [`filter()`](https://docs.python.org/3/library/functions.html#filter "filter")  [`float()`](https://docs.python.org/3/library/functions.html#float "float")  [`format()`](https://docs.python.org/3/library/functions.html#format "format")  [`frozenset()`](https://docs.python.org/3/library/functions.html#func-frozenset)  **G**  [`getattr()`](https://docs.python.org/3/library/functions.html#getattr "getattr")  [`globals()`](https://docs.python.org/3/library/functions.html#globals "globals")  **H**  [`hasattr()`](https://docs.python.org/3/library/functions.html#hasattr "hasattr")  [`hash()`](https://docs.python.org/3/library/functions.html#hash "hash")  [`help()`](https://docs.python.org/3/library/functions.html#help "help")  [`hex()`](https://docs.python.org/3/library/functions.html#hex "hex")  **I**  [`id()`](https://docs.python.org/3/library/functions.html#id "id")  [`input()`](https://docs.python.org/3/library/functions.html#input "input")  [`int()`](https://docs.python.org/3/library/functions.html#int "int")  [`isinstance()`](https://docs.python.org/3/library/functions.html#isinstance "isinstance")  [`issubclass()`](https://docs.python.org/3/library/functions.html#issubclass "issubclass")  [`iter()`](https://docs.python.org/3/library/functions.html#iter "iter") | **L**  [`len()`](https://docs.python.org/3/library/functions.html#len "len")  [`list()`](https://docs.python.org/3/library/functions.html#func-list)  [`locals()`](https://docs.python.org/3/library/functions.html#locals "locals")  **M**  [`map()`](https://docs.python.org/3/library/functions.html#map "map")  [`max()`](https://docs.python.org/3/library/functions.html#max "max")  [`memoryview()`](https://docs.python.org/3/library/functions.html#func-memoryview)  [`min()`](https://docs.python.org/3/library/functions.html#min "min")  **N**  [`next()`](https

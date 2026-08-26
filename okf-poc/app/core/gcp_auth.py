@@ -78,6 +78,7 @@ class TokenFileCredentials(Credentials):
         self.token_file = Path(token_file)
         self.token = None
         self.expiry = None
+        self._loaded_created_at = None
 
     def refresh(self, request) -> None:  # noqa: ARG002 - google-auth interface
         try:
@@ -94,10 +95,28 @@ class TokenFileCredentials(Credentials):
             raise RuntimeError("The Vertex token sidecar produced an empty token.")
 
         self.token = token
+        self._loaded_created_at = created_at
         self.expiry = (
             datetime.fromtimestamp(created_at, timezone.utc).replace(tzinfo=None)
             + _GCLOUD_TOKEN_LIFETIME
         )
+
+    def before_request(self, request, method, url, headers) -> None:
+        """Reload a token rotated by the sidecar before signing a request.
+
+        The base google-auth implementation only refreshes near the expiry held
+        in memory.  The sidecar may replace the file earlier, so observe its
+        creation timestamp on every request and adopt the newer token promptly.
+        """
+        try:
+            first_line = self.token_file.read_text(encoding="utf-8").splitlines()[0]
+            file_created_at = int(first_line)
+        except (OSError, ValueError, IndexError):
+            file_created_at = None
+
+        if file_created_at != self._loaded_created_at:
+            self.refresh(request)
+        super().before_request(request, method, url, headers)
 
 
 def get_vertex_credentials() -> Credentials:

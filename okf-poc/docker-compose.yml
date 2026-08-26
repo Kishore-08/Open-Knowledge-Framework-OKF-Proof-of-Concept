@@ -35,7 +35,14 @@ services:
           fi
         done
     healthcheck:
-      test: ["CMD-SHELL", "test -s /tokens/credentials"]
+      # A leftover file is not healthy: reject credentials older than 55
+      # minutes so failed host gcloud reauthentication is visible.
+      test:
+        - CMD-SHELL
+        - >-
+          test -s /tokens/credentials &&
+          created=$$(sed -n '1p' /tokens/credentials) &&
+          test "$$(( $$(date +%s) - created ))" -lt 3300
       interval: 5s
       timeout: 2s
       retries: 12
