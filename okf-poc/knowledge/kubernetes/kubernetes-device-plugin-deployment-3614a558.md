@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Device plugin deployment
@@ -22,7 +22,7 @@ The canonical directory `/var/lib/kubelet/device-plugins` (which is hardcoded on
 so a device plugin must run in a privileged security context.
 If you're deploying a device plugin as a DaemonSet, `/var/lib/kubelet/device-plugins`
 must be mounted as a [Volume](https://kubernetes.io/docs/concepts/storage/volumes/ "A directory containing data, accessible to the containers in a pod.")
-in the plugin's [PodSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#podspec-v1-core).
+in the plugin's [PodSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.37/#podspec-v1-core).
 
 If you choose the DaemonSet approach you can rely on Kubernetes to: place the device plugin's
 Pod onto Nodes, to restart the daemon Pod after failure, and to help automate upgrades.

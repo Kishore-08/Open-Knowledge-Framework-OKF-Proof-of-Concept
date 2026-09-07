@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/
-updated_at: '2026-08-18'
-created_at: '2026-08-18'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Adding custom resources

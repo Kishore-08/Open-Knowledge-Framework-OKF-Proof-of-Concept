@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
-updated_at: '2026-08-25'
-created_at: '2026-08-25'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Operating on a failed deployment

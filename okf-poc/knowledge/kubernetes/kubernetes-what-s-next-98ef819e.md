@@ -9,11 +9,12 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/workload-api/disruption-and-priority/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## What's next
 
 - Read about [Workload-Aware Preemption](https://kubernetes.io/docs/concepts/scheduling-eviction/workload-aware-preemption/) algorithm.
 - Learn about the [Workload API](https://kubernetes.io/docs/concepts/workloads/workload-api/).
+- Learn about the [scheduling building blocks and the workloadbuilder library](https://kubernetes.io/docs/concepts/workloads/workload-api/workloadbuilder/), including the disruption mode building block.

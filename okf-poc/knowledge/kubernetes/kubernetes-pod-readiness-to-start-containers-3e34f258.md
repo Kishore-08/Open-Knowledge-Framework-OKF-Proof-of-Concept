@@ -8,14 +8,14 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Pod readiness to start containers
 
 FEATURE STATE:
-`Kubernetes v1.29 [beta]`
+`Kubernetes v1.37 [stable]`
 
 #### Note:
 
@@ -28,12 +28,9 @@ a container runtime (using [Container Runtime Interface (CRI)](https://kubernete
 runtime sandbox and configure networking for the Pod. If the Pod uses
 [Dynamic Resource Allocation](https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/),
 those resources are also allocated during this phase.
-If the `PodReadyToStartContainersCondition`
-[feature gate](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/) is enabled
-(it is enabled by default for Kubernetes 1.36), the
-`PodReadyToStartContainers` condition will be added to the `status.conditions` field of a Pod.
+The `PodReadyToStartContainers` condition is added to the `status.conditions` field of a Pod.
 
-The `PodReadyToStartContainers` condition is set to `False` by the kubelet when it detects a
+The condition is set to `False` by the kubelet when it detects a
 Pod does not have a runtime sandbox with networking configured. This occurs in
 the following scenarios:
 

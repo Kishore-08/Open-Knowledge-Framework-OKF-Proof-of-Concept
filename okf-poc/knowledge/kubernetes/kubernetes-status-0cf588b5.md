@@ -9,19 +9,19 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/podgroup-api/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Status
 
 The scheduler updates `status.conditions` to report whether the group has been
-successfully scheduled. The primary condition is `PodGroupScheduled`, which is `True`
+successfully scheduled. The primary condition is `PodGroupInitiallyScheduled`, which is `True`
 when all required Pods have been placed and `False` when scheduling fails.
 
 #### Note:
 
-The `PodGroupScheduled` condition reflects the initial scheduling decision only.
+The `PodGroupInitiallyScheduled` condition reflects the initial scheduling decision only.
 The scheduler does not update it if Pods later fail or are evicted. See
 [Limitations](https://kubernetes.io/docs/concepts/workloads/podgroup-api/lifecycle/#limitations)
 for details.

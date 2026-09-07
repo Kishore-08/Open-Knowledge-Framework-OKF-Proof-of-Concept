@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/containers/images/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 # Images
@@ -27,5 +27,5 @@ This page provides an outline of the container image concept.
 #### Note:
 
 If you are looking for the container images for a Kubernetes
-release (such as v1.36, the latest minor release),
+release (such as v1.37, the latest minor release),
 visit [Download Kubernetes](https://kubernetes.io/releases/download/).

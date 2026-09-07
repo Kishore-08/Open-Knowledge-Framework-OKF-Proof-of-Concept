@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/services-networking/service/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Feedback
@@ -23,4 +23,4 @@ Open an issue in the [GitHub Repository](https://www.github.com/kubernetes/websi
 or
 [suggest an improvement](https://github.com/kubernetes/website/issues/new?title=Improvement%20for%20k8s.io).
 
-Last modified June 03, 2026 at 10:40 AM PST: [Update HTTP/2 RFC reference from 7540 to 9113 (90d449e0c3)](https://github.com/kubernetes/website/commit/90d449e0c3fa65cdcf61dac336121f5586644157)
+Last modified July 01, 2026 at 3:25 PM PST: [localhost nodeport documentation (63d690069a)](https://github.com/kubernetes/website/commit/63d690069aec052f31a8b3aa5ac3333244506866)

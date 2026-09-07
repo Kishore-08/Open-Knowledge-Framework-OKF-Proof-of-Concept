@@ -31,7 +31,7 @@ def _concept_files(knowledge_dir: Optional[str] = None) -> list[str]:
     for dirpath, _dirnames, filenames in os.walk(root):
         # Skip the quarantine folder so junk concepts are backed up but never
         # loaded into the knowledge base.
-        if "_quarantine" in dirpath:
+        if "_quarantine" in dirpath or ".history" in dirpath:
             continue
         for name in filenames:
             if name.endswith(".md"):
@@ -87,7 +87,7 @@ def load_all_concepts(knowledge_dir: Optional[str] = None, use_cache: bool = Tru
                 print(f"⚠️ Skipping unusable OKF concept (bad title/category): {path}")
                 continue
             concepts.append(OKFConceptFile(metadata=meta, content=body.strip(), filepath=path))
-        except Exception as exc:  # noqa: BLE001 - a single bad file must not break the repo
+        except Exception as exc:  # a single bad file must not break the repo
             print(f"⚠️ Skipping invalid OKF concept: {path} ({exc})")
 
     # cache for the duration of a process
@@ -382,6 +382,7 @@ def knowledge_stats(knowledge_dir: Optional[str] = None) -> dict:
 def delete_concepts_by_source_urls(
     source_urls: List[str],
     knowledge_dir: Optional[str] = None,
+    exclude_paths: Optional[List[str]] = None,
 ) -> List[str]:
     """
     Remove generated concepts whose official source URL is no longer present.
@@ -395,6 +396,8 @@ def delete_concepts_by_source_urls(
         return []
 
     deleted_paths: List[str] = []
+    root = knowledge_dir or settings.KNOWLEDGE_DIR
+    excluded = {os.path.abspath(path) for path in (exclude_paths or [])}
 
     for concept in load_all_concepts(
         knowledge_dir,
@@ -404,13 +407,17 @@ def delete_concepts_by_source_urls(
 
         if not source or source.url not in urls:
             continue
+        if os.path.abspath(concept.filepath) in excluded:
+            continue
 
         try:
+            from app.okf.formatter import archive_okf_file
+            archive_okf_file(concept.filepath, knowledge_dir=root)
             os.remove(concept.filepath)
             deleted_paths.append(
                 os.path.relpath(
                     concept.filepath,
-                    knowledge_dir or settings.KNOWLEDGE_DIR,
+                    root,
                 )
             )
         except OSError as exc:
@@ -420,3 +427,16 @@ def delete_concepts_by_source_urls(
             )
 
     return deleted_paths
+
+
+def delete_stale_concepts_by_source_urls(
+    source_urls: List[str],
+    keep_paths: List[str],
+    knowledge_dir: Optional[str] = None,
+) -> List[str]:
+    """Archive and remove source concepts except paths written by this refresh."""
+    return delete_concepts_by_source_urls(
+        source_urls,
+        knowledge_dir=knowledge_dir,
+        exclude_paths=keep_paths,
+    )

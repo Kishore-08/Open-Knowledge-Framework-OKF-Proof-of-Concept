@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/pods/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Pod update and replacement
@@ -21,8 +21,8 @@ template instead of updating or patching the existing Pods.
 Kubernetes doesn't prevent you from managing Pods directly. It is possible to
 update some fields of a running Pod, in place. However, Pod update operations
 like
-[`patch`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#patch-pod-v1-core), and
-[`replace`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#replace-pod-v1-core)
+[`patch`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.37/#patch-pod-v1-core), and
+[`replace`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.37/#replace-pod-v1-core)
 have some limitations:
 
 - Most of the metadata about a Pod is immutable. For example, you cannot

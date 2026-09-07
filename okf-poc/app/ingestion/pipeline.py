@@ -5,7 +5,7 @@ import hashlib
 import json
 import threading
 from pathlib import Path
-from datetime import date
+from datetime import datetime, timezone
 from typing import Optional
 
 # Internal imports
@@ -28,6 +28,7 @@ from app.converter.markdown import (
 from app.okf.repository import (
     load_concepts_from_paths,
     delete_concepts_by_source_urls,
+    delete_stale_concepts_by_source_urls,
 )
 from app.retrieval.hybrid_search import (
     index_documents,
@@ -85,7 +86,7 @@ def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
     tags = [str(t) for t in raw_topics if t]
     tags = [t for t in tags if t.lower() not in ("unknown", "unclassified")]
 
-    today = date.today().isoformat()
+    now = datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
     # Preserve provenance: the raw source filename (e.g. "docker-basics.txt")
     # becomes the `source_file` metadata used for citation + idempotent re-ingest.
@@ -102,8 +103,8 @@ def _build_okf_frontmatter(raw_meta: dict, index: int) -> Optional[dict]:
         "category": category,
         "tags": tags,
         "source": {"name": source_name, "url": source_url} if source_name or source_url else None,
-        "created_at": today,
-        "updated_at": today,
+        "created_at": now,
+        "updated_at": now,
         "aliases": [],
         "related": [],
         # Extra fields kept for Qdrant metadata (useful for /query citations)
@@ -375,12 +376,6 @@ def _process_crawled_html(
                 source_url=source_url,
             )
 
-            # Remove previous concepts belonging to this URL.
-            delete_concepts_by_source_urls(
-                [source_url],
-                knowledge_dir=settings.KNOWLEDGE_DIR,
-            )
-
             for concept_id, _title, content in concepts:
                 written_path = write_concept_file(
                     knowledge_dir=knowledge_dir,
@@ -393,6 +388,15 @@ def _process_crawled_html(
 
                 if updated_knowledge_paths is not None:
                     _track_knowledge_path(knowledge_dir, written_path, updated_knowledge_paths)
+
+            # Remove only concepts that disappeared from the refreshed page.
+            # Existing paths must remain in place until write_concept_file has
+            # preserved their created_at and archived their previous revision.
+            delete_stale_concepts_by_source_urls(
+                [source_url],
+                keep_paths=written_paths,
+                knowledge_dir=knowledge_dir,
+            )
 
             processed += 1
             update_status(

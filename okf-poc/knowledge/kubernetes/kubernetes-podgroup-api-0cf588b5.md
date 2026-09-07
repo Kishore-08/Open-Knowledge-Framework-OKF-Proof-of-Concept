@@ -8,14 +8,14 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/podgroup-api/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 # PodGroup API
 
 FEATURE STATE:
-`Kubernetes v1.35 [alpha]`(disabled by default)
+`Kubernetes v1.37 [beta]`(disabled by default)
 
 A PodGroup is a runtime object that represents a group of Pods scheduled together as a single unit.
 While the [Workload API](https://kubernetes.io/docs/concepts/workloads/workload-api/) defines scheduling policy

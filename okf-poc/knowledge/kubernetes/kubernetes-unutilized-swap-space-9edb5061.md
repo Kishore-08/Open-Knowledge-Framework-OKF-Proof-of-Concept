@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/cluster-administration/swap-memory-management/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Unutilized swap space
@@ -21,7 +21,7 @@ based on the proportion of the memory requested relative to the node's total mem
 
 This design means that usually there would be some portion of swap that will remain
 restricted for Kubernetes workloads.
-For example, since Kubernetes 1.36 does not permit swap use for
+For example, since Kubernetes 1.37 does not permit swap use for
 Pods in the Guaranteed [QoS class](https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/ "QoS Class (Quality of Service Class) provides a way for Kubernetes to classify pods within the cluster into several classes and make decisions about scheduling and eviction."),
 the amount of swap that's proportional to the memory request for Guaranteed pods would
 remain unused by Kubernetes workloads.

@@ -2,35 +2,36 @@
 id: kubernetes-disruption-mode-types-98ef819e
 type: concept
 title: Disruption mode types
-description: As of 1.36, the `priority` or `disruptionMode` fields of the PodGroup
-  are only respected
+description: In v1.36, the `priority` or `disruptionMode` fields of the PodGroup are
+  only respected
 category: kubernetes
 tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/workload-api/disruption-and-priority/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Disruption mode types
 
 #### Note:
 
-As of 1.36, the `priority` or `disruptionMode` fields of the PodGroup are only respected
+In v1.36, the `priority` or `disruptionMode` fields of the PodGroup are only respected
 by [workload-aware preemption](https://kubernetes.io/docs/concepts/scheduling-eviction/workload-aware-preemption/).
 During the pod scheduling phase, the scheduler does not take into account
-the `priority` or `disruptionMode` fields of the PodGroup.
+the `priority` or `disruptionMode` fields of the PodGroup. This limitation no longer
+applies in v1.37.
 
-The API supports two disruption modes: `Pod` and `PodGroup`.
-The default one is `Pod`.
+The API supports two disruption modes: `Single` and `All`.
+The default one is `Single`.
 
-### Pod
+### Single
 
-The `Pod` mode instructs the scheduler to treat all Pods in the group as separate entities,
+The `Single` mode instructs the scheduler to treat all Pods in the group as separate entities,
 allowing independent disruption of a single pod from a PodGroup.
 
-### PodGroup
+### All
 
-The `PodGroup` mode emphasizes "all-or-nothing" semantics for disruption.
+The `All` mode emphasizes "all-or-nothing" semantics for disruption.
 It instructs the scheduler that all pods from the PodGroup have to be disrupted together.

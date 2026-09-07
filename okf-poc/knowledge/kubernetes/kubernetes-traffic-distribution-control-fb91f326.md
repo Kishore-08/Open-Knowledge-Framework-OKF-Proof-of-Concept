@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/services-networking/service/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Traffic distribution control
@@ -19,7 +19,7 @@ The `.spec.trafficDistribution` field provides another way to influence traffic
 routing within a Kubernetes Service. While traffic policies focus on strict
 semantic guarantees, traffic distribution allows you to express *preferences*
 (such as routing to topologically closer endpoints). This can help optimize for
-performance, cost, or reliability. In Kubernetes 1.36, the
+performance, cost, or reliability. In Kubernetes 1.37, the
 following values are supported:
 
 `PreferSameZone`

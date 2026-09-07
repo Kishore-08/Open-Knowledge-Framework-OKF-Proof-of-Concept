@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/storage/volumes/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### portworxVolume (deprecated)
@@ -56,7 +56,7 @@ before using it in the Pod.
 FEATURE STATE:
 `Kubernetes v1.33 [stable]`(enabled by default)
 
-In Kubernetes 1.36, all operations for the in-tree
+In Kubernetes 1.37, all operations for the in-tree
 Portworx volumes are redirected to the `pxd.portworx.com`
 Container Storage Interface (CSI) Driver by default.  
 [Portworx CSI Driver](https://docs.portworx.com/portworx-enterprise/operations/operate-kubernetes/storage-operations/csi)

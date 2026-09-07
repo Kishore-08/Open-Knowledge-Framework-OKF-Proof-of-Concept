@@ -8,21 +8,20 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Pod conditions
 
 A Pod has a PodStatus, which has an array of
-[PodConditions](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#podcondition-v1-core)
+[PodConditions](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.37/#podcondition-v1-core)
 through which the Pod has or has not passed. The kubelet manages the following
 PodConditions:
 
 - `PodScheduled`: the Pod has been scheduled to a node.
-- `PodReadyToStartContainers`: (beta feature; enabled by [default](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-ready-to-start-containers)) the
-  Pod sandbox has been successfully created, networking configured, storage volumes mounted,
-  and any dynamic resources (if requested) allocated.
+- `PodReadyToStartContainers`: the Pod sandbox has been successfully created,
+  networking configured, storage volumes mounted, and any dynamic resources (if requested) allocated.
 - `ContainersReady`: all containers in the Pod are ready.
 - `Initialized`: all [init containers](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/)
   have completed successfully.

@@ -2,19 +2,19 @@
 id: kubernetes-what-is-ingress-d8c8df3b
 type: concept
 title: What is Ingress?
-description: '[Ingress](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#ingress-v1-networking-k8s-io)'
+description: '[Ingress](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.37/#ingress-v1-networking-k8s-io)'
 category: kubernetes
 tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/services-networking/ingress/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## What is Ingress?
 
-[Ingress](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#ingress-v1-networking-k8s-io)
+[Ingress](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.37/#ingress-v1-networking-k8s-io)
 exposes HTTP and HTTPS routes from outside the cluster to
 [services](https://kubernetes.io/docs/concepts/services-networking/service/) within the cluster.
 Traffic routing is controlled by rules defined on the Ingress resource.

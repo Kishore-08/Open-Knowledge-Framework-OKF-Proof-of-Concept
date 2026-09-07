@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-aware-scheduling/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Feedback
@@ -23,4 +23,4 @@ Open an issue in the [GitHub Repository](https://www.github.com/kubernetes/websi
 or
 [suggest an improvement](https://github.com/kubernetes/website/issues/new?title=Improvement%20for%20k8s.io).
 
-Last modified July 03, 2026 at 4:41 PM PST: [docs: fix grammar in topology-aware scheduling concept page (787489f7a6)](https://github.com/kubernetes/website/commit/787489f7a68e0601cdab37883dc461cc3725d7d1)
+Last modified July 24, 2026 at 3:44 PM PST: [Update docs for CompositePodGroup API (5d3723fc78)](https://github.com/kubernetes/website/commit/5d3723fc7851569637ce57d6bc28b31a342db46a)

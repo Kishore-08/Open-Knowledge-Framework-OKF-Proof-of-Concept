@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Reclaim Policy
@@ -20,4 +20,4 @@ Current reclaim policies are:
 - Recycle -- basic scrub (`rm -rf /thevolume/*`)
 - Delete -- delete the volume
 
-For Kubernetes 1.36, only `nfs` and `hostPath` volume types support recycling.
+For Kubernetes 1.37, only `nfs` and `hostPath` volume types support recycling.

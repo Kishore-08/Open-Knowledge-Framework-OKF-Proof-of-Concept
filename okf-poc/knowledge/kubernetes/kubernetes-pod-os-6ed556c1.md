@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/pods/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Pod OS
@@ -23,7 +23,7 @@ systems supported for now by Kubernetes. In the future, this list may be expande
 
 The kubelet refuses to run a Pod if the value of `.spec.os.name` does not match the
 operating system of the node. However, in Kubernetes
-v1.36, the value of `.spec.os.name` does not affect
+v1.37, the value of `.spec.os.name` does not affect
 how the [kube-scheduler](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-scheduler/ "Control plane component that watches for newly created pods with no assigned node, and selects a node for them to run on.")
 picks a node for the Pod to run on. In any cluster where there is more than one operating system for
 running nodes, you should set the

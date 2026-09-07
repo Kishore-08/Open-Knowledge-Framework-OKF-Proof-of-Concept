@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/overview/working-with-objects/object-management/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Imperative object configuration
@@ -19,7 +19,7 @@ operation (create, replace, etc.), optional flags and at least one file
 name. The file specified must contain a full definition of the object
 in YAML or JSON format.
 
-See the [API reference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/)
+See the [API reference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.37/)
 for more details on object definitions.
 
 #### Warning:

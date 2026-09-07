@@ -8,14 +8,14 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/workload-api/policies/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 # PodGroup Scheduling Policies
 
 FEATURE STATE:
-`Kubernetes v1.35 [alpha]`(disabled by default)
+`Kubernetes v1.37 [beta]`(disabled by default)
 
 Every [PodGroup](https://kubernetes.io/docs/concepts/workloads/podgroup-api/) must declare a scheduling policy
 in its `spec.schedulingPolicy` field. This policy dictates how the scheduler treats the

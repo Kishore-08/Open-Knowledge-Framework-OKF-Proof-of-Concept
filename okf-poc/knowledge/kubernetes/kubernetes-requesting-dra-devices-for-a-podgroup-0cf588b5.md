@@ -8,21 +8,21 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/podgroup-api/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Requesting DRA devices for a PodGroup
 
 FEATURE STATE:
-`Kubernetes v1.36 [alpha]`(disabled by default)
+`Kubernetes v1.37 [beta]`(disabled by default)
 
 [Devices](https://kubernetes.io/docs/reference/glossary/?all=true#term-device "Any resource that's directly or indirectly attached your cluster's nodes, like GPUs or circuit boards.") available through
 [Dynamic Resource Allocation (DRA)](https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/ "A Kubernetes feature for requesting and sharing resources, like hardware accelerators, among Pods.")
 can be requested by a PodGroup through its `spec.resourceClaims` field:
 
 ```
-apiVersion: scheduling.k8s.io/v1alpha2
+apiVersion: scheduling.k8s.io/v1beta1
 kind: PodGroup
 metadata:
   name: training-group

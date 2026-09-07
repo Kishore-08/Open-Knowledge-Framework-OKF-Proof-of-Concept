@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/podgroup-api/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Feedback
@@ -23,4 +23,4 @@ Open an issue in the [GitHub Repository](https://www.github.com/kubernetes/websi
 or
 [suggest an improvement](https://github.com/kubernetes/website/issues/new?title=Improvement%20for%20k8s.io).
 
-Last modified April 11, 2026 at 11:25 AM PST: [Move PodGroup DRA docs from Workload to PodGroup (558fe05d96)](https://github.com/kubernetes/website/commit/558fe05d96367db429fc77bb71f8be7700ddfa7f)
+Last modified June 24, 2026 at 2:31 PM PST: [Update docs for Workload-aware preemption beta promotion (326022dff5)](https://github.com/kubernetes/website/commit/326022dff5aaa46fe7090333dfb872ea2b7d6237)

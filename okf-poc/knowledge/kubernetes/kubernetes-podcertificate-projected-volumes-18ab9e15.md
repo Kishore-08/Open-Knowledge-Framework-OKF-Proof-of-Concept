@@ -8,21 +8,14 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/storage/projected-volumes/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## podCertificate projected volumes
 
 FEATURE STATE:
-`Kubernetes v1.35 [beta]`(disabled by default)
-
-#### Note:
-
-In Kubernetes 1.36, you must enable support for Pod
-Certificates using the `PodCertificateRequest` [feature gate](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/)
-and the `--runtime-config=certificates.k8s.io/v1beta1/podcertificaterequests=true`
-kube-apiserver flag.
+`Kubernetes v1.37 [stable]`(enabled by default)
 
 The `podCertificate` projected volumes source securely provisions a private key
 and X.509 certificate chain for pod to use as client or server credentials.
@@ -77,4 +70,9 @@ However, if you read the key and certificate chain from separate files, Kubelet
 may rotate the credentials after your first read and before your second read,
 resulting in your application loading a mismatched key and certificate.
 
-[`pods/storage/projected-podcertificate.yaml`](https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/pods/storage/projected-podcertificate.yaml)![](https://kubernetes.io/imag
+[`pods/storage/projected-podcertificate.yaml`](https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/pods/storage/projected-podcertificate.yaml)![](https://kubernetes.io/images/copycode.svg "Copy pods/storage/projected-podcertificate.yaml to clipboard")
+
+```
+# Sample Pod spec that uses a podCertificate projection to request an ED25519
+# private key, a certificate from the `coolcert.example.com/foo` signer, and
+# write the results to `/var/run/my-x509-credentials/credentialbundle.pe

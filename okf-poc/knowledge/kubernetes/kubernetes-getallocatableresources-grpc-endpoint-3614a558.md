@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### `GetAllocatableResources` gRPC endpoint
@@ -54,7 +54,7 @@ The canonical directory `pod-resources` within the kubelet root directory (typic
 agents must run in a privileged security context. If a device monitoring agent is running as a
 DaemonSet, the `pod-resources` directory must be mounted as a
 [Volume](https://kubernetes.io/docs/concepts/storage/volumes/ "A directory containing data, accessible to the containers in a pod.") in the device monitoring agent's
-[PodSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#podspec-v1-core).
+[PodSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.37/#podspec-v1-core).
 
 #### Note:
 

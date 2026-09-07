@@ -8,14 +8,14 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/pods/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Specifying a scheduling group
 
 FEATURE STATE:
-`Kubernetes v1.35 [alpha]`(disabled by default)
+`Kubernetes v1.37 [beta]`(disabled by default)
 
 By default, Kubernetes schedules every Pod individually. However, some tightly-coupled applications
 need a group of Pods to be scheduled simultaneously to function correctly.

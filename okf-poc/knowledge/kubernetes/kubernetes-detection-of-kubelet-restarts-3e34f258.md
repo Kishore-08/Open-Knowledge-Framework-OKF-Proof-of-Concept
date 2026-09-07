@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Detection of kubelet restarts
@@ -35,7 +35,7 @@ When the kubelet restarts, the container statuses are managed differently based 
   However, even though Pod evictions begin to happen, Kubernetes does not mark the
   individual containers in those Pods as `ready: false`. The Pod-level eviction
   happens after the control plane taints the node as `node.kubernetes.io/not-ready` (due to the failed heartbeats).
-- In Kubernetes 1.36 you can opt in to a legacy behavior where the kubelet always modify
+- In Kubernetes 1.37 you can opt in to a legacy behavior where the kubelet always modify
   the containers `ready` value, after a kubelet restart, to be false.
 
   This legacy behavior was the default for a long time, but caused issue for people using Kubernetes,

@@ -17,7 +17,7 @@ import os
 import re
 import uuid
 import hashlib
-from datetime import date
+from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
 import markdownify
@@ -132,7 +132,7 @@ def generate_concept_file(
     Serialization is delegated to `app.okf.formatter.format_okf_string` so the
     whole project writes OKF documents through one canonical code path.
     """
-    today = date.today().isoformat()
+    now = datetime.now(timezone.utc).isoformat(timespec="microseconds")
     cid = concept_id or f"{_slugify(category)}-{_slugify(title)}"
     if not cid:
         cid = uuid.uuid4().hex[:10]
@@ -145,8 +145,8 @@ def generate_concept_file(
         "category": category,
         "tags": tags or [],
         "source": {"name": source_name, "url": source_url},
-        "updated_at": today,
-        "created_at": today,
+        "updated_at": now,
+        "created_at": now,
     }
 
     return format_okf_string(body.strip(), frontmatter)
@@ -211,6 +211,12 @@ def write_concept_file(knowledge_dir: str, category: str, concept_id: str, conte
     category_dir = os.path.join(knowledge_dir, category)
     os.makedirs(category_dir, exist_ok=True)
     path = os.path.join(category_dir, f"{concept_id}.md")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
+    # Re-serialize through the canonical writer so an existing created_at is
+    # retained, updated_at includes the actual rewrite time, and the old file
+    # is copied to .history before replacement.
+    from app.okf.parser import parse_okf_string
+    from app.okf.formatter import format_and_save_okf
+
+    metadata, body = parse_okf_string(content)
+    format_and_save_okf(body, metadata, category_dir, f"{concept_id}.md")
     return path

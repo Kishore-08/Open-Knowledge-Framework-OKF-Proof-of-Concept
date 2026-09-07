@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/storage/volumes/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### image
@@ -87,7 +87,7 @@ The following fields are available for the `image` type:
 
 `reference`
 :   Artifact reference to be used. For example, you could specify
-    `registry.k8s.io/conformance:v1.36.0` to load the
+    `registry.k8s.io/conformance:v1.37.0` to load the
     files from the Kubernetes conformance test image. Behaves in the same way as
     `pod.spec.containers[*].image`. Pull secrets will be assembled in the same way
     as for the container image by looking up node credentials, service account image

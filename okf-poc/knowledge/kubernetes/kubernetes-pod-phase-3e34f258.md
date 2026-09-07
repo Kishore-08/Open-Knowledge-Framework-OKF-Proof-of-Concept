@@ -8,14 +8,14 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Pod phase
 
 A Pod's `status` field is a
-[PodStatus](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#podstatus-v1-core)
+[PodStatus](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.37/#podstatus-v1-core)
 object, which has a `phase` field.
 
 The phase of a Pod is a simple, high-level summary of where the Pod is in its

@@ -2,20 +2,20 @@
 id: kubernetes-swap-aware-scheduling-9edb5061
 type: concept
 title: Swap-aware scheduling
-description: Kubernetes 1.36 does not support allocating Pods to nodes in a way that
+description: Kubernetes 1.37 does not support allocating Pods to nodes in a way that
   accounts
 category: kubernetes
 tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/cluster-administration/swap-memory-management/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Swap-aware scheduling
 
-Kubernetes 1.36 does not support allocating Pods to nodes in a way that accounts
+Kubernetes 1.37 does not support allocating Pods to nodes in a way that accounts
 for swap memory usage. The scheduler typically uses *requests* for infrastructure resources
 to guide Pod placement, and Pods do not request swap space; they just request `memory`.
 This means that the scheduler does not consider swap memory when making scheduling decisions.

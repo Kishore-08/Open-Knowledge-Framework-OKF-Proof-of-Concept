@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/storage/volumes/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### emptyDir
@@ -52,6 +52,23 @@ If no size is specified, memory-backed volumes are sized to node allocatable mem
 Please check [here](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#memory-backed-emptydir)
 for points to note in terms of resource management when using memory-backed `emptyDir`.
 
+FEATURE STATE:
+`Kubernetes v1.37 [alpha]`(disabled by default)
+
+The `emptyDir.mode` field lets you set Unix permission bits on the emptyDir directory,
+specifying a value between `0000` and `01777` (octal). This follows the same pattern as the
+`defaultMode` field on Secret and ConfigMap volumes. If `mode` is not specified, the
+directory is created with the default `0777` permissions.
+
+Setting a custom mode is useful when you want to restrict access to owner and group only
+(for example, `0750`), or set the sticky bit on a shared directory so that only file owners
+can delete their own files (for example, `01777`).
+
+#### Note:
+
+If `fsGroup` is set in the Pod's security context, the group permissions applied by
+`fsGroup` override the `mode` specified here. The `mode` field has no effect on Windows.
+
 #### emptyDir configuration example
 
 ```
@@ -92,3 +109,10 @@ spec:
       sizeLimit: 500Mi
       medium: Memory
 ```
+
+#### Note:
+
+FEATURE STATE:
+`Kubernetes v1.37 [alpha]`(disabled by default)
+
+When the `InPlacePodVerticalScalingMemoryBackedVolumes` feature gate is enabled, you can dynamically adjust the `sizeLimit` of memory-backed (`medium: Memory`) `emptyDir` volumes without restarting the Pod. For more details, see [Resize CPU and Memory Resources assigned to Containers](https://kubernetes.io/docs/tasks/configure-pod-container/resize-container-resources/#resizing-memory-

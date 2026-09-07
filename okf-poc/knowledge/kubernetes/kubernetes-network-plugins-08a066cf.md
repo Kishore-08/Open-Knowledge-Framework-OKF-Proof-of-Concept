@@ -2,20 +2,20 @@
 id: kubernetes-network-plugins-08a066cf
 type: concept
 title: Network Plugins
-description: Kubernetes (version 1.3 through to the latest 1.36, and likely onwards)
+description: Kubernetes (version 1.3 through to the latest 1.37, and likely onwards)
   lets you use
 category: kubernetes
 tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 # Network Plugins
 
-Kubernetes (version 1.3 through to the latest 1.36, and likely onwards) lets you use
+Kubernetes (version 1.3 through to the latest 1.37, and likely onwards) lets you use
 [Container Network Interface](https://github.com/containernetworking/cni)
 (CNI) plugins for cluster networking. You must use a CNI plugin that is compatible with your
 cluster and that suits your needs. Different plugins are available (both open- and closed- source)

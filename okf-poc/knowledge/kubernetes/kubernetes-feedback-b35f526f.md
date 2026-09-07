@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/workload-api/topology-aware-scheduling/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Feedback
@@ -23,4 +23,4 @@ Open an issue in the [GitHub Repository](https://www.github.com/kubernetes/websi
 or
 [suggest an improvement](https://github.com/kubernetes/website/issues/new?title=Improvement%20for%20k8s.io).
 
-Last modified March 31, 2026 at 8:55 AM PST: [Apply review comments (9cc579c8a4)](https://github.com/kubernetes/website/commit/9cc579c8a4297033a312d29cabb3b376d259531c)
+Last modified July 24, 2026 at 3:44 PM PST: [Update docs for CompositePodGroup API (5d3723fc78)](https://github.com/kubernetes/website/commit/5d3723fc7851569637ce57d6bc28b31a342db46a)

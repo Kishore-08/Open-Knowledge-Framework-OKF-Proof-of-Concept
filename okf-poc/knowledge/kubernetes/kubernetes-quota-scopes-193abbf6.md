@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/policy/resource-quotas/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Quota scopes
@@ -21,7 +21,7 @@ the intersection of enumerated scopes.
 When a scope is added to the quota, it limits the number of resources it supports to those that pertain to the scope.
 Resources specified on the quota outside of the allowed set results in a validation error.
 
-Kubernetes 1.36 supports the following scopes:
+Kubernetes 1.37 supports the following scopes:
 
 | Scope | Description |
 | --- | --- |

@@ -8,21 +8,14 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/storage/projected-volumes/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## clusterTrustBundle projected volumes
 
 FEATURE STATE:
-`Kubernetes v1.33 [beta]`(disabled by default)
-
-#### Note:
-
-To use this feature in Kubernetes 1.36, you must enable support for ClusterTrustBundle objects
-with the `ClusterTrustBundle` [feature gate](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/) and
-`--runtime-config=certificates.k8s.io/v1beta1/clustertrustbundles=true` kube-apiserver flag,
-then enable the `ClusterTrustBundleProjection` feature gate.
+`Kubernetes v1.37 [stable]`(enabled by default)
 
 The `clusterTrustBundle` projected volume source injects the contents of one or more
 [ClusterTrustBundle](https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/#cluster-trust-bundles)

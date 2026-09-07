@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/workload-api/policies/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## What's next
@@ -19,3 +19,4 @@ created_at: '2026-08-17'
 - Learn about the [Workload API](https://kubernetes.io/docs/concepts/workloads/workload-api/) that defines PodGroupTemplates.
 - Read about [PodGroup scheduling](https://kubernetes.io/docs/concepts/scheduling-eviction/podgroup-scheduling/).
 - Read about the [gang scheduling](https://kubernetes.io/docs/concepts/scheduling-eviction/gang-scheduling/) algorithm.
+- Learn about the [scheduling building blocks and the workloadbuilder library](https://kubernetes.io/docs/concepts/workloads/workload-api/workloadbuilder/) that controllers use to compile these policies.

@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/storage/volumes/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Recursive read-only mounts
@@ -77,22 +77,4 @@ When this property is recognized by kubelet and kube-apiserver,
 the `.status.containerStatuses[*].volumeMounts[*].recursiveReadOnly` field is set to either
 `Enabled` or `Disabled`.
 
-#### Implementations
-
-**Note:** This section links to third party projects that provide functionality required by Kubernetes. The Kubernetes project authors aren't responsible for these projects, which are listed alphabetically. To add a project to this list, read the [content guide](https://kubernetes.io/docs/contribute/style/content-guide/#third-party-content) before submitting a change. [More information.](https://kubernetes.io/docs/concepts/storage/volumes/#third-party-content-disclaimer)
-
-The following container runtimes are known to support recursive read-only mounts.
-
-CRI-level:
-
-- [containerd](https://containerd.io/), since v2.0
-- [CRI-O](https://cri-o.io/), since v1.30
-
-OCI-level:
-
-- [runc](https://runc.io/), since v1.1
-- [crun](https://github.com/containers/crun), since v1.8.6
-
-## What's next
-
-Follow an example of [deploying WordPress and MySQL with Persistent Volumes](https://kubernetes.io/docs/tutorials/stateful-application/mysql-wordpress-persistent-volume/).
+## File owner

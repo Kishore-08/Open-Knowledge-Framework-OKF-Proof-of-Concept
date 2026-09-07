@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/storage/projected-volumes/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Feedback
@@ -23,4 +23,4 @@ Open an issue in the [GitHub Repository](https://www.github.com/kubernetes/websi
 or
 [suggest an improvement](https://github.com/kubernetes/website/issues/new?title=Improvement%20for%20k8s.io).
 
-Last modified February 19, 2026 at 3:34 PM PST: [Fix some links in the En docs (95b7685f71)](https://github.com/kubernetes/website/commit/95b7685f7156c317aa59d86618e8ec4535d2015f)
+Last modified July 28, 2026 at 4:54 AM PST: [Update docs and feature gates for Pod Certificates and ClusterTrustBundles GA (v1) in 1.37 (da72567af4)](https://github.com/kubernetes/website/commit/da72567af460317d735072e0df65c33a8a050c75)

@@ -156,7 +156,7 @@ def _semantic_search(query: str, *, category: Optional[str] = None, top_k: Optio
             }
             for n in nodes
         ]
-    except Exception as exc:  # noqa: BLE001 - semantic search is best effort
+    except Exception as exc:  
         print(f"ℹ️ Semantic search unavailable, falling back to keyword: {exc}")
         return []
 

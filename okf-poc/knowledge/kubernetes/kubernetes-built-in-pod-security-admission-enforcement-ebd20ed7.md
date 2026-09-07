@@ -2,17 +2,17 @@
 id: kubernetes-built-in-pod-security-admission-enforcement-ebd20ed7
 type: concept
 title: Built-in Pod Security admission enforcement
-description: This page is part of the documentation for Kubernetes v1.36.
+description: This page is part of the documentation for Kubernetes v1.37.
 category: kubernetes
 tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/security/pod-security-admission/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Built-in Pod Security admission enforcement
 
-This page is part of the documentation for Kubernetes v1.36.
+This page is part of the documentation for Kubernetes v1.37.
 If you are running a different version of Kubernetes, consult the documentation for that release.

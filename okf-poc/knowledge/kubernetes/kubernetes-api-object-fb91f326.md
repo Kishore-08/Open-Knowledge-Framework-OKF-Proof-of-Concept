@@ -9,11 +9,11 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/services-networking/service/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## API Object
 
 Service is a top-level resource in the Kubernetes REST API. You can find more details
-about the [Service API object](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#service-v1-core).
+about the [Service API object](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.37/#service-v1-core).

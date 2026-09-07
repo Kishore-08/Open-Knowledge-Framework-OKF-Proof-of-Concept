@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Pod Priority based graceful node shutdown
@@ -104,7 +104,7 @@ their respective shutdown periods.
 #### Note:
 
 The ability to take Pod priority into account during graceful node shutdown was introduced
-as an Alpha feature in Kubernetes v1.23. In Kubernetes 1.36
+as an Alpha feature in Kubernetes v1.23. In Kubernetes 1.37
 the feature is Beta and is enabled by default.
 
 Metrics `graceful_shutdown_start_time_seconds` and `graceful_shutdown_end_time_seconds`

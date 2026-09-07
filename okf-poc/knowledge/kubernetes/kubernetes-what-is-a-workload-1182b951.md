@@ -2,19 +2,19 @@
 id: kubernetes-what-is-a-workload-1182b951
 type: concept
 title: What is a Workload?
-description: The Workload API resource is part of the `scheduling.k8s.io/v1alpha2`
+description: The Workload API resource is part of the `scheduling.k8s.io/v1beta1`
 category: kubernetes
 tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/workload-api/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## What is a Workload?
 
-The Workload API resource is part of the `scheduling.k8s.io/v1alpha2`
+The Workload API resource is part of the `scheduling.k8s.io/v1beta1`
 [API group](https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-groups-and-versioning "A set of related paths in the Kubernetes API.")
 and your cluster must have that API group enabled, as well as the `GenericWorkload`
 [feature gate](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/),

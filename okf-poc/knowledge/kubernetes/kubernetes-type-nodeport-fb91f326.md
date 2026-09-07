@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/services-networking/service/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### `type: NodePort`
@@ -80,20 +80,19 @@ When using the default NodePort range 30000-32767, the bands are partitioned as 
 See [Avoid Collisions Assigning Ports to NodePort Services](https://kubernetes.io/blog/2023/05/11/nodeport-dynamic-and-static-allocation/)
 for more details on how the static and dynamic bands are calculated.
 
-#### Custom IP address configuration for `type: NodePort` Services
+#### IP address configuration for `type: NodePort` Services
 
-You can set up nodes in your cluster to use a particular IP address for serving node port
-services. You might want to do this if each node is connected to multiple networks (for example:
-one network for application traffic, and another network for traffic between nodes and the
-control plane).
+When using kube-proxy in [`iptables`
+mode](https://kubernetes.io/docs/reference/networking/virtual-ips/#proxy-mode-iptables), NodePort Services are
+available on all node IPs by default. When using [`nftables`
+mode](https://kubernetes.io/docs/reference/networking/virtual-ips/#proxy-mode-nftables), they are only
+available only on the node's primary IP (or dual-stack primary IPs) by default.
 
-If you want to specify particular IP address(es) to proxy the port, you can set the
-`--nodeport-addresses` flag for kube-proxy or the equivalent `nodePortAddresses`
-field of the [kube-proxy configuration file](https://kubernetes.io/docs/reference/config-api/kube-proxy-config.v1alpha1/)
-to particular IP block(s).
+You can change the set of node IPs that NodePort Services are available on with the
+`--nodeport-addresses` flag for kube-proxy, or the equivalent `nodePortAddresses`
+field of the [kube-proxy configuration file](https://kubernetes.io/docs/reference/config-api/kube-proxy-config.v1alpha1/).
+It accepts a comma-delimited list of IP blocks (e.g. `10.0.0.0/8`, `192.0.2.0/25`) or one
+of more of the following keywords:
 
-This flag takes a comma-delimited list of IP blocks (e.g. `10.0.0.0/8`, `192.0.2.0/25`)
-to specify IP address ranges that kube-proxy should consider as local to this node.
-
-For example, if you start kube-proxy with the `--nodeport-addresses=127.0.0.0/8` flag,
-kube-proxy only selects the loopba
+- `primary` - the node's primary IPv4 and/or IPv6 address, according to the Node object.
+  (This is the

@@ -10,8 +10,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/overview/working-with-objects/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 # Objects In Kubernetes

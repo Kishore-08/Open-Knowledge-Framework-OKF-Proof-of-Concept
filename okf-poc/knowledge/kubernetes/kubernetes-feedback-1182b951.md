@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/workload-api/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Feedback
@@ -23,4 +23,4 @@ Open an issue in the [GitHub Repository](https://www.github.com/kubernetes/websi
 or
 [suggest an improvement](https://github.com/kubernetes/website/issues/new?title=Improvement%20for%20k8s.io).
 
-Last modified April 22, 2026 at 7:20 PM PST: [Rename EnableWorkloadWithJob feature gate references to WorkloadWithJob (6a336f22bf)](https://github.com/kubernetes/website/commit/6a336f22bfdc105cffc11e80657843342d9e57cf)
+Last modified June 24, 2026 at 2:31 PM PST: [Update docs for Workload-aware preemption beta promotion (326022dff5)](https://github.com/kubernetes/website/commit/326022dff5aaa46fe7090333dfb872ea2b7d6237)

@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/storage/volumes/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Feedback
@@ -23,7 +23,7 @@ Open an issue in the [GitHub Repository](https://www.github.com/kubernetes/websi
 or
 [suggest an improvement](https://github.com/kubernetes/website/issues/new?title=Improvement%20for%20k8s.io).
 
-Last modified April 14, 2026 at 1:15 AM PST: [fix(links): update kubernetes/community links from master to main (03c191bcc4)](https://github.com/kubernetes/website/commit/03c191bcc446f9c15a9e68d6cd1154b53bde4291)
+Last modified July 01, 2026 at 3:23 PM PST: [feat: dynamic resize of memory backed volumes (1e10fc441f)](https://github.com/kubernetes/website/commit/1e10fc441f74a68eb4391ec1060aba17ea947a8a)
 
 Items on this page refer to third party products or projects that provide functionality required by Kubernetes. The Kubernetes project authors aren't responsible for those third-party products or projects. See the [CNCF website guidelines](https://github.com/cncf/foundation/blob/main/policies-guidance/website-guidelines.md) for more details.
 

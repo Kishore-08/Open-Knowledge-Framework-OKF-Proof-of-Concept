@@ -2,21 +2,21 @@
 id: kubernetes-gitrepo-disabled-4142258a
 type: concept
 title: gitRepo (disabled)
-description: Kubernetes 1.36 does *not* include the `gitRepo` volume
+description: Kubernetes 1.37 does *not* include the `gitRepo` volume
 category: kubernetes
 tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/storage/volumes/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### gitRepo (disabled)
 
 #### Warning:
 
-Kubernetes 1.36 does *not* include the `gitRepo` volume
+Kubernetes 1.37 does *not* include the `gitRepo` volume
 driver. The last version that provided a way to use this driver was Kubernetes
 v1.35, and it has been deprecated since the [v1.11](https://kubernetes.io/releases/1.11/) minor
 release.

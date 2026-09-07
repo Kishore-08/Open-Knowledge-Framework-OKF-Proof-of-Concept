@@ -8,14 +8,14 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/workload-api/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 # Workload API
 
 FEATURE STATE:
-`Kubernetes v1.35 [alpha]`(disabled by default)
+`Kubernetes v1.37 [beta]`(disabled by default)
 
 The `Workload` API resource defines the scheduling requirements and structure of a multi-Pod
 application. While workload controllers such as [Job](https://kubernetes.io/docs/concepts/workloads/controllers/job/)

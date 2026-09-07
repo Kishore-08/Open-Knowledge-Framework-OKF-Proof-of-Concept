@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 # Compute, Storage, and Networking Extensions
@@ -48,5 +48,5 @@ fabric that links Pods together.
   Your Kubernetes cluster needs a *network plugin* in order to have a working Pod network
   and to support other aspects of the Kubernetes network model.
 
-  Kubernetes 1.36 is compatible with [CNI](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/ "Container network interface (CNI) plugins are a type of Network plugin that adheres to the appc/CNI specification.")
+  Kubernetes 1.37 is compatible with [CNI](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/ "Container network interface (CNI) plugins are a type of Network plugin that adheres to the appc/CNI specification.")
   network plugins.

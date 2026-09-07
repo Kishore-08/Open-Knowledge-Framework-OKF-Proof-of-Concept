@@ -9,8 +9,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/containers/container-environment/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ### Cluster information
@@ -27,4 +27,4 @@ FOO_SERVICE_PORT=<the port the service is running on>
 ```
 
 Services have dedicated IP addresses and are available to the Container via DNS,
-if [DNS addon](https://releases.k8s.io/v1.36.0/cluster/addons/dns/) is enabled.
+if [DNS addon](https://releases.k8s.io/v1.37.0/cluster/addons/dns/) is enabled.

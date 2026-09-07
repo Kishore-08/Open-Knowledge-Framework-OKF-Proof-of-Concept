@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## Feedback
@@ -23,4 +23,4 @@ Open an issue in the [GitHub Repository](https://www.github.com/kubernetes/websi
 or
 [suggest an improvement](https://github.com/kubernetes/website/issues/new?title=Improvement%20for%20k8s.io).
 
-Last modified May 22, 2026 at 12:14 AM PST: [Make probes section on Pod lifecycle page lighter (662fbe2052)](https://github.com/kubernetes/website/commit/662fbe205235b6dea960b553c1ad64a42cc81c59)
+Last modified June 20, 2026 at 10:50 AM PST: [docs: update PodReadyToStartContainers feature to GA (d19722b4e7)](https://github.com/kubernetes/website/commit/d19722b4e738c2b7c8f7c642d32843abf132b4a1)

@@ -8,8 +8,8 @@ tags: []
 source:
   name: kubernetes
   url: https://kubernetes.io/docs/concepts/architecture/nodes/
-updated_at: '2026-08-17'
-created_at: '2026-08-17'
+updated_at: '2026-08-27'
+created_at: '2026-08-27'
 ---
 
 ## What's next
@@ -17,7 +17,7 @@ created_at: '2026-08-17'
 Learn more about the following:
 
 - [Components](https://kubernetes.io/docs/concepts/architecture/#node-components) that make up a node.
-- [API definition for Node](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#node-v1-core).
+- [API definition for Node](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.37/#node-v1-core).
 - [Node](https://git.k8s.io/design-proposals-archive/architecture/architecture.md#the-kubernetes-node)
   section of the architecture design document.
 - [Graceful/non-graceful node shutdown](https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/).
